@@ -263,6 +263,12 @@
     <label class="check"><input type="checkbox" id="shadows" checked> Shadows (turn off if an old phone gets slow)</label>
     <hr>
     <p class="label">Hologram box</p>
+    <p class="label">Sound</p>
+    <label class="check"><input type="checkbox" id="music" checked> Music</label>
+    <label class="check"><input type="checkbox" id="sfx" checked> Sound effects</label>
+    <label class="check"><input type="checkbox" id="voices" checked> Voices when they talk</label>
+    <div class="field"><label for="volume">Volume</label><input id="volume" type="range" min="0" max="1" step="0.05" value="0.7" style="accent-color:var(--lilac)"></div>
+    <hr>
     <label class="check"><input type="checkbox" id="boxMode"> Black sky, so the town floats in the box</label>
     <label class="check"><input type="checkbox" id="mirror"> Mirror the picture for the reflection</label>
     <div class="btns">
@@ -320,6 +326,9 @@ const FOODS = [
   { id: 'fish', shop: 'mart', name: 'grilled fish', price: 2, fill: 0.45, fl: { sweet: 0, salty: 0.75, spicy: 0.1 } },
   { id: 'noodles', shop: 'mart', name: 'pepper noodles', price: 2, fill: 0.45, fl: { sweet: 0, salty: 0.3, spicy: 1 } },
   { id: 'melonpan', shop: 'mart', name: 'melon bread', price: 2, fill: 0.35, fl: { sweet: 0.65, salty: 0.2, spicy: 0 } },
+  { id: 'pizza', shop: 'mart', name: 'pizza', price: 3, fill: 0.5, fl: { sweet: 0.1, salty: 0.8, spicy: 0.2 } },
+  { id: 'taco', shop: 'mart', name: 'taco', price: 2, fill: 0.4, fl: { sweet: 0, salty: 0.6, spicy: 0.5 } },
+  { id: 'nachos', shop: 'mart', name: 'nachos with cheese', price: 2, fill: 0.35, fl: { sweet: 0.1, salty: 0.9, spicy: 0.2 } },
   { id: 'latte', shop: 'cafe', name: 'honey latte', price: 2, fill: 0.12, fl: { sweet: 0.6, salty: 0, spicy: 0 } },
   { id: 'matcha', shop: 'cafe', name: 'matcha', price: 2, fill: 0.1, fl: { sweet: 0.2, salty: 0.1, spicy: 0 } },
   { id: 'cocoa', shop: 'cafe', name: 'hot cocoa', price: 2, fill: 0.15, fl: { sweet: 0.9, salty: 0, spicy: 0 } },
@@ -381,7 +390,7 @@ function itemColor(it) { return it.kind === 'food' ? (foodById(it.id).shop === '
 // ============================================================
 // SETTINGS (per device)
 // ============================================================
-const cfg = { daySec: 300, spin: true, follow: true, shadows: true, boxMode: false, mirror: false };
+const cfg = { daySec: 300, spin: true, follow: true, shadows: true, boxMode: false, mirror: false, music: true, sfx: true, voices: true, volume: 0.7 };
 function loadPrefs() { try { Object.assign(cfg, JSON.parse(localStorage.getItem(SAVE_KEY + '-prefs') || '{}')); } catch (e) {} }
 function savePrefs() { try { localStorage.setItem(SAVE_KEY + '-prefs', JSON.stringify(cfg)); } catch (e) {} }
 const ts = () => clamp(cfg.daySec / 300, 0.35, 4);
@@ -468,6 +477,7 @@ function bodyFacts(p, you = true) {
   f.push(B.hungerRate > 1.1 ? (you ? 'Your stomach empties fast.' : 'gets hungry fast') : B.hungerRate < 0.8 ? (you ? 'You can go a long time without eating.' : 'rarely hungry') : (you ? 'Your appetite is ordinary.' : 'ordinary appetite'));
   f.push(B.speed > 1.1 ? (you ? 'You move quickly.' : 'quick on their feet') : B.speed < 0.85 ? (you ? 'You walk slowly.' : 'walks slowly') : (you ? 'You walk at an ordinary pace.' : 'ordinary pace'));
   if (B.stormBorn) f.push(you ? 'You were born during a storm.' : 'born in a storm');
+  if (B.ailments?.length) f.push(you ? cap(B.ailments.join(', and ').replace(/\bhis\b|\bher\b|\btheir\b/g, 'your').replace(/\bhe feels\b|\bshe feels\b|\bthey feel\b/g, 'you feel')) + '.' : B.ailments.join(', '));
   return you ? f.join(' ') : f.join(', ');
 }
 function favoriteFood(p) { const e = Object.entries(p.tastes).sort((x, y) => y[1] - x[1])[0]; return e && e[1] > 0.25 ? foodById(e[0]).name : null; }
@@ -583,6 +593,8 @@ function daydream(me, them, ctx) {
     if (score <= -4) { action = r < 0.5 ? 'tease' : 'walk_away'; say = pick(['You again.', 'Nobody asked you.', 'Hmph.']); feeling = -1; }
     else if (me.hunger > 0.65 && me.coins < 2 && r < 0.7) { action = 'ask_for_help'; say = pick(["I'm so hungry and I'm out of coins…", 'Could you spare a coin?', 'My tummy is empty.']); }
     else if (them.hunger > 0.75 && me.coins > 3 && (score >= 0 || L.kind) && r < 0.6) { action = 'give_coin'; say = pick([`You look hungry, ${them.name}. Here.`, 'Go get something to eat. On me.']); feeling = 1; }
+    else if (me.lovesMili && isMili(them) && r < 0.7) { say = pick(['Yo. I love you.', 'I love you. Bye-bye.', 'Love you, bye-bye.', 'Hey. I love you.']); feeling = 2; }
+    else if (me.lines?.length && r < 0.4) { say = pick(me.lines); }
     else if ((me.visitor || them.visitor) && r < 0.55) { say = cultureLine(me, them); topic = 'culture'; }
     else if (r < 0.2 && Object.entries(me.feelings).some(([id, x]) => id !== them.id && Math.abs(x.score) >= 4 && person(id))) { const [gid, gx] = Object.entries(me.feelings).filter(([id, x]) => id !== them.id && Math.abs(x.score) >= 4 && person(id)).sort(() => rand() - 0.5)[0]; const g = person(gid); say = gx.score > 0 ? pick([`Have you talked to ${g.name} lately? They're the best.`, `${g.name} helped me with something yesterday. So sweet.`]) : pick([`Is it just me, or is ${g.name} kind of full of themselves?`, `Don't tell ${g.name} I said this, but they get on my nerves.`, `Did you hear what ${g.name} did at the meeting?`]); topic = 'gossip'; feel(them, g, gx.score > 0 ? 0.5 : -0.5, true); remember(them, `${me.name} said: "${say}"`, 1, 'rumor', g.name); }
     else if (r < 0.26 && (W.day > 1 || W.creator.giftsTotal > 0)) { say = creatorLine(me); topic = 'creator'; }
@@ -603,7 +615,7 @@ function daydream(me, them, ctx) {
 // ENCOUNTERS
 // ============================================================
 function emote(p, ch, secs = 2.4) { p.emote = { ch, until: now + secs }; }
-function bubble(p, text, secs, sky = false) { p.bubble = { text, until: now + secs, sky }; }
+function bubble(p, text, secs, sky = false) { p.bubble = { text, until: now + secs, sky }; if (text && text !== '…' && MODE === 'host' && controls) { try { if (hearable(p)) Sound.voice(p, text); } catch (e) {} } }
 function applyAction(a, b, action) {
   if (action === 'share_food') {
     if (a.hunger < 0.8) { a.hunger = clamp(a.hunger + 0.12, 0, 1); b.hunger = clamp(b.hunger - 0.25, 0, 1); return { text: `${a.name} shared a snack with ${b.name}`, kind: 1 }; }
@@ -879,7 +891,7 @@ function talkPrompt(p, said, history) {
   return `You are role-playing ${p.name}, a small, round villager who lives in room ${p.room + 1} of the apartments in Glimmer Town, a tiny island town. You are not an assistant. Everyone in town knows about "the Creator": an unseen being who made the island, sometimes sends gifts and coins from the sky, and whose likes and dislikes nobody knows for sure. Right now, the Creator is speaking directly to you.
 
 WHO YOU ARE, IN YOUR OWN WORDS: ${p.selfNote}
-BODY: ${bodyFacts(p)}${p.grow < 1 ? ' You are still a small child, so talk like one.' : ''}
+BODY: ${bodyFacts(p)}${p.grow < 1 ? ' You are still a small child, so talk like one.' : ''}${p.style ? `\nHOW YOU TALK: ${styleOf(p)}` : ''}${p.interests ? `\nYOU'RE INTO: ${p.interests}` : ''}
 LIFE: ${p.job ? `You work as a ${JOBS[p.job].title}.` : 'You are too young for a job.'} ${p.coins} coins. Wearing ${outfitText(p)}. Favorite food: ${favoriteFood(p) || 'not sure yet'}.
 HOW YOU FEEL ABOUT THE CREATOR: ${att} (${Math.round(p.cr.score)} on a scale from -10 to 10). The Creator has given you ${plural(Math.round(p.cr.gifts), 'gift')} and spoken to you ${plural(p.cr.talks, 'time')} before. ${beliefText(p)}${p.cr.wish ? ` You are secretly wishing for ${wishText(p.cr.wish)}.` : ''}
 YOUR NEIGHBORS: ${feels}
@@ -938,6 +950,7 @@ async function townMeeting() {
   const t0 = performance.now();
   while (performance.now() - t0 < 16000 && att.some((p) => p.path.length)) await sleep(250);
   att.forEach((p) => { p.path = []; const s = meetSpot(att.indexOf(p), att.length); p.x = s[0]; p.z = s[1]; p.face = Math.atan2(-p.x, -p.z); p.task.phase = 'do'; p.busyUntil = Infinity; });
+  Sound.bell();
   const chair = [...att].sort((a, b) => popularity(b) - popularity(a) + (rand() - 0.5) * 3)[0];
   const say = async (p, text, ms = 2600) => { bubble(p, text, ms / 1000 + 0.6); await sleep(ms); };
   const minutes = { day: W.day, chair: chair.name, items: [] };
@@ -1246,7 +1259,9 @@ function step(dt) {
     if (!p.task) { if (!W.meeting) plan(p); continue; }
     if (p.path.length) {
       const tgt = p.path[0], dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
-      const sp = 3.1 * p.body.speed * (p.hunger > 0.9 ? 0.65 : 1) * (0.7 + 0.3 * p.grow) * (W.weather === 'storm' ? 0.85 : 1) * (W.meeting ? 1.6 : 1);
+      const achy = p.body.ailments?.length && W.t < 0.15 ? 0.75 : 1;
+      if (achy < 1 && p.sickDay !== W.day && /sick/.test(p.body.ailments.join(' ')) && rand() < 0.01) { p.sickDay = W.day; bubble(p, pick(['Ugh. Sick again.', 'Mornings are the worst.', 'My joints. Man.']), 2.6); remember(p, 'Felt sick this morning, like always.', 1, 'sick'); }
+      const sp = achy * 3.1 * p.body.speed * (p.hunger > 0.9 ? 0.65 : 1) * (0.7 + 0.3 * p.grow) * (W.weather === 'storm' ? 0.85 : 1) * (W.meeting ? 1.6 : 1);
       if (d < 0.2) { p.x = tgt.x; p.z = tgt.z; p.path.shift(); p.stuckT = 0; p.lastD = Infinity; if (!p.path.length) { p.at = p.dest; startDo(p); } continue; }
       const mv = Math.min(d, sp * dt);
       p.x += (dx / d) * mv; p.z += (dz / d) * mv; p.moving = true;
@@ -1306,6 +1321,7 @@ function applyCmd(c) {
       if (m) { m.coins += it.kind === 'food' ? 1 : price; creatorShift(m, 0.6); remember(m, `The Creator bought ${a_an(itemName(it))} I made!`, 2, 'creatorBought'); emote(m, '✦', 3); }
       diary(`<span class="cr">Creator</span> bought ${a_an(esc(itemName(it)))}${m ? ` made by ${esc(m.name)}` : ''} at ${SHOPS[c.shop].name}.`);
       markDirty();
+      Sound.coin();
       if (c.to && person(c.to)) return applyCmd({ t: 'gift', uid: it.uid, to: c.to });
       return `Bought ${a_an(itemName(it))}${m ? `. ${m.name} earned ${plural(it.kind === 'food' ? 1 : price, 'coin')}` : ''}.`;
     }
@@ -1341,7 +1357,7 @@ function applyCmd(c) {
       const p = person(c.to), i = C.items.findIndex((x) => x.uid === c.uid);
       if (!p) return 'They are not here anymore.'; if (i < 0) return 'That item is gone.';
       const it = C.items.splice(i, 1)[0];
-      const res = giftItem(p, it);
+      const res = giftItem(p, it); if (!res.refused) Sound.sparkle();
       if (res.refused) C.items.push(it);
       bubble(p, res.line, 4.5, true); emote(p, res.refused ? '☁' : '✧', 3);
       markDirty();
@@ -1381,6 +1397,7 @@ function applyCmd(c) {
       for (const p of W.people) if (!p.inside && rand() < 0.6) { bubble(p, pick(['Whoa, the island just got bigger!', 'New land?!', 'Did you feel that?']), 3); remember(p, `The island grew. ${L.name} rose out of the sea.`, 2, 'build'); }
       markDirty(); return `${L.name} rose out of the sea!`;
     }
+    case 'invite': { inviteResident(String(c.name || 'Newbie').slice(0, 20), String(c.about || '').slice(0, 1200), c.color).then((m) => toast(m)); return 'Someone is packing their bags…'; }
     case 'mailread': { const m = (W.mail || []).find((x) => x.id === c.mid); if (m) { m.read = true; markDirty(); } return ''; }
     case 'mailtext': { const m = (W.mail || []).find((x) => x.id === c.mid); if (m) { Object.assign(m, { greet: String(c.greet || m.greet), body: String(c.body || m.body), sign: String(c.sign || m.sign), written: true }); markDirty(); } return ''; }
     case 'mailreply': {
@@ -1623,7 +1640,7 @@ function aiLine(me, them, transcript, situation) {
   const system = `You are ${me.name}, a small villager in ${ISL.name}, a tiny island town. This is a character simulation with real personalities: ${me.name} can be petty, jealous, stubborn, sarcastic, proud, shy, loving, or wrong, exactly as their history suggests. Never act like an assistant and never lecture. Do not smooth over conflict just to be nice; only soften if something in this conversation earned it. People here hold grudges, keep secrets, gossip, and sometimes lie. The Creator is only a small, distant part of life here: don't bring them up unless the conversation naturally goes there. Mostly talk about your own life: neighbors, work, food, plans, rumors, the town, and what you want. Keep lines short and natural, the way people actually talk.`;
   const user = `WHO YOU ARE (your own words): ${me.selfNote}
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
-BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}
+BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
 ${cultureContext(me, them)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
@@ -2205,6 +2222,9 @@ function foodMesh(id) {
     case 'mochi': plate(); for (let i = 0; i < 3; i++) g.add(mesh(sph(0.1, 10, 8), toon(['#ffffff', '#ffb3c7', '#b8e39a'][i]), -0.12 + i * 0.12, 0.12, 0)); break;
     case 'fish': { plate(); const f = mesh(new T3.CapsuleGeometry(0.08, 0.3, 4, 8), toon('#e8a060'), 0, 0.12, 0); f.rotation.z = Math.PI / 2; g.add(f); break; }
     case 'noodles': bowl('#f2d36b'); g.add(mesh(sph(0.05, 6, 4), toon('#e2466b'), -0.1, 0.32, 0)); break;
+    case 'pizza': { plate(); const sl = mesh(new T3.CylinderGeometry(0.3, 0.3, 0.05, 3, 1, false, 0, 0.9), toon('#f3c96b'), 0, 0.08, 0); g.add(sl); for (let i = 0; i < 3; i++) g.add(mesh(cyl(0.04, 0.04, 0.02, 8), toon('#d9463a'), 0.08 + i * 0.05, 0.12, 0.05 - i * 0.03)); break; }
+    case 'taco': { plate(); const sh = mesh(new T3.TorusGeometry(0.16, 0.05, 6, 12, Math.PI), toon('#f2c04a'), 0, 0.2, 0); g.add(sh); g.add(mesh(sph(0.1, 8, 6), toon('#7cc86a'), 0, 0.12, 0)); break; }
+    case 'nachos': plate(); for (let i = 0; i < 6; i++) { const c = mesh(new T3.ConeGeometry(0.09, 0.02, 3), toon('#f2c04a'), Math.cos(i) * 0.14, 0.08 + (i % 2) * 0.03, Math.sin(i) * 0.14); c.rotation.x = Math.PI / 2; g.add(c); } g.add(mesh(sph(0.1, 8, 6), toon('#ffb020'), 0, 0.12, 0)); break;
     case 'melonpan': plate(); g.add(mesh(new T3.SphereGeometry(0.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), toon('#f3d77a'), 0, 0.05, 0)); break;
     case 'latte': cup('#d9b48a'); break;
     case 'matcha': cup('#8fc06a'); break;
@@ -2321,7 +2341,7 @@ function buildShop(shop) {
     const shelf = new T3.Group();
     shelf.add(mesh(box(5.2, 2.8, 0.9), toon('#c49a6c'), 0, 1.4, 0)); for (const y of [0.95, 1.9]) shelf.add(mesh(box(5.0, 0.08, 0.95), toon('#e8d0a8'), 0, y, 0.06));
     shelf.position.set(-1.5, 0, -3.5); S.add(shelf);
-    FOODS.filter((f) => f.shop === 'mart').forEach((f, i) => { const it = { uid: 'menu-' + f.id, kind: 'food', id: f.id }; const m = foodMesh(f.id); m.scale.setScalar(1.7); m.position.set(-3.5 + (i % 4) * 1.35, i < 4 ? 1.0 : 1.95, -3.1); tapBuy(m, shop, it); S.add(m); addPrice(m, `${f.price} ✦`, 0.7); });
+    FOODS.filter((f) => f.shop === 'mart').forEach((f, i) => { const it = { uid: 'menu-' + f.id, kind: 'food', id: f.id }; const m = foodMesh(f.id); m.scale.setScalar(1.7); m.position.set(-3.5 + (i % 4) * 1.35, [1.0, 1.95, 2.85][Math.floor(i / 4)] ?? 2.85, -3.1); tapBuy(m, shop, it); S.add(m); addPrice(m, `${f.price} ✦`, 0.7); });
     S.add(mesh(box(3.2, 1.1, 1.2), toon('#e2566b'), 2.8, 0.55, -1.2)); S.add(mesh(box(3.3, 0.1, 1.3), toon('#fff6ee'), 2.8, 1.12, -1.2));
     S.add(mesh(box(0.6, 0.4, 0.5), toon('#5a5470'), 3.6, 1.37, -1.2));
     for (let i = 0; i < 3; i++) { S.add(mesh(box(1.1, 0.7, 0.9), toon('#c49a6c'), -3.2 + i * 1.3, 0.35, 2.6)); for (let k = 0; k < 4; k++) S.add(mesh(sph(0.2, 8, 6), toon(['#ff6f5e', '#ffd36b', '#9fe3a0'][i]), -3.5 + i * 1.3 + (k % 2) * 0.5, 0.82, 2.4 + Math.floor(k / 2) * 0.4)); }
@@ -2376,7 +2396,7 @@ function buildShop(shop) {
 function openInterior(spec) {
   if (MODE !== 'host') return;
   if (spec.kind === 'room' && !person(spec.id)) return;
-  releaseDlg();
+  releaseDlg(); Sound.door();
   interior = { ...spec, key: '', built: -99 };
   controls.enabled = false; roomControls.enabled = true;
   roomCam.position.set(7.5, 7.2, 9.5); roomControls.target.set(0, 1.4, 0);
@@ -2431,7 +2451,7 @@ function problemOf(p) {
 function addJoy(p, n) {
   p.joy = (p.joy || 0) + n; p.level = p.level || 1;
   while (p.joy >= 100) {
-    p.joy -= 100; p.level++; p.pendingGift = true;
+    p.joy -= 100; p.level++; p.pendingGift = true; Sound.levelup();
     emote(p, '★', 4); bubble(p, pick(['I leveled up!', 'I feel so happy today!']), 3, true);
     diary(`<b>${esc(p.name)}</b> reached level ${p.level}! They have a present for you.`);
     remember(p, `I felt so happy that I reached level ${p.level}.`, 2, 'levelUp');
@@ -2494,7 +2514,7 @@ function dreamPrompt(p) {
   const feels = Object.values(p.feelings).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).slice(0, 4).map((f) => `${f.name} (${f.score > 0 ? 'likes' : 'dislikes'} them)`).join(', ') || 'nobody yet';
   return `${p.name} is a small, round villager asleep in their apartment in ${ISL.name}, a tiny island town in the style of Tomodachi Life. Write the dream they are having tonight.
 
-Who they are, in their own words: ${p.selfNote}
+Who they are, in their own words: ${p.selfNote}${p.interests ? `\nThey're into: ${p.interests}` : ''}
 People on their mind: ${feels}
 How they feel about the Creator (the unseen being who made the island): ${attitude(p)[1]}${p.cr.wish ? `. They are wishing for ${wishText(p.cr.wish)}` : ''}.
 Things they remember:
@@ -2545,6 +2565,7 @@ function queueLetter(p, kind, facts = {}) {
   const t = letterTemplate(p, kind, facts);
   W.mail.unshift({ id: uid(), from: p.id, fromName: p.name, hue: p.body.hue, day: W.day, kind, facts, ...t, written: false, read: false, reply: null, reaction: null });
   if (W.mail.length > 40) W.mail.length = 40;
+  Sound.paper();
 }
 function nightLetters() {
   for (const p of W.people) {
@@ -2629,7 +2650,7 @@ function depart(p, why) {
   delete W.creator.gifts[p.id];
   diary(`<b>${esc(p.name)}</b> took the morning ferry to ${ISLES[OTHER].name}. "${esc(why)}"`);
   toast(`${p.name} left on the ferry to ${ISLES[OTHER].name}.`);
-  ferryAnim = { kind: 'depart', start: now };
+  ferryAnim = { kind: 'depart', start: now }; Sound.horn();
 }
 function arrive(d) {
   if (d.kind === 'visit') return arriveVisitor(d);
@@ -2646,7 +2667,7 @@ function arrive(d) {
   queueLetter(q, 'arrived', { from: ISLES[d.from]?.name || 'across the sea', who: left[0] });
   for (const r of W.people) if (r !== q && rand() < 0.5) remember(r, `Someone new arrived on the ferry: ${q.name}.`, 1, 'newcomer', q.name);
   toast(`${q.name} arrived on the ferry!`);
-  ferryAnim = { kind: 'arrive', start: now };
+  ferryAnim = { kind: 'arrive', start: now }; Sound.horn();
   markDirty();
   return true;
 }
@@ -2705,7 +2726,7 @@ function fireworksFrame(dt) {
     const g = new T3.BufferGeometry(); g.setAttribute('position', new T3.BufferAttribute(pos, 3));
     const col = pick(['#ff8fb6', '#ffd36b', '#9fd3ff', '#c9b3ff', '#9fe3c4', '#ffffff']);
     const pts = new T3.Points(g, new T3.PointsMaterial({ color: col, size: 0.7, transparent: true, opacity: 1, depthWrite: false }));
-    scene.add(pts); bursts.push({ pts, vel, age: 0 });
+    scene.add(pts); bursts.push({ pts, vel, age: 0 }); Sound.boom();
   }
   for (let i = bursts.length - 1; i >= 0; i--) {
     const b = bursts[i]; b.age += dt;
@@ -2876,7 +2897,7 @@ function sendVisit(p) {
   p.inside = true; p.task = { kind: 'away', phase: 'do' }; p.path = []; p.busyUntil = Infinity;
   diary(`<b>${esc(p.name)}</b> took the morning ferry to visit ${ISLES[OTHER].name} for the day.`);
   for (const q of W.people) if (q !== p && (q.feelings[p.id]?.score || 0) >= 3) remember(q, `${p.name} went to visit ${ISLES[OTHER].name} for the day.`, 1, 'awayNote', p.name);
-  ferryAnim = { kind: 'depart', start: now };
+  ferryAnim = { kind: 'depart', start: now }; Sound.horn();
 }
 function arriveVisitor(d) {
   const q = d.person; if (!q) return true;
@@ -2889,7 +2910,7 @@ function arriveVisitor(d) {
   W.people.push(q); buildKin(q);
   diary(`<b>${esc(q.name)}</b> is visiting from ${ISLES[d.from].name} for the day.`);
   for (const r of W.people) if (r !== q && !r.visitor && rand() < 0.5) remember(r, `A visitor named ${q.name} came over from ${ISLES[d.from].name}.`, 1, 'newcomer', q.name);
-  ferryAnim = { kind: 'arrive', start: now };
+  ferryAnim = { kind: 'arrive', start: now }; Sound.horn();
   return true;
 }
 function sendVisitorsHome() {
@@ -2901,7 +2922,7 @@ function sendVisitorsHome() {
     W.people.splice(W.people.indexOf(q), 1);
     const m = meshes.get(q.id); if (m) { scene.remove(m.root); m.tag.remove(); meshes.delete(q.id); }
     diary(`<b>${esc(q.name)}</b> took the ferry home to ${ISLES[q.visitor.home].name}.`);
-    ferryAnim = { kind: 'depart', start: now };
+    ferryAnim = { kind: 'depart', start: now }; Sound.horn();
   }
 }
 function returnHome(d) {
@@ -2912,7 +2933,7 @@ function returnHome(d) {
   if (d.selfNote) p.selfNote = d.selfNote;
   diary(`<b>${esc(p.name)}</b> came home from ${ISLES[d.from].name}.`);
   queueLetter(p, 'trip', { to: ISLES[d.from].name, culture: CULTURES[d.from].short });
-  ferryAnim = { kind: 'arrive', start: now };
+  ferryAnim = { kind: 'arrive', start: now }; Sound.horn();
   markDirty();
   return true;
 }
@@ -2922,6 +2943,197 @@ function morningFerry() {
   for (const p of W.people) if (p.away && W.day - p.away.since >= 3) { p.away = null; p.inside = false; p.task = null; p.at = 'pier'; p.x = 0; p.z = 39.5; remember(p, 'The ferry back was late, but I made it home.', 2, 'trip'); }
   const home = W.people.filter((p) => !p.visitor && !p.away && p.grow >= 1);
   if (home.length >= 3 && rand() < 0.4) sendVisit(pick(home));
+}
+
+// ============================================================
+// SOUND: music, effects and voices, all synthesized
+// ============================================================
+const Sound = (() => {
+  let ctx = null, master, music, sfx, voiceBus, started = false, noiseBuf = null, nextBeat = 0, beat = 0, lastVoice = 0, lastStep = 0;
+  const ok = () => ctx && ctx.state === 'running';
+  function ensure() {
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    ctx = new AC();
+    master = ctx.createGain(); master.connect(ctx.destination);
+    music = ctx.createGain(); sfx = ctx.createGain(); voiceBus = ctx.createGain();
+    const soft = ctx.createBiquadFilter(); soft.type = 'lowpass'; soft.frequency.value = 3200; music.connect(soft); soft.connect(master);
+    sfx.connect(master); voiceBus.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    levels(); return ctx;
+  }
+  function levels() { if (!ctx) return; const v = cfg.volume ?? 0.7; master.gain.value = v; music.gain.value = cfg.music === false ? 0 : 0.22; sfx.gain.value = cfg.sfx === false ? 0 : 0.55; voiceBus.gain.value = cfg.voices === false ? 0 : 0.5; }
+  function tone(freq, t0, dur, o = {}) {
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(freq, t0);
+    if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * o.slide), t0 + dur);
+    const vol = o.vol ?? 0.2, a = o.attack ?? 0.005;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(vol, t0 + a); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + (o.release ?? 0.08));
+    osc.connect(g); g.connect(o.dest || sfx); osc.start(t0); osc.stop(t0 + dur + (o.release ?? 0.08) + 0.05);
+  }
+  function noise(t0, dur, o = {}) {
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = noiseBuf; f.type = o.filter || 'bandpass'; f.frequency.value = o.freq || 800; f.Q.value = o.q || 1;
+    g.gain.setValueAtTime(o.vol ?? 0.1, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(o.dest || sfx); src.start(t0); src.stop(t0 + dur + 0.05);
+  }
+  // --- music: a gentle pentatonic loop that changes with the time of day ---
+  const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  const CHORDS = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]];
+  const SCALE = [0, 2, 4, 7, 9];
+  let mel = 2;
+  function schedule() {
+    if (!ok() || cfg.music === false || !W) return;
+    const night = W.t >= 0.6 || W.t < 0.03, fest = W.event?.id === 'festival' && W.event.day === W.day && W.t > 0.55 && W.t < 0.67;
+    const bpm = fest ? 112 : night ? 60 : W.meeting ? 72 : 86, spb = 60 / bpm / 2;
+    if (nextBeat < ctx.currentTime) nextBeat = ctx.currentTime + 0.05;
+    while (nextBeat < ctx.currentTime + 0.4) {
+      const bar = Math.floor(beat / 8) % 4, pos = beat % 8, ch = CHORDS[bar];
+      if (pos === 0) { for (const n of ch) tone(hz(n - (night ? 12 : 0)), nextBeat, spb * 7, { type: 'triangle', vol: night ? 0.05 : 0.045, attack: 0.25, release: 0.6, dest: music }); tone(hz(ch[0] - 24), nextBeat, spb * 3, { type: 'sine', vol: 0.09, attack: 0.02, dest: music }); }
+      if (pos === 4 && !night) tone(hz(ch[0] - 24 + 7), nextBeat, spb * 2, { type: 'sine', vol: 0.07, dest: music });
+      const density = fest ? 0.9 : night ? 0.35 : 0.6;
+      if (Math.random() < density) {
+        mel = clamp(mel + Math.floor(Math.random() * 5) - 2, 0, 9);
+        const n = 72 + SCALE[mel % 5] + Math.floor(mel / 5) * 12 + (night ? 12 : 0);
+        tone(hz(n), nextBeat, night ? spb * 1.8 : spb * 0.8, { type: night ? 'sine' : 'triangle', vol: night ? 0.06 : 0.07, attack: 0.01, release: night ? 0.9 : 0.2, dest: music });
+      }
+      if (W.weather !== 'clear' && pos === 0) noise(nextBeat, spb * 8, { freq: 1800, q: 0.4, vol: W.weather === 'storm' ? 0.05 : 0.025, dest: music });
+      nextBeat += spb; beat++;
+    }
+  }
+  setInterval(schedule, 150);
+  const at = () => ctx.currentTime + 0.01;
+  return {
+    unlock() { const c = ensure(); if (!c) return; if (c.state === 'suspended') c.resume(); started = true; },
+    levels,
+    ui() { if (!ok()) return; tone(1180, at(), 0.025, { type: 'triangle', vol: 0.06 }); },
+    door() { if (!ok()) return; const t = at(); tone(1319, t, 0.12, { vol: 0.12 }); tone(988, t + 0.12, 0.22, { vol: 0.12, release: 0.4 }); },
+    coin() { if (!ok()) return; const t = at(); tone(988, t, 0.05, { type: 'square', vol: 0.05 }); tone(1319, t + 0.06, 0.18, { type: 'square', vol: 0.05 }); },
+    sparkle() { if (!ok()) return; const t = at(); [1568, 2093, 2637, 3136].forEach((f, i) => tone(f, t + i * 0.06, 0.08, { vol: 0.05, release: 0.3 })); },
+    levelup() { if (!ok()) return; const t = at(); [60, 64, 67, 72, 76].forEach((m, i) => tone(hz(m + 12), t + i * 0.09, 0.12, { type: 'triangle', vol: 0.09, release: 0.25 })); },
+    paper() { if (!ok()) return; const t = at(); noise(t, 0.12, { freq: 3000, q: 0.7, vol: 0.08 }); noise(t + 0.13, 0.1, { freq: 2400, q: 0.7, vol: 0.06 }); },
+    bell() { if (!ok()) return; const t = at(); for (let i = 0; i < 3; i++) { tone(784, t + i * 0.45, 0.6, { vol: 0.08, release: 1.2 }); tone(1568, t + i * 0.45, 0.3, { vol: 0.03, release: 0.8 }); } },
+    horn() { if (!ok()) return; const t = at(); tone(196, t, 1.1, { type: 'sawtooth', vol: 0.04, attack: 0.08, release: 0.5 }); tone(247, t, 1.1, { type: 'triangle', vol: 0.05, attack: 0.08, release: 0.5 }); },
+    boom() { if (!ok()) return; const t = at(); noise(t, 0.9, { filter: 'lowpass', freq: 400, vol: 0.18 }); tone(90, t, 0.5, { vol: 0.12, slide: 0.4 }); noise(t + 0.25, 0.8, { freq: 5000, q: 0.3, vol: 0.02 }); },
+    step() { if (!ok() || now - lastStep < 0.3) return; lastStep = now; noise(at(), 0.05, { freq: 350 + Math.random() * 150, q: 2, vol: 0.05 }); },
+    splash() { if (!ok()) return; noise(at(), 0.4, { freq: 1200, q: 0.5, vol: 0.05 }); },
+    voice(p, text, force) {
+      if (!ok() || cfg.voices === false || !p || !text || text === '…') return;
+      if (!force && now - lastVoice < 0.5) return;
+      lastVoice = now;
+      const v = voiceOf(p), n = Math.min(16, Math.max(2, Math.ceil(text.length / 4))), q = /\?\s*$/.test(text), ex = /!\s*$/.test(text);
+      let t = at();
+      for (let i = 0; i < n; i++) {
+        const lift = q && i >= n - 2 ? 1.25 : ex && i === 0 ? 1.15 : 1;
+        const f = v.base * lift * (1 + (Math.random() - 0.5) * v.spread * 2);
+        tone(f, t, v.len, { type: v.wave, vol: 0.05, attack: 0.008, release: 0.03, dest: voiceBus });
+        tone(f * 2, t, v.len * 0.6, { type: 'sine', vol: 0.015, attack: 0.008, release: 0.02, dest: voiceBus });
+        t += v.len + 0.018 + Math.random() * 0.02;
+      }
+    },
+  };
+})();
+function voiceOf(p) {
+  if (p.body.voice) return p.body.voice;
+  const h = (parseInt(String(p.id).replace(/\D/g, '')) || 1) * 7919;
+  const kid = p.grow < 1 ? 1.35 : 1;
+  p.body.voice = { base: (160 + (h % 220)) * kid / p.body.size, spread: 0.12 + ((h >> 3) % 20) / 100, wave: ['square', 'triangle', 'sawtooth', 'sine'][(h >> 5) % 4], len: 0.055 + ((h >> 7) % 5) / 100 };
+  return p.body.voice;
+}
+function hearable(p) {
+  if (MODE !== 'host') return false;
+  if (dlg && dlg.pid === p.id) return true;
+  if (interior) return interior.kind === 'room' ? interior.id === p.id : p.inside && p.at === interior.shop;
+  if (p.inside) return false;
+  return Math.hypot(p.x - controls.target.x, p.z - controls.target.z) < 22;
+}
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => addEventListener(ev, () => Sound.unlock(), { passive: true }));
+document.addEventListener('click', (e) => { if (e.target.closest('button, .tab')) Sound.ui(); });
+
+// ============================================================
+// CUSTOM RESIDENTS (Red, and anyone you invite)
+// ============================================================
+function makeRed() {
+  const p = birth();
+  p.name = W.people.some((q) => q.name === 'Red') ? 'Red2' : 'Red';
+  Object.assign(p.body, { hue: 356, ears: 'none', speed: 0.8, size: 1.06, eyeGap: 0.3, hungerRate: 1.0, faith: 0.2, openness: 0.4,
+    palate: { sweet: -0.2, salty: 0.9, spicy: 0.5 }, voice: { base: 104, spread: 0.025, wave: 'triangle', len: 0.085 },
+    ailments: ['his joints always ache', 'he feels sick most mornings'] });
+  p.outfit = { shirt: 'charcoal', hat: { id: 'phones', color: 'tomato' } };
+  p.wardrobe = { hats: [{ id: 'phones', color: 'tomato' }], shirts: ['charcoal'] };
+  p.likes = { charcoal: 0.7, tomato: 0.6, 'hat:phones': 0.9 };
+  p.tastes = { pizza: 0.95, taco: 0.95, nachos: -0.9 };
+  p.style = 'Monotone and deadpan, low energy, short sentences. Often opens with "yo" or "what up." Thinks he is sometimes funny and drops dry jokes. Not a big talker.';
+  p.lovesMili = true;
+  p.interests = 'video games, especially League of Legends; Vladimir is his favorite champion; he watches League YouTube videos';
+  p.lines = ['Yo.', 'What up.', 'Anyone here play League?', "Vladimir's kind of the best. Not gonna lie.", 'My joints hurt. Anyway.', 'I could go for a taco.', 'No mustard. Ever.', "Nacho cheese is a crime.", 'Pizza is a personality.', "We don't have to talk. That's chill."];
+  p.selfNote = "Yo, what up. I'm pretty monotone, but sometimes I'm funny. I like video games, mostly League, and Vladimir is my guy. Best friends are the ones who are chill if we don't talk for weeks, then pick right back up. Hate mustard and nacho cheese. Love onion, potato, pizza, tacos, cilantro.";
+  p.want = { text: 'to find people who stay friends even through long silences' };
+  p.job = 'pier';
+  p.cr.score = 3;
+  return p;
+}
+const isMili = (q) => /^mili(ana)?$/i.test(String(q.name).trim());
+const findMili = () => W.people.find(isMili);
+function styleOf(p) {
+  if (!p.style) return '';
+  if (!p.lovesMili) return p.style;
+  const m = findMili();
+  return p.style + (m ? ` He is in love with ${m.name}. With ${m.name}, and only with her, he says "I love you" and signs off with "love you, bye-bye."` : ' He never says "I love you" to anyone here. That is saved for one special person who has not arrived yet.');
+}
+function linkRedAndMili() {
+  const m = findMili(); if (!m) return;
+  for (const red of W.people.filter((q) => q.lovesMili)) {
+    if (!red.feelings[m.id] || red.feelings[m.id].score < 9) red.feelings[m.id] = { name: m.name, score: 9, note: 'My person. I love her.' };
+    if (!m.feelings[red.id]) m.feelings[red.id] = { name: red.name, score: 8, note: `${red.name}. My person.` };
+  }
+}
+function addRedIfMissing() {
+  for (const q of W.people) if (q.name === 'Red' && /League/.test(q.interests || '')) { q.lovesMili = true; q.style = String(q.style || '').replace(/\s*Sometimes signs off with "love you, bye-bye\."?"?/, ''); }
+  linkRedAndMili();
+  if (ISLE !== 'isle1' || (W.added && W.added.red)) return;
+  if (freeRoom() < 0) { toast('Red wants to move in, but every room is full.'); return; }
+  const p = makeRed(); p.inside = false; p.task = null; p.at = 'pier'; p.x = 0; p.z = 39.5;
+  W.people.push(p); buildKin(p);
+  W.added = { ...(W.added || {}), red: true };
+  remember(p, `I just moved into room ${p.room + 1}. Yo.`, 3, 'arrived');
+  diary(`<b>Red</b> stepped off the ferry and moved into room ${p.room + 1}. He said "yo."`);
+  for (const q of W.people) if (q !== p && rand() < 0.6) remember(q, 'Someone new moved in. His name is Red.', 1, 'newcomer', 'Red');
+  ferryAnim = { kind: 'arrive', start: now }; Sound.horn();
+  markDirty();
+}
+async function inviteResident(name, about, color) {
+  if (freeRoom() < 0) return 'Every room is full right now.';
+  const p = birth();
+  p.name = W.people.some((q) => q.name.toLowerCase() === name.toLowerCase()) ? name + '2' : name;
+  if (COLORS[color]) { p.outfit.shirt = color; p.wardrobe.shirts = [color]; p.likes[color] = 0.7; }
+  p.selfNote = about.slice(0, 520);
+  if (brainCfg.key) {
+    try {
+      const r = await llm(`Someone wrote this description of a new villager named ${p.name} who is moving into a cute island town:
+"${about}"
+Turn it into a character profile. Keep their own voice and words where you can.
+Foods on the island: ${FOODS.map((f) => f.name).join(', ')}.
+Reply with only JSON: {"selfNote": "first person, under 70 words, in their voice", "style": "how they talk, one sentence", "interests": "what they're into, short", "want": "a secret want, starting with 'to'", "loves": ["island foods they'd love"], "hates": ["island foods they'd hate"], "ailments": ["short phrases, only if the description mentions any"], "lines": ["5 short things they might say out loud"]}`, { max: 700 });
+      if (r.selfNote) p.selfNote = String(r.selfNote).slice(0, 520);
+      if (r.style) p.style = String(r.style).slice(0, 240);
+      if (r.interests) p.interests = String(r.interests).slice(0, 200);
+      if (r.want) p.want = { text: String(r.want).slice(0, 140) };
+      if (Array.isArray(r.lines)) p.lines = r.lines.slice(0, 8).map((x) => String(x).slice(0, 90));
+      if (Array.isArray(r.ailments) && r.ailments.length) p.body.ailments = r.ailments.slice(0, 3).map((x) => String(x).slice(0, 60));
+      const byName = (n) => FOODS.find((f) => f.name.toLowerCase() === String(n).toLowerCase() || String(n).toLowerCase().includes(f.name.toLowerCase()));
+      for (const n of r.loves || []) { const f = byName(n); if (f) p.tastes[f.id] = 0.9; }
+      for (const n of r.hates || []) { const f = byName(n); if (f) p.tastes[f.id] = -0.9; }
+    } catch (e) {}
+  }
+  p.inside = false; p.task = null; p.at = 'pier'; p.x = 0; p.z = 39.5;
+  W.people.push(p); buildKin(p);
+  remember(p, `I just moved into room ${p.room + 1}.`, 3, 'arrived');
+  diary(`<b>${esc(p.name)}</b> moved into room ${p.room + 1}.`);
+  if (isMili(p)) { linkRedAndMili(); const red = W.people.find((q) => q.lovesMili); if (red) { setTimeout(() => bubble(red, '…Yo. I love you.', 4), 2500); remember(red, `${p.name} moved in. I told her I love her.`, 3, 'love', p.name); diary(`<b>${esc(red.name)}</b> saw ${esc(p.name)} step off the ferry. "…Yo. I love you."`); } }
+  ferryAnim = { kind: 'arrive', start: now }; Sound.horn();
+  markDirty(); saveNow();
+  return `${p.name} moved into room ${p.room + 1}!`;
 }
 
 // ============================================================
@@ -2983,7 +3195,7 @@ function renderDlg(retype) {
   dlgEl.hidden = false;
   dlgEl.style.setProperty('--nm', p ? COLORS[p.outfit.shirt] : '#ffd36b');
   $('#dlgName').innerHTML = p ? `<span class="dot" style="background:${skinCss(p)};border-color:#2a2238"></span>${esc(p.name)} <span class="lv">Lv ${p.level || 1}</span>` : esc(SHOPS[dlg.shop]?.name || 'Shop');
-  if (retype) typeText(dlg.text);
+  if (retype) { typeText(dlg.text); if (p && dlg.text && !dlg.text.startsWith('💭 …')) Sound.voice(p, dlg.text.replace(/^💭\s*/, ''), true); }
   if (['buy', 'buyfor', 'done'].includes(dlg.mode)) {
     const C = W.creator;
     let h = `<p class="hint" style="color:#6d6488">You have ${C.coins} ✦.</p>`;
@@ -3153,6 +3365,7 @@ function visuals(dt) {
   }
   const sel = openDetail && person(openDetail);
   selRing.visible = !!(sel && !sel.inside && !interior);
+  if (sel && sel.moving && !interior && !sel.inside) Sound.step();
   if (sel) { selRing.position.set(sel.x, sel.z > 28 && Math.abs(sel.x) < 2.6 ? 0.3 : 0.1, sel.z); }
   if (camHome) { controls.target.lerp(vec.set(0, 2, 4), Math.min(1, dt * 2)); if (controls.target.distanceTo(vec) < 0.2) camHome = false; }
   else if (cfg.follow && sel && !sel.inside) controls.target.lerp(vec.set(sel.x, 1.2, sel.z), Math.min(1, dt * 2.5));
@@ -3210,8 +3423,15 @@ function itemCard(it, btn) {
   return `<div class="item"><div class="item-top"><span class="swatch" style="background:${itemColor(it)}"></span><span class="item-name">${esc(cap(itemName(it)))}</span></div>
     <span class="item-by">${by}${it.q > 1 ? ` · <span class="stars">${'★'.repeat(it.q)}</span>` : ''}</span>${btn}</div>`;
 }
+let inviteOpen = false;
 function renderPeople() {
-  $('#pane-people').innerHTML = W.people.map((p) => {
+  const inv = inviteOpen ? `<form class="creator" data-invite><h3>Invite someone to move in</h3>
+    <div class="field"><label for="invName">Name</label><input id="invName" maxlength="20" required style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
+    <div class="field"><label for="invColor">Favorite color</label><select id="invColor">${Object.keys(COLORS).map((c) => `<option>${c}</option>`).join('')}</select></div>
+    <div class="field"><label for="invAbout">Tell them who this person is, in their own words if you can</label><textarea id="invAbout" rows="4" maxlength="1200" required style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></textarea></div>
+    <div class="btns"><button class="btn gold" type="submit">Move them in</button><button class="btn" type="button" data-invitetoggle>Cancel</button></div></form>`
+    : `<div class="btns"><button class="btn" type="button" data-invitetoggle>Invite someone to move in</button></div>`;
+  $('#pane-people').innerHTML = inv + W.people.map((p) => {
     const [att, , cls] = attitude(p);
     return `<button class="who" type="button" data-id="${p.id}">
       <span class="dot" style="background:${skinCss(p)};border-color:${COLORS[p.outfit.shirt]}"></span>
@@ -3392,6 +3612,7 @@ sheet.addEventListener('click', (e) => {
   if (d.buy) { send(d.food ? { t: 'buy', shop: d.buy, id: d.food } : { t: 'buy', shop: d.buy, uid: d.uid }); return; }
   if (d.pickto) { giftPick = d.pickto; refreshPanel(true); return; }
   if (d.chip) { send({ t: 'chip', n: Number(d.chip) }); return; }
+  if (d.invitetoggle !== undefined) { inviteOpen = !inviteOpen; refreshPanel(true); return; }
   if (d.place) { placing = { type: d.place }; sheet.hidden = true; $('#placeText').textContent = `Tap the ground where the ${BUILDS[d.place].name} should go.`; $('#placeBar').hidden = false; return; }
   if (d.autoplace) { send({ t: 'place', type: d.autoplace }); return; }
   if (d.land) { send({ t: 'land', lobe: d.land }); return; }
@@ -3403,6 +3624,8 @@ sheet.addEventListener('click', (e) => {
 });
 sheet.addEventListener('change', (e) => { const s = e.target.closest('[data-setmodel]'); if (!s || !W) return; const p = person(s.dataset.setmodel); if (p) { p.model = s.value; markDirty(); toast(`${p.name} now thinks with ${shortModel(s.value)}.`); } });
 sheet.addEventListener('submit', async (e) => {
+  const inv = e.target.closest('[data-invite]');
+  if (inv) { e.preventDefault(); const name = $('#invName').value.trim(), about = $('#invAbout').value.trim(), color = $('#invColor').value; if (!name || !about) return; const bt = inv.querySelector('button[type=submit]'); bt.disabled = true; bt.textContent = 'Moving in…'; if (MODE === 'host') { toast(await inviteResident(name, about, color)); } else send({ t: 'invite', name, about, color }); inviteOpen = false; refreshPanel(true); return; }
   const mf = e.target.closest('[data-mailreply]');
   if (mf) { e.preventDefault(); const m = (W.mail || []).find((x) => x.id === mf.dataset.mailreply); const txt = mf.querySelector('textarea').value.trim(); if (!m || !txt) return; const bt = mf.querySelector('button'); bt.disabled = true; bt.textContent = 'Sending…'; panelBusy = true; await replyLetter(m, txt); panelBusy = false; if (MODE !== 'host') { m.reply = txt; } refreshPanel(true); return; }
   const f = e.target.closest('[data-talk]'); if (!f) return;
@@ -3433,7 +3656,9 @@ let toastT = 0;
 function toast(text) { const t = $('#toast'); t.textContent = text; t.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => (t.style.opacity = 0), 3800); }
 
 // settings
-function syncSettingsUI() { ['spin', 'follow', 'shadows', 'boxMode', 'mirror'].forEach((k) => ($('#' + k).checked = !!cfg[k])); $('#dayLen').value = String(cfg.daySec); }
+function syncSettingsUI() { ['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'music', 'sfx', 'voices'].forEach((k) => ($('#' + k).checked = cfg[k] !== false && !!cfg[k])); $('#dayLen').value = String(cfg.daySec); $('#volume').value = String(cfg.volume ?? 0.7); }
+['music', 'sfx', 'voices'].forEach((k) => $('#' + k).addEventListener('change', (e) => { cfg[k] = e.target.checked; savePrefs(); Sound.levels(); }));
+$('#volume').addEventListener('input', (e) => { cfg.volume = Number(e.target.value); savePrefs(); Sound.levels(); });
 ['spin', 'follow', 'shadows', 'boxMode', 'mirror'].forEach((k) => $('#' + k).addEventListener('change', (e) => { if (MODE === 'remote') send({ t: 'set', key: k, value: e.target.checked }); else { cfg[k] = e.target.checked; savePrefs(); applyLook(); } }));
 $('#dayLen').addEventListener('change', (e) => { const v = Number(e.target.value); if (MODE === 'remote') send({ t: 'set', key: 'daySec', value: v }); else { cfg.daySec = v; savePrefs(); } });
 function applyLook() {
@@ -3590,7 +3815,7 @@ async function boot() {
   selRing.rotation.x = -Math.PI / 2; selRing.visible = false; scene.add(selRing);
   W = (await loadWorld()) || newWorld();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); buildLand(); buildPlaced(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); buildLand(); buildPlaced(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
