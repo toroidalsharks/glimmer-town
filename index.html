@@ -462,6 +462,7 @@ function itemName(it) {
   if (it.catchName) return `${it.catchName} in a fishbowl`;
   return `${it.color} ${DECOR[it.id].name}`;
 }
+function sellValue(it) { if (it.catchName) { const c = CATCHES.find((x) => x.name.endsWith(it.catchName)); return c ? [0, 2, 5, 14][c.q] : 2; } return Math.max(1, Math.floor(itemPrice(it) / 2)); }
 function itemPrice(it) {
   const base = it.kind === 'food' ? foodById(it.id).price : it.kind === 'hat' ? HATS[it.id].price : it.kind === 'shirt' ? 2 : DECOR[it.id].price;
   return base + Math.max(0, (it.q || 1) - 1);
@@ -900,7 +901,7 @@ function giftItem(p, it) {
   const base = baseLike(p, it) + (it.q - 1) * 0.15 + (rand() - 0.5) * 0.25;
   const mo = makerOpinion(p, it), maker = it.maker && person(it.maker), self = it.maker === p.id;
   const wm = wishMatch(p, it);
-  const total = base + mo * 0.7 + wm * 0.8 + (self ? 0.4 : 0) + (it.grown ? 0.35 : 0) + (isBirthday(p) ? 0.3 : 0);
+  const total = base + mo * 0.7 + wm * 0.8 + (self ? 0.4 : 0) + (it.grown ? 0.35 : 0) + (it.handmade ? 0.45 : 0) + (isBirthday(p) ? 0.3 : 0);
   const name = itemName(it);
   let line, refused = false;
   if (self) line = 'Wait… I made this! The Creator bought something I made?!';
@@ -915,6 +916,7 @@ function giftItem(p, it) {
 
   if (!refused && !self && !wm && total > -0.2) {
     if (isBirthday(p)) { line = pick(['You remembered my birthday?!', `A birthday present! ${cap(a_an(name))}!`, "Is this… for my birthday? Creator!"]); remember(p, `The Creator gave me ${a_an(name)} on my birthday.`, 3, 'bdayCreator'); }
+    else if (it.handmade) { line = pick([`You MADE this? With your own hands?`, `Handmade ${name}! I'm never letting go of it.`, "Wait, the Creator can craft?"]); remember(p, `The Creator made me ${a_an(name)} by hand.`, 3, 'creatorGift'); }
     else if (it.grown) { line = pick([`You grew this yourself? For me?`, `Homegrown ${name}! It smells like sunshine.`, 'The Creator has a garden? And they shared it with me?']); remember(p, `The Creator gave me ${name} they grew in their own garden.`, 2, 'creatorGrown'); }
   }
   if (refused) {
@@ -1551,6 +1553,10 @@ function applyCmd(c) {
     case 'shopview': if (SHOPS[c.shop]) openInterior({ kind: 'shop', shop: c.shop }); return '';
     case 'set': if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); } return '';
     case 'plot': return plotCmd(c);
+    case 'gather': return gatherCmd(c);
+    case 'craft': return craftCmd(c);
+    case 'sell': { const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return 'That item is gone.'; const it = C.items.splice(i, 1)[0], v = sellValue(it); C.coins = Math.min(9999, C.coins + v); Sound.coin(); markDirty(); return `Sold ${a_an(itemName(it))} for ${plural(v, 'coin')}.`; }
+    case 'shine': return shineCmd(c.id);
     case 'catname': W.catName = String(c.name || '').slice(0, 20) || null; markDirty(); return `Her cat is called ${catName()} now.`;
     case 'cam': if (c.home) { openDetail = null; camHome = true; } if (c.place && MODE === 'host') camGo(c.place); return '';
   }
@@ -2202,6 +2208,7 @@ function buildTown() {
     g.add(mesh(new T3.IcosahedronGeometry(1.8 * s, 0), toon(col), 0, 3.3 * s, 0));
     g.add(mesh(new T3.IcosahedronGeometry(1.2 * s, 0), toon(col), 0.7 * s, 4.3 * s, 0.3 * s));
     g.position.set(x, 0, z); g.rotation.y = rand() * 6; scene.add(g);
+    const tid = 'tree' + Math.round(x * 10) + '_' + Math.round(z * 10); g.traverse((o) => (o.userData.tap = { kind: 'tree', id: tid, x, z })); g.children.forEach((c) => tappables.push(c));
   };
   for (const [a, r, s, c] of [[30, 27, 1.1], [90, 26.5, 1], [138, 27, 1, '#f7b6c8'], [172, 25, 0.9, '#b8e39a'], [190, 25.5, 0.9, '#b8e39a'], [235, 27, 1.1, '#f7b6c8'], [275, 26, 1], [330, 27, 1.1], [18, 20, 0.8, '#b8e39a'], [345, 20, 0.8], [265, 18, 0.9, '#f7b6c8']]) { const [x, z] = polar(a, r); tree(x, z, s, c); }
   bushBerries = BUSHES.map(([x, z]) => {
@@ -3672,9 +3679,8 @@ function openFishing() {
   if (MODE !== 'host') return;
   W.fishDay = W.fishDay || {};
   const used = W.fishDay[W.day] || 0;
-  if (used >= 6) { toast('The fish are tired. Try again tomorrow.'); return; }
   fishing = { pos: 0, dir: 1, zone: 0.35 + rand() * 0.3, width: 0.16, speed: 0.9 + rand() * 0.6, running: true };
-  $('#fishBox').hidden = false; $('#fishMsg').textContent = `${6 - used === 1 ? 'Last cast' : `${6 - used} casts left`} today. Tap Reel when the float is in the pink.`;
+  $('#fishBox').hidden = false; $('#fishMsg').textContent = `Cast ${used + 1} today. Tap Reel when the float is in the pink. Rare fish sell for a lot.`;
   if (!interior && Math.hypot(controls.target.x, controls.target.z - 38) > 6) camGo('pier');
   $('#fishZone').style.left = (fishing.zone * 100) + '%'; $('#fishZone').style.width = (fishing.width * 100) + '%';
   Sound.splash();
@@ -4052,6 +4058,106 @@ function resetView() {
   camGoal = null; camHome = false; unfollowId = openDetail;
   controls.target.set(0, 2, -16); camera.position.set(portrait ? 50 : 42, portrait ? 70 : 50, portrait ? 80 : 58);
   camera.zoom = 1; camera.updateProjectionMatrix(); controls.update(); resize();
+}
+const shines = [];
+function shineCmd(id) {
+  const i = shines.findIndex((s) => s.id === id); if (i < 0) return '';
+  const s = shines.splice(i, 1)[0]; scene.remove(s.g);
+  const v = s.big ? 10 : 1 + Math.floor(rand() * 3); W.creator.coins = Math.min(9999, W.creator.coins + v);
+  spawnBurst(s.x, 1.2, s.z, ['#ffd36b', '#fff6d6'], s.big ? 50 : 18, 2, 0.3); Sound.coin(); if (s.big) Sound.levelup();
+  W.shinesFound = (W.shinesFound || 0) + 1; markDirty();
+  return s.big ? `A golden star! +${v} coins.` : `+${v} ✦`;
+}
+let nextShine = 5;
+function shineFrame(dt) {
+  if (MODE !== 'host' || interior) return;
+  for (const s of shines) { s.g.rotation.y += dt * 3; s.g.position.y = 1.2 + Math.sin(now * 3 + s.x) * 0.15; }
+  if (now < nextShine || shines.length >= 6) return;
+  nextShine = now + 5 + rand() * 6;
+  const cx = controls.target.x, cz = controls.target.z;
+  for (let k = 0; k < 20; k++) {
+    const x = cx + (rand() - 0.5) * 30, z = cz + (rand() - 0.5) * 30;
+    if (spotProblem(x, z)) continue;
+    const big = rand() < 0.06, m = toon(big ? '#ffd36b' : '#ffe98a', { emissive: new T3.Color(big ? '#8a6a10' : '#6a5a10') });
+    const g = new T3.Group(); const c = mesh(big ? new T3.OctahedronGeometry(0.9, 0) : cyl(0.6, 0.6, 0.14, 18), m, 0, 0, 0, false); if (!big) c.rotation.x = Math.PI / 2; g.add(c);
+    g.position.set(x, 1.2, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'shine', id })); scene.add(g); tappables.push(c);
+    shines.push({ id, g, x, z, big }); break;
+  }
+}
+const MATS = { wood: '🪵 wood', stone: '🪨 stone', flowers: '🌼 flowers', shells: '🐚 shells' };
+const mats = () => (W.creator.mats = W.creator.mats || { wood: 0, stone: 0, flowers: 0, shells: 0 });
+const nodes = [], treeCool = {};
+let nextNode = 3;
+function nodeMesh(kind) {
+  const g = new T3.Group();
+  if (kind === 'wood') for (let i = 0; i < 3; i++) { const l = mesh(cyl(0.18, 0.18, 1.1, 8), toon('#9a6f4e'), 0, 0.2 + (i === 2 ? 0.3 : 0), (i - 1) * 0.36 * (i === 2 ? 0 : 1)); l.rotation.z = Math.PI / 2; g.add(l); }
+  else if (kind === 'stone') { g.add(mesh(new T3.DodecahedronGeometry(0.5, 0), toon('#a9a3c2'), 0, 0.35, 0)); g.add(mesh(new T3.DodecahedronGeometry(0.3, 0), toon('#8a84a8'), 0.5, 0.2, 0.2)); }
+  else if (kind === 'flowers') for (let i = 0; i < 6; i++) { const a = i * 1.05; g.add(mesh(cyl(0.02, 0.02, 0.4, 4), toon('#6fbf6a'), Math.cos(a) * 0.35, 0.2, Math.sin(a) * 0.35, false)); g.add(mesh(sph(0.13, 8, 6), toon(['#ff9fbf', '#ffe98a', '#c9b3ff', '#ffffff'][i % 4]), Math.cos(a) * 0.35, 0.45, Math.sin(a) * 0.35)); }
+  else { const s = mesh(new T3.ConeGeometry(0.3, 0.5, 8), toon('#ffd3c7'), 0, 0.2, 0); s.rotation.z = 1.4; g.add(s); g.add(mesh(sph(0.16, 8, 6), toon('#fff4dc'), 0.45, 0.1, 0.2)); }
+  g.add(mesh(new T3.RingGeometry(0.75, 0.85, 20), new T3.MeshBasicMaterial({ color: 0xfff6d6, transparent: true, opacity: 0.6, side: 2 }), 0, 0.03, 0, false).rotateX(-Math.PI / 2));
+  return g;
+}
+function nodeFrame(dt) {
+  if (MODE !== 'host' || interior) return;
+  for (const n of nodes) n.g.children[n.g.children.length - 1].scale.setScalar(1 + Math.sin(now * 3 + n.x) * 0.08);
+  if (now < nextNode || nodes.length >= 7) return;
+  nextNode = now + 4 + rand() * 5;
+  const cx = controls.target.x, cz = controls.target.z;
+  for (let k = 0; k < 25; k++) {
+    let x = cx + (rand() - 0.5) * 34, z = cz + (rand() - 0.5) * 34;
+    let kind = pick(['wood', 'wood', 'stone', 'stone', 'flowers', seasonOf().id === 'winter' ? 'stone' : 'flowers', 'shells']);
+    if (kind === 'shells') { const a = rand() * 6.28; x = Math.cos(a) * 29.8; z = Math.sin(a) * 29.8; if (Math.abs(x) < 3 && z > 0) continue; }
+    else if (spotProblem(x, z)) continue;
+    const g = nodeMesh(kind); g.position.set(x, 0, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'node', id })); scene.add(g); g.children.forEach((c) => tappables.push(c));
+    nodes.push({ id, g, x, z, kind }); break;
+  }
+}
+function gatherCmd(c) {
+  const M = mats();
+  if (c.tree) {
+    if ((treeCool[c.id] || 0) > now) return 'This tree needs a rest. Try another one.';
+    treeCool[c.id] = now + 25; const n = 1 + (rand() < 0.3 ? 1 : 0); M.wood += n;
+    spawnBurst(c.x, 3.5, c.z, seasonOf().id === 'autumn' ? ['#f0a04b', '#e07b3c'] : seasonOf().id === 'winter' ? ['#ffffff'] : ['#8fd48a', '#b8e39a'], 18, 2, 0.35); Sound.step(); markDirty();
+    if (rand() < 0.15) { M.flowers++; return `+${n} wood, and a flower fell out! 🌼`; }
+    return `+${n} wood 🪵`;
+  }
+  const i = nodes.findIndex((n) => n.id === c.id); if (i < 0) return '';
+  const n = nodes.splice(i, 1)[0]; scene.remove(n.g);
+  const v = 1 + Math.floor(rand() * 2); M[n.kind] += v;
+  spawnBurst(n.x, 0.8, n.z, ['#fff6d6', '#ffd36b'], 14, 1.6, 0.25); Sound.ui(); markDirty();
+  return `+${v} ${MATS[n.kind]}`;
+}
+function recipe(kind, id) {
+  if (kind === 'hat') { const p = HATS[id].price; return { flowers: id === 'crown' ? 4 : 1, shells: Math.ceil(p / 3), wood: 0, stone: 0 }; }
+  if (kind === 'food') { const f = foodById(id); return { flowers: 1 + Math.ceil(f.price / 2), shells: 1, wood: 1, stone: 0 }; }
+  const p = DECOR[id].price;
+  const R = { wood: Math.ceil(p / 2), stone: p >= 6 ? 1 : 0, flowers: ['bouquet', 'plant', 'painting', 'quilt'].includes(id) ? 3 : 0, shells: ['fishbowl', 'globe', 'musicbox'].includes(id) ? 2 : 0 };
+  if (['bouquet'].includes(id)) R.wood = 0;
+  return R;
+}
+const canMake = (R) => Object.entries(R).every(([k, v]) => (mats()[k] || 0) >= v);
+const recipeText = (R) => Object.entries(R).filter(([, v]) => v).map(([k, v]) => `${v} ${MATS[k].split(' ')[0]}`).join(' ') || 'free';
+function craftCmd(c) {
+  const valid = c.kind === 'hat' ? HATS[c.id] : c.kind === 'food' ? FOODS.some((f) => f.id === c.id) : DECOR[c.id];
+  if (!valid) return '';
+  const R = recipe(c.kind, c.id); if (!canMake(R)) return "You don't have enough materials yet.";
+  const M = mats(); for (const [k, v] of Object.entries(R)) M[k] -= v;
+  const color = c.kind === 'food' ? null : COLORS[c.color] ? c.color : pick(Object.keys(COLORS));
+  const it = newItem(c.kind, c.id, color, null, rand() < 0.25 ? 3 : 2); it.handmade = true; W.creator.items.push(it);
+  Sound.sparkle(); markDirty(); diary(`<span class="cr">Creator</span> made ${a_an(esc(itemName(it)))} by hand.`);
+  return `You made ${a_an(itemName(it))}! It's in your collection.`;
+}
+function workshopHtml() {
+  const M = mats();
+  const wishes = W.people.filter((p) => p.cr.wish && p.cr.wish.kind !== 'coins');
+  const card = (kind, id, color, label, who) => { const R = recipe(kind, id); return `<div class="item"><div class="item-top">${color ? `<span class="swatch" style="background:${COLORS[color]}"></span>` : ''}<span class="item-name">${esc(cap(label))}</span></div><span class="item-by">${who ? `✧ ${esc(who)} wishes for this · ` : ''}${recipeText(R)}</span><div class="btns"><button class="btn ${who ? 'gold' : ''}" type="button" data-craft="${kind}" data-cid="${id}" data-color="${color || ''}" ${canMake(R) ? '' : 'disabled'}>Make it</button></div></div>`; };
+  return `<p class="label">Your workshop</p>
+    <div class="chips">${Object.entries(MATS).map(([k, n]) => `<span class="chip">${n}: ${M[k] || 0}</span>`).join('')}</div>
+    <p class="hint">Tap trees for wood. Glowing piles of logs, rocks, flowers and shells pop up around town and on the beach. Handmade gifts mean the most.</p>
+    ${wishes.length ? `<p class="label">Wishes you can make</p><div class="items">${wishes.map((p) => { const w = p.cr.wish; return card(w.kind, w.id, w.color, wishText(w).replace(/^an? /, ''), p.name); }).join('')}</div>` : ''}
+    <p class="label">Make anything</p>
+    <div class="field"><label for="craftColor">Color</label><select id="craftColor">${Object.keys(COLORS).map((c) => `<option>${c}</option>`).join('')}</select></div>
+    <div class="items">${Object.keys(DECOR).map((id) => card('decor', id, null, DECOR[id].name)).join('')}${Object.keys(HATS).map((id) => card('hat', id, null, HATS[id].name)).join('')}</div>`;
 }
 function closeFishing() { fishing = null; $('#fishBox').hidden = true; }
 
@@ -5266,11 +5372,12 @@ function renderGifts() {
   $('#pane-gifts').innerHTML = `
     <div class="wallet"><b>${C.coins} ✦</b><span class="hint">You get 20 more every morning.</span></div>
     ${plotHtml()}
+    ${workshopHtml()}
     <p class="label">Give to</p>
     <div class="picker">${W.people.map((p) => `<button class="btn" type="button" data-pickto="${p.id}" aria-pressed="${p.id === pickTo}">${esc(p.name)}${p.cr.wish ? ' ✧' : ''}</button>`).join('')}</div>
     ${pickTo ? `<p class="hint">${esc(person(pickTo).name)} ${person(pickTo).cr.wish ? `is wishing for ${esc(wishText(person(pickTo).cr.wish))}.` : "isn't wishing for anything right now."}</p>` : '<p class="hint">Pick someone, then tap Give on an item.</p>'}
     <p class="label">Your collection</p>
-    ${C.items.length ? `<div class="items">${C.items.map((it) => itemCard(it, `<div class="item-row"><span class="item-by">${pickTo && wishMatch(person(pickTo), it) ? '✧ their wish' : ''}</span><button class="btn gold" type="button" data-give="${it.uid}" data-to="${pickTo || ''}" ${pickTo ? '' : 'disabled'}>Give</button></div>`)).join('')}</div>` : '<p class="hint">Nothing yet. Visit the Shops tab.</p>'}
+    ${C.items.length ? `<div class="items">${C.items.map((it) => itemCard(it, `<div class="item-row"><span class="item-by">${pickTo && wishMatch(person(pickTo), it) ? '✧ their wish' : ''}</span><button class="btn" type="button" data-sell="${it.uid}">Sell ${sellValue(it)} ✦</button><button class="btn gold" type="button" data-give="${it.uid}" data-to="${pickTo || ''}" ${pickTo ? '' : 'disabled'}>Give</button></div>`)).join('')}</div>` : '<p class="hint">Nothing yet. Visit the Shops tab.</p>'}
     <p class="label">Who you've given to</p>
     <div class="chips">${W.people.map((p) => `<span class="chip">${esc(p.name)}: ${Math.round(C.gifts[p.id] || 0)}</span>`).join('')}</div>
     <p class="hint">Residents keep track. Favor one person too much and the others notice.</p>`;
@@ -5352,6 +5459,8 @@ sheet.addEventListener('click', (e) => {
   const d = t.dataset;
   if (d.thread !== undefined) { textThread = d.thread || null; refreshPanel(true); if (textThread) $('#pane-texts').scrollTop = 1e6; else $('#pane-texts').scrollTop = 0; return; }
   if (d.renamecat !== undefined) { const n = prompt("What's her cat's name?", catName()); if (n && n.trim()) send({ t: 'catname', name: n.trim().slice(0, 20) }); return; }
+  if (d.craft) { send({ t: 'craft', kind: d.craft, id: d.cid, color: d.color || $('#craftColor')?.value }); return; }
+  if (d.sell) { send({ t: 'sell', uid: d.sell }); return; }
   if (d.plotpick !== undefined) { plotPick = plotPick === Number(d.plotpick) ? null : Number(d.plotpick); refreshPanel(true); return; }
   if (d.plot) { if (d.plot === 'plant') plotPick = null; send({ t: 'plot', act: d.plot, i: Number(d.i), crop: d.crop }); return; }
   if (d.clearalbum !== undefined) { if (confirm('Delete all the photos in this album? Photos you already downloaded stay safe.')) { try { localStorage.removeItem('glimmer-album'); } catch (err) {} albumVer++; renderAlbum(); } return; }
@@ -5473,6 +5582,8 @@ function wireTownInput() {
     if (tp.kind === 'shop') { openInterior({ kind: 'shop', shop: tp.shop }); }
     else if (tp.kind === 'mail') { activeTab = 'mail'; mailOpen = null; openSheet(); }
     else if (tp.kind === 'fish') openFishing();
+    else if (tp.kind === 'node' || tp.kind === 'tree') { const r = applyCmd({ t: 'gather', id: tp.id, tree: tp.kind === 'tree', x: tp.x, z: tp.z }); if (r) toast(r); }
+    else if (tp.kind === 'shine') { const r = applyCmd({ t: 'shine', id: tp.id }); if (r) toast(r); }
     else if (tp.kind === 'plot') { activeTab = 'gifts'; openSheet(); $('#pane-gifts').scrollTop = 0; }
     else if (tp.kind === 'cat') { toast(`${catName()} ${pick(['purrs.', 'blinks at you slowly.', 'ignores you, like a cat.', 'rolls over for belly rubs. It is a trap.', 'meows at Mili.'])}`); Sound.ui(); }
     else if (tp.kind === 'snowman') { toast(`A snowman ${tp.by} built on day ${tp.day}.`); Sound.ui(); }
@@ -5595,7 +5706,7 @@ async function boot() {
     step(dt);
     if (interior) roomControls.update();
     else { controls.autoRotate = cfg.spin && now - lastTouch > 10 && !keysDown.size; const tx = controls.target.x, tz = controls.target.z; controls.update(); if (Math.abs(controls.target.x - tx) + Math.abs(controls.target.z - tz) > 1e-4) { userPanned(); clampView(); } }
-    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); seasonFrame(dt); catFrame(dt); claudeTick(dt);
+    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); seasonFrame(dt); catFrame(dt); claudeTick(dt); shineFrame(dt); nodeFrame(dt);
     renderer.render(interior ? roomScene : scene, interior ? roomCam : camera);
     if (wantPhoto) { wantPhoto = false; try { takePhoto(); } catch (e) { console.error(e); toast('The camera jammed. Try again?'); } }
     if (now - lastHud > 0.5) { hud(); lastHud = now; }
