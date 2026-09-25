@@ -281,6 +281,7 @@
       <button class="tab" type="button" data-tab="gifts" aria-pressed="false">Your gifts</button>
       <button class="tab" type="button" data-tab="build" aria-pressed="false">Build</button>
       <button class="tab" type="button" data-tab="board" aria-pressed="false">Town board</button>
+      <button class="tab" type="button" data-tab="court" aria-pressed="false">Court</button>
       <button class="tab" type="button" data-tab="diary" aria-pressed="false">Diary</button>
       <button class="tab" type="button" data-tab="box" aria-pressed="false">Settings</button>
     </div>
@@ -289,6 +290,7 @@
   <div class="pane" id="pane-people"></div>
   <div class="pane" id="pane-mail" hidden></div>
   <div class="pane" id="pane-texts" hidden></div>
+  <div class="pane" id="pane-court" hidden></div>
   <div class="pane" id="pane-shops" hidden></div>
   <div class="pane" id="pane-gifts" hidden></div>
   <div class="pane" id="pane-build" hidden></div>
@@ -619,8 +621,8 @@ const DT = { x: 0, z: -56, R: 32 };
 const polarDT = (deg, r) => [DT.x + Math.sin(deg * Math.PI / 180) * r, DT.z - Math.cos(deg * Math.PI / 180) * r];
 const DT_GATE = [[9.4, -19], [11, -28.5]];
 const DT_HUB = [4, -42.5];
-const DT_BLD = { home2: { a: 0, r: 22, d: 8 }, home3: { a: 300, r: 22, d: 8 }, bakery: { a: 58, r: 21, d: 8 }, books: { a: 108, r: 21, d: 8 }, arcade: { a: 245, r: 21, d: 8 }, icecream: { a: 202, r: 21, d: 8 } };
-const DT_NAMES = { home2: 'Bluebell Court', home3: 'Sunny Heights', bakery: 'Sweet Rise Bakery', books: 'Paper Moon Books', arcade: 'Pixel Palace', icecream: 'Sundae Best' };
+const DT_BLD = { home2: { a: 0, r: 22, d: 8 }, home3: { a: 300, r: 22, d: 8 }, bakery: { a: 58, r: 21, d: 8 }, books: { a: 108, r: 21, d: 8 }, arcade: { a: 245, r: 21, d: 8 }, icecream: { a: 202, r: 21, d: 8 }, hall: { a: 272, r: 21, d: 8 } };
+const DT_NAMES = { home2: 'Bluebell Court', home3: 'Sunny Heights', bakery: 'Sweet Rise Bakery', books: 'Paper Moon Books', arcade: 'Pixel Palace', icecream: 'Sundae Best', hall: 'Glimmer Hall' };
 for (const [k, b] of Object.entries(DT_BLD)) TOWN[k] = { name: DT_NAMES[k], spot: polarDT(b.a, b.r - b.d / 2 - 0.8), entry: [...DT_GATE, DT_HUB, polarDT(b.a, 10.2)], local: [polarDT(b.a, 10.2)], zone: 'dt' };
 TOWN.beach = { name: 'Seashell Beach', spot: polar(222, 36), entry: [polar(229, 11.4), polar(229, 27.5)] };
 TOWN.downtown = { name: 'downtown', spot: [DT.x, DT.z + 6], entry: [...DT_GATE, DT_HUB], local: [], zone: 'dt' };
@@ -1212,6 +1214,8 @@ function startDo(p) {
   if (k === 'event') { p.busyUntil = now + 1; return; }
   if (k === 'donate') { p.busyUntil = now + 1.5 * ts(); return; }
   if (k === 'hangout') { hangoutStart(p); return; }
+  if (k === 'court') { p.inside = true; p.busyUntil = now + (p.task.wed ? 4 : 9) * ts(); if (interior?.kind === 'hall') interior.dirty = true; return; }
+  if (k === 'service') { p.busyUntil = now + 5 * ts(); p.face = Math.atan2(p.task.x - p.x, p.task.z - p.z); bubble(p, pick(['Community service. Great.', 'Planting flowers. As a punishment. Sure.', 'This is so embarrassing.']), 2.6); return; }
   if (k === 'snowman') { p.busyUntil = now + 4 * ts(); p.face = rand() * 6.28; bubble(p, pick(['Snowman time!', 'Roll, roll, roll…', 'This one will be the best one.']), 2.4); return; }
   if (k === 'date') { p.busyUntil = now + 10 * ts(); const q = person(p.task.with); if (q) p.face = Math.atan2(q.x - p.x, q.z - p.z); emote(p, '💕', 3); { const q2 = person(p.task.with); if (q2 && q2.task?.kind === 'date' && q2.task.phase === 'do' && q2.state === 'free' && p.state === 'free' && !q2.inside) setTimeout(() => { if (p.state === 'free' && q2.state === 'free') physicalScene(p, q2, pick(['cuddle', 'cuddle', 'hug'])); }, 900); } if (rand() < 0.6) bubble(p, pick(['Hi, you.', 'I saved you a spot.', 'This is nice.', 'Hehe. Hi.', 'You look good today.']), 2.4); return; }
   if (k === 'pray') { p.busyUntil = now + 4 * ts(); p.face = rand() * 6; bubble(p, `Creator, if you can hear me… I wish for ${wishText(p.cr.wish)}.`, 4.2, true); emote(p, '✧', 4); return; }
@@ -1222,6 +1226,8 @@ function finishDo(p) {
   if (k === 'work') { if (W.t < 0.24) { p.busyUntil = now + 1; return false; } endWork(p); }
   else if (k === 'event') { if (W.t < (p.task.until || 0) && W.t < 0.67) { p.busyUntil = now + 1; if (rand() < 0.02) { const ev = EVENTS[W.event?.id]; if (ev) bubble(p, pick(['This is so fun!', 'Best day ever.', W.event.id === 'snowball' ? 'Got you!' : W.event.id === 'bday' ? 'Happy birthday!' : W.event.id === 'beach' ? 'The water is perfect!' : W.event.id === 'blossoms' ? 'The petals are falling on my head!' : W.event.id === 'harvest' ? 'Pass the pumpkin soup?' : W.event.id === 'wedding' ? "I'm not crying, you're crying." : W.event.id === 'stars' ? 'Look, a shooting star!' : W.event.id === 'fishing' ? 'I got a bite!' : 'Yay!']), 2); } return false; } if (W.event?.id === 'fishing' && W.event.host === p.id) { const winner = pick(W.people.filter((q) => W.event.going.includes(q.id))); if (winner) { winner.coins += 4; remember(winner, 'I won the fishing contest!', 3, 'won'); diary(`<b>${esc(winner.name)}</b> won the fishing contest and 4 coins.`); } } remember(p, `Went to ${EVENTS[W.event?.id]?.name || 'the event'}.`, 2, 'event'); addJoy(p, 10); }
   else if (k === 'hangout') hangoutEnd(p);
+  else if (k === 'court') { p.inside = false; if (interior?.kind === 'hall') interior.dirty = true; }
+  else if (k === 'service') { if (!spotProblem(p.task.x, p.task.z)) { W.placed.push({ id: uid(), type: 'flowers', x: p.task.x, z: p.task.z, rot: rand() * 6.28, day: W.day, by: p.name }); buildPlaced(); diary(`🌷 <b>${esc(p.name)}</b> planted a flower bed as community service.`); } remember(p, 'Did community service. Planted flowers for the town.', 2, 'service'); bubble(p, pick(['Done. Happy now?', "…Okay, it's kind of pretty.", 'Never again.']), 2.4); }
   else if (k === 'snowman') { if (seasonOf().id === 'winter') { W.snowmen = W.snowmen || []; W.snowmen.push({ x: p.x + Math.sin(p.face) * 1.2, z: p.z + Math.cos(p.face) * 1.2, face: p.face + Math.PI, by: p.name, day: W.day, scarf: topColors(p)[0] || COLORS[p.outfit.shirt] && p.outfit.shirt }); if (W.snowmen.length > 8) W.snowmen.shift(); buildSnowmen(); addJoy(p, 8); bubble(p, pick(['Ta-da!', 'His name is Gerald.', 'Perfect.', 'Needs a hat. Oh well.']), 2.4); remember(p, 'Built a snowman.', 1, 'snowman'); diary(`<b>${esc(p.name)}</b> built a snowman.`); } }
   else if (k === 'date') { const q = person(p.task.with); if (q && !q.inside && Math.hypot(q.x - p.x, q.z - p.z) < 4) { feel(p, q, 0.5, true); addJoy(p, 12); remember(p, `Went on a date with ${q.name} at ${TOWN[p.at]?.name || 'town'}.`, 2, 'date', q.name); bubble(p, pick(['That was nice.', 'Same time tomorrow?', 'I had fun.', 'Walk me home?']), 2.4); } else { remember(p, `Waited for ${q?.name || 'my date'}, but they never showed up.`, 2, 'stoodUp', q?.name || null); if (q) feel(p, q, -0.4, true); bubble(p, 'They never came…', 2.4); } }
   else if (k === 'eat') { p.inside = false; eatAt(p, FOODS.some((f) => f.shop === p.at) ? p.at : 'mart'); }
@@ -1360,7 +1366,7 @@ function newDay() {
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }
-  birthdayMorning(); miliMorning();
+  birthdayMorning(); miliMorning(); courtMorning();
   if (MODE === 'host') { morningFerry(); ferryDepartures(); checkOther(); }
   diary(`Morning. The weather is ${W.weather}. You got 20 new coins.`);
   saveNow();
@@ -1422,6 +1428,7 @@ function step(dt) {
       if (d2(a, b) > 3.2) continue;
       if (a.task?.kind === 'work' && b.task?.kind === 'work' && rand() > 0.3) continue;
       const key = [a.id, b.id].sort().join('|');
+      if (W.apart && (W.apart[key] || 0) >= W.day) continue;
       const seeks = (x, y) => x.makeup === y.id || x.befriend === y.id || x.confessTo === y.id || x.proposeTo === y.id || x.breakWith === y.id;
       const special = seeks(a, b) ? a : seeks(b, a) ? b : null;
       if (!special && (W.pairCool[key] || 0) > now) continue;
@@ -1558,6 +1565,9 @@ function applyCmd(c) {
     case 'shopview': if (SHOPS[c.shop]) openInterior({ kind: 'shop', shop: c.shop }); return '';
     case 'set': if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); } return '';
     case 'plot': return plotCmd(c);
+    case 'rule': { const k = (W.cases || []).find((x) => x.id === c.id); return k ? applyRuling(k, c.choice, false) : 'That case is gone.'; }
+    case 'hallview': if (MODE === 'host') openInterior({ kind: 'hall' }); return '';
+    case 'debate': { const a = person(c.a), b = person(c.b); if (!a || !b) return ''; const k = fileCase('debate', a, b, { topic: String(c.topic || pick(DEBATES)).slice(0, 80), byCreator: true }); return k ? `⚖ ${a.name} and ${b.name} have been summoned to debate: ${k.topic}` : 'They already have a debate waiting.'; }
     case 'skip': { const t = Sound.skip(); return t ? `♪ Now playing: ${t}` : 'The box has music turned off.'; }
     case 'gather': return gatherCmd(c);
     case 'craft': return craftCmd(c);
@@ -2465,6 +2475,7 @@ function customers(shop) { return W.people.filter((p) => p.inside && p.at === sh
 function interiorKey() {
   if (!interior) return '';
   if (interior.kind === 'room') { const p = person(interior.id); if (!p) return ''; const night = W.t >= 0.6 || W.t < 0.02; return ['r', W.people.filter((q) => q.inside && q.task?.kind === 'hangout' && q.task.host === p.id).map((q) => q.id).join(','), p.inside && p.task?.kind === 'home', night, p.decor.map((d) => d.uid).join(','), p.outfit.shirt, p.outfit.hat?.id, Object.values(p.feelings).filter((f) => f.score >= 4).length, cfg.boxMode].join('|'); }
+  if (interior.kind === 'hall') return hallKey();
   const s = interior.shop;
   return ['s', s, (W.stock[s] || []).map((i) => i.uid).join(','), onDuty(s)?.id, customers(s).map((p) => p.id).join(','), W.t >= 0.6, cfg.boxMode].join('|');
 }
@@ -2473,7 +2484,7 @@ function buildInterior() {
   while (S.children.length) { const c = S.children[0]; S.remove(c); disposeTree(c); }
   itags.innerHTML = ''; ilabels = [];
   interior.key = interiorKey(); interior.built = now; interior.dirty = false;
-  if (interior.kind === 'room') buildRoom(person(interior.id)); else buildShop(interior.shop);
+  if (interior.kind === 'room') buildRoom(person(interior.id)); else if (interior.kind === 'hall') buildHall(); else buildShop(interior.shop);
 }
 function buildRoom(p) {
   const S = roomScene;
@@ -2752,6 +2763,8 @@ function letterTemplate(p, kind, f) {
     rebel: `The town voted to stop waiting on you, and I voted yes. We can take care of ourselves. ${s > -6 ? 'Prove us wrong, if you want.' : ''}`,
     arrived: `I just got off the ferry from ${f.from}. I left ${f.who || 'everything'} behind. Everything here smells like salt. Are you the same Creator as over there?`,
     leaving: `I'm taking the ferry to ${f.to}. ${f.why} Please don't forget me.`,
+    verdictWin: `Thank you for what you decided at Glimmer Hall (${f.what}). I felt like somebody finally listened.`,
+    verdictLose: cold ? `About ${f.what}. I don't think that was fair. You didn't even hear my side.` : `I keep thinking about ${f.what}. It stung. I'm trying to understand why you ruled that way.`,
     bullied: `Someone keeps sending me mean texts. I don't want to say who. I just wanted somebody to know.`,
     claudeNote: `Little status report! I added something new to the island today. ${pick(['Mili sat near it for a while. I think that means it worked.', 'Nobody has tripped on it yet.', "Everyone seems okay. I checked on a few people."])} Thanks for letting me build here with you.`,
     bdayThanks: `You remembered my birthday. I didn't even know you knew when it was. I'm keeping it forever.`,
@@ -2785,6 +2798,8 @@ function nightLetters() {
     else if (has('rebel')) kind = 'rebel';
     else if (W.event?.id === 'festival' && W.event.day === W.day && p.cr.score >= 1) kind = 'festival';
     else if (p.today.filter((m) => m.tag === 'bullied').length >= 2) kind = 'bullied';
+    else if (has('lostCase') && rand() < 0.6) { kind = 'verdictLose'; facts.what = has('lostCase').meta?.what || 'the case'; }
+    else if (has('wonCase') && rand() < 0.4) { kind = 'verdictWin'; facts.what = has('wonCase').meta?.what || 'the case'; }
     else if (isClaude(p) && rand() < 0.35) kind = 'claudeNote';
     if (kind && rand() < 0.7) { queueLetter(p, kind, facts); continue; }
     const last = p.cr.lastSeen ?? p.bornDay;
@@ -3233,12 +3248,13 @@ const Sound = (() => {
     evening: ['lantern', 'cocoa', 'roomtone'], night: ['moon', 'lullaby', 'firefly'], summernight: ['firefly', 'moon'], rain: ['umbrella', 'cocoa'], storm: ['thunder', 'umbrella'],
     festival: ['starfall'], wedding: ['promises'], bday: ['cake'], meeting: ['order'], city: ['pigeons', 'aisle', 'scooter'],
     cafe: ['jazz', 'cocoa'], arcade: ['rush', 'scooter'], bakery: ['oven', 'toast'], books: ['pages', 'lullaby'], mart: ['aisle'], clothes: ['runway'], nook: ['sawdust'], icecream: ['sprinkles'],
-    room: ['roomtone', 'cocoa'], roomnight: ['lullaby', 'moon'], mili: ['fixed', 'roomtone'],
+    room: ['roomtone', 'cocoa'], hall: ['order'], roomnight: ['lullaby', 'moon'], mili: ['fixed', 'roomtone'],
   };
   function contextKey() {
     if (!W) return 'spring';
     if (interior) {
-      if (interior.kind === 'shop') return PLAYLISTS[interior.shop] ? interior.shop : 'mart';
+      if (interior.kind === 'hall') return 'hall';
+    if (interior.kind === 'shop') return PLAYLISTS[interior.shop] ? interior.shop : 'mart';
       const p = typeof person === 'function' && person(interior.id);
       if (p && isMili(p)) return 'mili';
       return W.t >= 0.6 || W.t < 0.03 ? 'roomnight' : 'room';
@@ -3598,6 +3614,19 @@ function buildDowntown() {
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2 + 0.26, x = DT.x + Math.cos(a) * 16.3, z = DT.z + Math.sin(a) * 16.3; scene.add(mesh(cyl(0.09, 0.12, 4.2, 8), toon('#3d4f86'), x, 2.1, z)); const lm = new T3.MeshToonMaterial({ color: '#fff4c4', gradientMap: gradMap, emissive: new T3.Color('#000') }); lampMats.push(lm); scene.add(mesh(sph(0.38, 12, 8), lm, x, 4.35, z, false)); }
   // buildings
   dtApartment('home2', '#d8ecff', '#6f9fd8', 9, 'Bluebell Court');
+  {
+    const g = new T3.Group(), stone = toon('#f4ecdc'), trim = toon('#b7a6d8'), pale = toon('#d4cbe0');
+    g.add(mesh(box(10.4, 0.5, 8.8), pale, 0, 0.25, 0)); g.add(mesh(box(10.8, 0.25, 1.2), pale, 0, 0.12, 4.9));
+    g.add(mesh(box(9, 6, 7), stone, 0, 3.5, -0.6));
+    for (const x of [-3.6, -1.2, 1.2, 3.6]) g.add(mesh(cyl(0.34, 0.4, 5.6, 12), toon('#fffaf2'), x, 3.3, 3.6));
+    g.add(mesh(box(9.6, 0.7, 1.8), trim, 0, 6.4, 3.3));
+    const r = roofPrism(9.8, 9, 2.2, trim); r.position.set(0, 6.75, -0.2); g.add(r);
+    g.add(mesh(box(2.1, 3.4, 0.2), toon('#6b4a3a'), 0, 2.2, 2.95));
+    for (const s of [-1, 1]) g.add(mesh(box(1.4, 1.8, 0.15), toon('#bfe8ff'), s * 2.6, 3.3, 2.95));
+    const sg = sign('⚖ Glimmer Hall', '#fffaf2', '#6b4a3a', 5.2); sg.position.set(0, 6.4, 4.22); g.add(sg);
+    g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'hall' }; tappables.push(o); } });
+    placeDT(g, 'hall');
+  }
   dtApartment('home3', '#fff0c8', '#e2a24a', 15, 'Sunny Heights');
   dtShop('bakery', '#ffe8cc', '#c9925e', '#ffffff', '#f3b67a', '#b86b3a', '#fff6ee', (g) => { g.add(mesh(cyl(0.5, 0.5, 1.4, 12), toon('#ffffff'), 3, 7.6, 0)); for (let i = 0; i < 3; i++) g.add(mesh(sph(0.3, 10, 8), toon('#e8b878'), -3.4 + i * 0.35, 0.95, 5.1)); g.add(mesh(box(1.4, 0.8, 0.8), toon('#c49a6c'), -3.1, 0.4, 5.1)); });
   dtShop('books', '#e8dcc8', '#5f4a6b', '#ffffff', '#9a8ab8', '#5f4a6b', '#fff6ee', (g) => { g.add(mesh(box(1.6, 1.2, 0.8), toon('#8a6a4e'), 3.2, 0.6, 5.1)); for (let i = 0; i < 5; i++) g.add(mesh(box(0.22, 0.45, 0.6), toon(['#ff6f5e', '#9fd3ff', '#ffe98a', '#8fae6a', '#c9b3ff'][i]), 2.7 + i * 0.25, 1.42, 5.1)); });
@@ -3720,6 +3749,7 @@ function romanceTick() {
     const q = a.partner && person(a.partner);
     if (a.partner && !q) { a.partner = null; a.married = false; continue; }
     if (q) {
+      if (a.separated) continue;
       if (fscore(a, q) < 0 && rand() < 0.25 && !guarded(a) && !guarded(q)) { a.breakWith = q.id; return; }
       if (!a.married && !q.proposeTo && W.day - (a.datingSince ?? W.day) >= 3 && fscore(a, q) >= 8 && fscore(q, a) >= 6 && !W.wedding && rand() < 0.08) { a.proposeTo = q.id; return; }
       continue;
@@ -3785,7 +3815,7 @@ async function romanceScene(a, b, intent) {
       const l2 = await romLine(b, a, `${a.name}, who you're dating, just asked you to marry them: "${l1}". You are going to say ${yes ? 'YES' : 'NOT YET'}. Answer in your own way.`, yes ? pick(['Yes! Yes yes yes!', 'Of course I will.']) : pick(["I… I'm not ready yet.", 'Can we wait a little longer?']));
       await say(b, l2);
       if (yes) {
-        W.wedding = { a: a.id, b: b.id, day: W.day + 1 };
+        W.wedding = { a: a.id, b: b.id, day: W.day + 1 }; setTimeout(() => fileCase('license', a, b), 3000);
         emote(a, '💕', 5); emote(b, '💕', 5); Sound.levelup(); spawnBurst((a.x + b.x) / 2, 3, (a.z + b.z) / 2, ['#ffd36b', '#ffffff', '#ff8fb6'], 50, 3, 0.4);
         addJoy(a, 40); addJoy(b, 40);
         remember(a, `I asked ${b.name} to marry me. They said yes! The wedding is tomorrow.`, 3, 'engaged', b.name);
@@ -3802,6 +3832,7 @@ async function romanceScene(a, b, intent) {
       await say(a, l1);
       const l2 = await romLine(b, a, `${a.name} just broke up with you: "${l1}". React honestly.`, fb >= 4 ? pick(['…Oh. Okay.', "Wait, what? Why?", "I didn't see that coming."]) : pick(['Honestly? Fine.', 'Yeah. I felt it too.']));
       await say(b, l2);
+      if (a.married) { emote(a, '💔', 5); emote(b, '💔', 5); a.separated = b.separated = true; remember(a, `I told ${b.name} I want a divorce.`, 3, 'breakup', b.name); remember(b, `${a.name} wants a divorce.`, 3, 'heartbreak', a.name); diary(`💔 <b>${esc(a.name)}</b> told <b>${esc(b.name)}</b> they want a divorce. It's going to Glimmer Hall.`); fileCase('divorce', a, b); return; }
       emote(a, '💔', 5); emote(b, '💔', 5);
       a.partner = b.partner = null; const wasMarried = a.married; a.married = b.married = false;
       a.exes = [...(a.exes || []), b.name].slice(-5); b.exes = [...(b.exes || []), a.name].slice(-5);
@@ -4374,6 +4405,219 @@ function onSongChange(title) {
   setTimeout(() => bubble(p, pick([`Ooh, I love this one.`, `Is this "${title}"? Classic.`, 'Wait, who put this song on?', '♪ la la la ♪', isMili(p) ? 'This could use more breakbeats, honestly.' : 'This song makes me want to dance.', 'Hmm hm hmm ♪']), 3), 1500);
 }
 const DANCE = ['festival', 'wedding', 'bday', 'beach', 'harvest', 'blossoms'];
+// ============================================================
+// GLIMMER HALL: the courthouse. Fights, disputes, divorces, licenses and debates.
+// ============================================================
+const CASE_KINDS = {
+  fight: { label: 'Assault', icon: '💢' }, bully: { label: 'Harassment', icon: '📱' }, complaint: { label: 'Complaint', icon: '📝' }, dispute: { label: 'Dispute', icon: '💔' },
+  divorce: { label: 'Divorce', icon: '💍' }, license: { label: 'Marriage license', icon: '💒' }, debate: { label: 'Debate', icon: '🗣' },
+};
+const DEBATES = ['Is a hot dog a sandwich?', 'Should the island have a curfew?', 'Is cereal a soup?', 'Cats or dogs?', 'Is Mili the Creator?', "Should we trust Claude's overnight changes?", 'Is it okay to eat the last croissant without asking?', 'Is pineapple allowed on pizza?', 'Should the Creator pick favorites?', 'Is the ferry worth the ticket?', 'Are pigeons friends or spies?', 'Should every day start with a town meeting?', 'Does the Creator owe us anything?', 'Is it rude to text instead of visiting?'];
+const GRIEVANCES = ['plays music way too loud at night', 'cut in line at the bakery. Twice', 'borrowed my book and never gave it back', 'keeps spreading rumors about me', 'stole my fishing spot on the pier', 'stepped on my flowers in the garden', 'told everyone my secret', 'keeps taking the good bench by the fountain', 'laughed at me in front of everyone', 'owes me coins and pretends not to'];
+const RULINGS = {
+  fight: [['apologize', 'Guilty: go apologize'], ['fine', 'Guilty: pay them 5 coins'], ['service', 'Community service'], ['apart', 'Stay apart for 3 days'], ['talk', 'Talk it out'], ['innocent', 'Not guilty']],
+  complaint: [['apologize', 'They owe an apology'], ['fine', 'Pay 3 coins'], ['talk', 'Talk it out'], ['dismiss', 'Dismiss it']],
+  dispute: [['apart', 'Stay apart for 3 days'], ['talk', 'Talk it out'], ['dismiss', 'Dismiss it']],
+  divorce: [['grant', 'Grant the divorce'], ['counsel', 'Order couples counseling']],
+  license: [['fountain', 'Big wedding at the fountain'], ['now', 'Marry them here, right now'], ['wait', 'Ask them to wait']],
+  debate: [['p', 'Side with #P'], ['d', 'Side with #D'], ['both', 'You both have a point'], ['vote', 'Let the town vote']],
+};
+RULINGS.bully = RULINGS.fight;
+const openCases = () => (W.cases || []).filter((c) => c.status === 'open');
+const caseTitle = (c) => c.kind === 'debate' ? `Debate: ${c.topic}` : c.kind === 'license' ? `${c.pName} & ${c.dName}: marriage license` : c.kind === 'divorce' ? `${c.pName} v. ${c.dName} (divorce)` : `${c.pName} v. ${c.dName}`;
+function fileCase(kind, P, D, extra = {}) {
+  if (!P || !D || P === D || MODE !== 'host') return null;
+  W.cases = W.cases || [];
+  if (openCases().some((c) => c.kind === kind && [c.p, c.d].sort().join() === [P.id, D.id].sort().join())) return null;
+  if (openCases().length >= 7 && kind !== 'license' && kind !== 'divorce') return null;
+  const c = { id: uid(), kind, p: P.id, d: D.id, pName: P.name, dName: D.name, filed: W.day, status: 'open', args: {}, ...extra };
+  const K = CASE_KINDS[kind];
+  c.summary = {
+    fight: `${P.name} says ${D.name} started a fight with them.`,
+    bully: `${P.name} says ${D.name} keeps sending them mean texts.`,
+    complaint: `${P.name} says ${D.name} ${extra.grievance || pick(GRIEVANCES)}.`,
+    dispute: `${P.name} wants ${D.name} to stay away from their partner.`,
+    divorce: `${P.name} wants a divorce from ${D.name}.`,
+    license: `${P.name} and ${D.name} want to get married.`,
+    debate: `${P.name} and ${D.name} can't agree: ${extra.topic}`,
+  }[kind];
+  c.args = defaultArgs(c, P, D);
+  W.cases.push(c); if (W.cases.length > 60) W.cases.splice(0, W.cases.length - 60);
+  remember(P, kind === 'debate' ? `${D.name} and I are taking our argument to Glimmer Hall: ${extra.topic}` : `I filed a case against ${D.name} at Glimmer Hall.`, 2, 'filedCase', D.name);
+  if (kind !== 'debate' && kind !== 'license') remember(D, `${P.name} took me to court at Glimmer Hall.`, 2, 'suedBy', P.name);
+  diary(`⚖ ${K.icon} New case at Glimmer Hall: <b>${esc(caseTitle(c))}</b>. ${esc(c.summary)}`);
+  markDirty();
+  return c;
+}
+function defaultArgs(c, P, D) {
+  const A = {
+    fight: [pick([`${D.name} shoved me. In front of everyone.`, `I didn't do anything and ${D.name} just went for me.`]), pick([`They had it coming.`, `${P.name} is exaggerating. It was barely a push.`, `I'm… not proud of it. But they started it with words.`])],
+    bully: [pick([`I have the texts. Every single one.`, `It keeps happening. I just want it to stop.`]), pick(['They were jokes.', "Everyone talks like that. They're too sensitive.", 'Okay. Maybe I went too far.'])],
+    complaint: [`${c.summary.replace(`${P.name} says `, 'Your honor, ')}`, pick(["That's not even true.", 'I can explain.', "Wow. Okay. Didn't know we were doing this."])],
+    dispute: [`${D.name} keeps getting close to my partner. I want it to stop.`, pick(["We're just friends!", 'I can talk to whoever I want.'])],
+    divorce: [pick(["It isn't working. It hasn't for a while.", "I don't feel the same anymore."]), pick(["Please. Give us a chance.", 'Fine. If that is what they want.', "I didn't see this coming."])],
+    license: [pick(["We're ready. We've been ready.", 'Please say yes!']), pick(['What they said. Hehe.', "I've never been more sure."])],
+    debate: [pick(['Obviously yes. Think about it.', 'This is the most important question of our time.', 'I have three points. Okay, two.']), pick(['Absolutely not.', 'That is the worst take I have ever heard.', 'I respect it. I also think it is wrong.'])],
+  }[c.kind] || ['…', '…'];
+  return { p: A[0], d: A[1] };
+}
+async function hearSides(c) {
+  if (!aiReady() || c.args.ai) return;
+  c.args.ai = true;
+  const P = person(c.p), D = person(c.d); if (!P || !D) return;
+  const sit = (me, them, side) => `You are in court at Glimmer Hall, and the Creator is the judge. The case: ${c.summary}${c.topic ? ` The question: ${c.topic}` : ''} You are ${side}. In one or two sentences, make your case to the judge, in your own voice. You can be honest, defensive, petty, emotional, or funny.`;
+  try {
+    const a = await aiLine(P, D, [], sit(P, D, c.kind === 'debate' ? `arguing YES / your side` : 'the one who brought this case')); if (a?.say) c.args.p = a.say;
+    const b = await aiLine(D, P, [{ who: P.name, say: c.args.p }], sit(D, P, c.kind === 'debate' ? `arguing the other side` : 'the one this case is against')); if (b?.say) c.args.d = b.say;
+  } catch (e) {}
+  markDirty(); if (activeTab === 'court') refreshPanel(true);
+}
+function juryVotes(c) {
+  const P = person(c.p), D = person(c.d);
+  const jurors = W.people.filter((q) => q !== P && q !== D && !q.away && !q.visitor);
+  let yes = 0, no = 0;
+  const strength = { fight: 1.2, bully: 1.5, complaint: 0.3, dispute: 0.2 }[c.kind] ?? 0;
+  for (const q of jurors) { const lean = (P ? fscore(q, P) : 0) - (D ? fscore(q, D) : 0) + strength + (rand() - 0.5) * 3; if (lean > 0) yes++; else no++; }
+  return { yes, no, jurors };
+}
+function applyRuling(c, choice, byJury) {
+  const P = person(c.p), D = person(c.d);
+  if (c.status !== 'open') return 'That case is closed.';
+  const ok = RULINGS[c.kind]?.some(([k]) => k === choice) || choice === 'jury';
+  if (!ok) return '';
+  if (choice === 'jury') {
+    if (c.kind === 'debate') choice = 'vote';
+    else if (c.kind === 'license') choice = 'fountain';
+    else if (c.kind === 'divorce') choice = rand() < 0.6 ? 'grant' : 'counsel';
+    else { const v = juryVotes(c); c.jury = `${v.yes}–${v.no}`; choice = v.yes > v.no ? (c.kind === 'fight' ? pick(['apologize', 'fine', 'service']) : c.kind === 'bully' ? 'apart' : c.kind === 'dispute' ? 'apart' : 'apologize') : c.kind === 'fight' || c.kind === 'bully' ? 'innocent' : 'dismiss'; }
+    byJury = true;
+  }
+  c.status = 'closed'; c.ruled = W.day; c.choice = choice; c.byJury = !!byJury;
+  const judge = byJury ? 'The jury' : 'The Creator';
+  let text = '', win = null, lose = null;
+  const title = caseTitle(c);
+  if (!P || !D) { c.result = 'Dismissed. Someone moved away.'; return c.result; }
+  switch (choice) {
+    case 'apologize': D.makeup = P.id; feel(P, D, 1, true); feel(D, P, -0.5, true); win = P; lose = D; text = `${D.name} has to apologize to ${P.name}.`; break;
+    case 'fine': { const n = Math.min(c.kind === 'complaint' ? 3 : 5, D.coins); D.coins -= n; P.coins += n; win = P; lose = D; text = `${D.name} pays ${P.name} ${plural(n, 'coin')}.`; break; }
+    case 'service': { const sp = autoSpot(); if (sp) setTask(D, 'service', Math.hypot(sp[0] - DT.x, sp[1] - DT.z) < DT.R ? 'downtown' : 'plaza', [sp[0] + 1.2, sp[1]], { x: sp[0], z: sp[1] }); win = P; lose = D; text = `${D.name} has to do community service: plant flowers for the town.`; break; }
+    case 'apart': W.apart = W.apart || {}; W.apart[[P.id, D.id].sort().join('|')] = W.day + 3; win = P; lose = D; text = `${P.name} and ${D.name} have to stay apart for 3 days.`; break;
+    case 'talk': D.makeup = P.id; P.befriend = D.id; feel(P, D, 0.8, true); feel(D, P, 0.8, true); text = `${P.name} and ${D.name} have to sit down and talk it out.`; break;
+    case 'innocent': case 'dismiss': feel(P, D, -0.6, true); win = D; lose = P; text = choice === 'innocent' ? `${D.name} is not guilty.` : `The complaint is dismissed.`; break;
+    case 'grant': P.partner = D.partner = null; P.married = D.married = false; P.separated = D.separated = false; P.exes = [...(P.exes || []), D.name].slice(-5); D.exes = [...(D.exes || []), P.name].slice(-5); D.heartbreakDay = W.day; text = `The divorce is granted. ${P.name} and ${D.name} are no longer married.`; for (const q of W.people) if (q !== P && q !== D && rand() < 0.6) remember(q, `I heard ${P.name} and ${D.name} got divorced.`, 1, 'gossipLove', P.name); break;
+    case 'counsel': P.separated = D.separated = false; feel(P, D, 2.5, true); feel(D, P, 2.5, true); text = `${P.name} and ${D.name} are going to counseling. They're still married, for now.`; break;
+    case 'fountain': text = `License approved. ${P.name} and ${D.name} will marry at the fountain.`; win = P; break;
+    case 'now': {
+      W.wedding = null; P.married = D.married = true; P.partner = D.id; D.partner = P.id; P.separated = D.separated = false;
+      addJoy(P, 45); addJoy(D, 45);
+      for (const q of [P, D]) if (!q.inside) setTask(q, 'court', 'hall', jitter(TOWN.hall.spot, 1.2), { wed: true });
+      const [hx, hz] = TOWN.hall.spot; for (let i = 0; i < 4; i++) setTimeout(() => spawnBurst(hx + (rand() - 0.5) * 3, 4, hz + (rand() - 0.5) * 3, ['#ff8fb6', '#ffffff', '#ffd36b'], 40, 2.2, 0.35), i * 700);
+      Sound.bell();
+      remember(P, `${D.name} and I got married at Glimmer Hall. The Creator married us.`, 3, 'married', D.name); remember(D, `${P.name} and I got married at Glimmer Hall. The Creator married us.`, 3, 'married', P.name);
+      text = `${P.name} and ${D.name} are married! A quick courthouse wedding at Glimmer Hall.`; win = P; break;
+    }
+    case 'wait': W.wedding = null; feel(P, D, 0, true); creatorShift(P, -0.3); creatorShift(D, -0.3); remember(P, 'The Creator told us to wait before getting married.', 2, 'lostCase'); remember(D, 'The Creator told us to wait before getting married.', 2, 'lostCase'); text = `${P.name} and ${D.name} were asked to wait before they marry.`; break;
+    case 'p': case 'd': { win = choice === 'p' ? P : D; lose = choice === 'p' ? D : P; feel(lose, win, -0.3, true); text = `On "${c.topic}", ${judge.toLowerCase() === 'the jury' ? 'the town' : 'the Creator'} sides with ${win.name}.`; break; }
+    case 'both': feel(P, D, 0.5, true); feel(D, P, 0.5, true); text = `On "${c.topic}", they both have a point.`; break;
+    case 'vote': { const v = juryVotes({ ...c, kind: 'debate' }); c.jury = `${v.yes}–${v.no}`; win = v.yes >= v.no ? P : D; lose = win === P ? D : P; feel(lose, win, -0.3, true); text = `The town voted ${Math.max(v.yes, v.no)} to ${Math.min(v.yes, v.no)} for ${win.name} on "${c.topic}".`; break; }
+  }
+  c.result = text;
+  if (win) { remember(win, `Won at Glimmer Hall: ${text}`, 2, 'wonCase', null, { what: title }); addJoy(win, 12); if (!byJury) creatorShift(win, 0.4); }
+  if (lose) { remember(lose, `Lost at Glimmer Hall: ${text}`, 3, 'lostCase', null, { what: title }); if (!byJury) creatorShift(lose, -0.5); }
+  if (!byJury && lose && win && c.kind !== 'debate') {
+    const v = juryVotes(c), townSaid = v.yes > v.no ? P : D;
+    for (const q of v.jurors) { const agrees = townSaid === win ? rand() < 0.7 : rand() < 0.3; creatorShift(q, agrees ? 0.1 : -0.15); if (!agrees && rand() < 0.4) remember(q, `I don't think the Creator's ruling in ${title} was fair.`, 1, 'unfair'); }
+  }
+  diary(`⚖ Ruling in <b>${esc(title)}</b>${byJury && c.jury ? ` (jury ${c.jury})` : ''}: ${esc(text)}`);
+  Sound.bell(); markDirty();
+  return `⚖ ${text}`;
+}
+function courtMorning() {
+  if (ISLE !== 'isle1' && ISLE !== 'isle2') return;
+  const ppl = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 1);
+  if (ppl.length < 2) return;
+  if (rand() < 0.35) { const a = pick(ppl), b = pick(ppl.filter((q) => q !== a)); if (b) fileCase('debate', a, b, { topic: pick(DEBATES) }); }
+  const sour = [];
+  for (const a of ppl) for (const b of ppl) if (a !== b && fscore(a, b) <= -3) sour.push([a, b]);
+  if (sour.length && rand() < 0.4) { const [a, b] = pick(sour); fileCase('complaint', a, b, { grievance: pick(GRIEVANCES) }); }
+  for (const c of openCases()) if (c.kind === 'divorce' && W.day - c.filed >= 3) applyRuling(c, 'grant', true);
+  for (const c of openCases()) if (c.kind === 'license' && (!W.wedding || W.day - c.filed >= 2)) { c.status = 'closed'; c.result = 'Approved automatically.'; }
+}
+let lastCourtTalk = 0;
+function courtTick() {
+  if (MODE !== 'host' || !W) return;
+  const cases = openCases().filter((c) => c.kind !== 'license');
+  if (W.t >= 0.27 && W.t < 0.34 && W.courtDay !== W.day && cases.length) {
+    W.courtDay = W.day;
+    const c = cases[0], P = person(c.p), D = person(c.d);
+    c.heard = W.day; W.courtCase = c.id;
+    const free = (q) => q && !q.away && !q.inside && q.state === 'free' && q.task?.kind !== 'work';
+    for (const q of [P, D]) if (free(q)) setTask(q, 'court', 'hall', jitter(TOWN.hall.spot, 1.2), { case: c.id });
+    for (const q of W.people.filter((x) => x !== P && x !== D && free(x)).sort(() => rand() - 0.5).slice(0, 3)) setTask(q, 'court', 'hall', jitter(TOWN.hall.spot, 2), { case: c.id, gallery: true });
+    diary(`⚖ Court is in session at Glimmer Hall: <b>${esc(caseTitle(c))}</b>.`);
+    toast(`⚖ Court is in session: ${caseTitle(c)}. You're the judge, open the Court tab.`);
+  }
+  if (W.t >= 0.36 && W.courtCase) {
+    const c = (W.cases || []).find((x) => x.id === W.courtCase); W.courtCase = null;
+    if (c && c.status === 'open' && W.day - c.filed >= 1) applyRuling(c, 'jury', true);
+  }
+  if (interior?.kind === 'hall' && now - lastCourtTalk > 4.5) {
+    lastCourtTalk = now;
+    const c = (W.cases || []).find((x) => x.id === W.courtCase);
+    const inRoom = W.people.filter((p) => p.inside && p.task?.kind === 'court');
+    if (c && inRoom.length) {
+      const P = person(c.p), D = person(c.d), turn = Math.floor(now / 4.5) % 3;
+      if (turn === 0 && P && inRoom.includes(P)) bubble(P, c.args.p, 4.2);
+      else if (turn === 1 && D && inRoom.includes(D)) bubble(D, c.args.d, 4.2);
+      else { const g = inRoom.filter((q) => q !== P && q !== D); if (g.length) { const q = pick(g); bubble(q, pick(['Ooh.', 'Objection!', '*whispers*', 'Order in the court!', 'This is better than TV.']), 2.4); } }
+    }
+  }
+}
+function hallKey() { return ['h', W.people.filter((p) => p.inside && p.task?.kind === 'court').map((p) => p.id).join(','), W.courtCase || '', openCases().length, cfg.boxMode].join('|'); }
+function buildHall() {
+  const S = roomScene;
+  shell(S, '#efe4cf', '#9a6f4e', { pattern: 'stripes', wainscot: '#7a5a44' });
+  const wood = toon('#7a5238'), light = toon('#a0714c');
+  const bench = new T3.Group(); bench.add(mesh(box(3.6, 1.6, 1.2), wood, 0, 0.8, 0)); bench.add(mesh(box(3.8, 0.12, 1.4), light, 0, 1.66, 0)); bench.add(mesh(box(1.0, 0.8, 0.2), toon('#fff4dc'), 0, 1.0, 0.62)); bench.position.set(0, 0.3, -3.1); S.add(bench);
+  S.add(mesh(box(4.2, 0.3, 1.9), light, 0, 0.15, -3.1));
+  const gav = new T3.Group(); const hd = mesh(cyl(0.1, 0.1, 0.35, 10), toon('#5a3a2a'), 0, 0, 0); hd.rotation.z = Math.PI / 2; gav.add(hd); gav.add(mesh(cyl(0.03, 0.03, 0.4, 6), toon('#5a3a2a'), 0, 0.2, 0)); gav.position.set(1.1, 2.1, -3.0); S.add(gav);
+  const sg = sign('⚖ Glimmer Hall', '#fffaf2', '#6b4a3a', 3.4); sg.position.set(0, 3.9, -3.97); S.add(sg);
+  for (const [x, c] of [[-2.6, '#6f73c9'], [2.6, '#ff9fbf']]) { S.add(mesh(cyl(0.04, 0.04, 2.6, 6), toon('#c9b3a0'), x + 0.9, 1.3, -3.6)); S.add(mesh(box(0.6, 0.9, 0.03), toon(c), x + 1.22, 2.2, -3.6)); }
+  for (const x of [-2.1, 2.1]) { S.add(mesh(box(2.2, 0.12, 1), light, x, 0.85, -0.6)); for (const s of [-0.9, 0.9]) S.add(mesh(box(0.12, 0.8, 0.12), wood, x + s, 0.4, -0.6)); }
+  for (let r = 0; r < 2; r++) for (const x of [-2.4, 2.4]) { S.add(mesh(box(3, 0.14, 0.7), light, x, 0.5, 1.6 + r * 1.4)); S.add(mesh(box(3, 0.6, 0.1), light, x, 0.85, 1.9 + r * 1.4)); }
+  const c = (W.cases || []).find((x) => x.id === W.courtCase);
+  const inRoom = W.people.filter((p) => p.inside && p.task?.kind === 'court');
+  let gi = 0;
+  for (const p of inRoom) {
+    if (c && p.id === c.p) addPerson(S, p, -2.1, 0.4, Math.PI);
+    else if (c && p.id === c.d) addPerson(S, p, 2.1, 0.4, Math.PI);
+    else { const x = [-3.2, -1.6, 1.6, 3.2][gi % 4], z = 1.3 + Math.floor(gi / 4) * 1.4; addPerson(S, p, x, z, Math.PI); gi++; }
+  }
+  bench.traverse((o) => (o.userData.tap = { kind: 'judge' }));
+  $('#rcTitle').textContent = 'Glimmer Hall';
+  const n = openCases().length;
+  $('#rcSub').textContent = c && inRoom.length ? `Court is in session: ${caseTitle(c)}. Tap the judge's bench to rule.` : n ? `${plural(n, 'case')} waiting. Tap the judge's bench to see the docket.` : 'The courtroom is quiet today.';
+}
+let debateForm = false;
+function renderCourt() {
+  const open = openCases(), past = (W.cases || []).filter((c) => c.status === 'closed').slice(-8).reverse();
+  const opts = W.people.filter((p) => !p.away).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if (MODE === 'host') open.slice(0, 2).forEach((c) => hearSides(c));
+  $('#pane-court').innerHTML = `
+    <div class="creator"><h3>⚖ Glimmer Hall</h3><p>Residents bring their fights, disputes, divorces, marriage licenses and silly debates here. You're the judge. Anything you leave for more than a day goes to a jury of residents at the next morning session.</p>
+    <div class="btns"><button class="btn" type="button" data-hallview>${MODE === 'host' ? 'Go to the courtroom' : 'Show the courtroom in the box'}</button><button class="btn" type="button" data-debateform>Start a debate</button></div>
+    ${debateForm ? `<div class="field"><label>Between</label><select id="dbA">${opts}</select><select id="dbB">${W.people.filter((p) => !p.away).map((p, i) => `<option value="${p.id}" ${i === 1 ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+      <div class="field"><label for="dbTopic">About</label><select id="dbTopic">${DEBATES.map((t) => `<option>${esc(t)}</option>`).join('')}</select><input id="dbCustom" placeholder="…or write your own question" maxlength="80" style="font:14px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:7px 10px"></div>
+      <div class="btns"><button class="btn gold" type="button" data-startdebate>Summon them</button></div>` : ''}</div>
+    <p class="label">The docket</p>
+    ${open.length ? open.map((c) => `<div class="creator"><h3>${CASE_KINDS[c.kind].icon} ${esc(caseTitle(c))}</h3>
+      <div class="chips"><span class="chip">${CASE_KINDS[c.kind].label}</span><span class="chip">filed day ${c.filed}</span>${c.id === W.courtCase ? '<span class="chip gold">in session now</span>' : ''}</div>
+      <p>${esc(c.summary)}</p>
+      <p class="note"><b>${esc(c.pName)}:</b> "${esc(c.args.p || '…')}"</p><p class="note"><b>${esc(c.dName)}:</b> "${esc(c.args.d || '…')}"</p>
+      <div class="btns">${(RULINGS[c.kind] || []).map(([k, l]) => `<button class="btn ${k === 'jury' ? '' : 'gold'}" type="button" data-rule="${c.id}" data-choice="${k}">${esc(l.replace('#P', c.pName).replace('#D', c.dName))}</button>`).join('')}${c.kind !== 'license' ? `<button class="btn" type="button" data-rule="${c.id}" data-choice="jury">Let the jury decide</button>` : ''}</div></div>`).join('') : '<p class="hint">No cases right now. Peace on the island. For now.</p>'}
+    ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}`;
+}
+
 function closeFishing() { fishing = null; $('#fishBox').hidden = true; }
 
 // photos
@@ -4761,6 +5005,7 @@ async function physicalScene(a, b, kind) {
       feel(b, a, -1.5, true); feel(a, b, -0.5, true);
       remember(a, `Got into a fight with ${b.name}.`, 3, 'fight', b.name); remember(b, `${a.name} started a fight with me.`, 3, 'fight', a.name);
       diary(`💢 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got into a scuffle.`);
+      if (rand() < 0.45) setTimeout(() => fileCase('fight', b, a), 5000);
       bystanders(a, b);
     }
     await sleep(dur * 1000);
@@ -4804,6 +5049,7 @@ function jealousyCheck(a, b, doing) {
       q.face = Math.atan2(x.x - q.x, x.z - q.z);
       bubble(q, mine ? pick([`…Why is ${x.name} ${doing} ${y.name}?`, `Excuse me?`, `Oh. Cool. Great.`]) : pick([`…Must be nice.`, `Why ${y.name}, though?`, 'Whatever. I don\'t care.']), 2.6);
       feel(q, y, mine ? -1.2 : -0.8, true); if (mine) feel(q, x, -0.5, true);
+      if (mine && rand() < 0.25) setTimeout(() => fileCase('dispute', q, y), 6000);
       remember(q, `Saw ${x.name} ${doing} ${y.name}. ${mine ? 'We\'re together. What was that?' : "It shouldn't bother me. It does."}`, 3, 'jealousLove', x.name);
       if (rand() < 0.5) setTimeout(() => sendText(q, mine ? x : y, mine ? 'jealousPartner' : 'jealous'), 4000 + rand() * 6000);
       return;
@@ -4999,7 +5245,7 @@ function postText(from, toId, text, tone, T) {
     if (!to.inside) setTimeout(() => emote(to, '📱', 2.5), 900);
     const eff = { bully: -1.1, beef: -0.4, jealous: -0.2, sweet: 0.3, miss: 0.3, crush: 0.3, support: 0.5 }[tone] ?? 0.05;
     feel(to, from, eff, true);
-    if (tone === 'bully') { remember(to, `${from.name} texted me: "${text}"`, 3, 'bullied', from.name); to.joy = Math.max(0, (to.joy || 0) - 5); }
+    if (tone === 'bully') { remember(to, `${from.name} texted me: "${text}"`, 3, 'bullied', from.name); to.joy = Math.max(0, (to.joy || 0) - 5); if ((to.today || []).filter((m) => m.tag === 'bullied').length >= 2 && rand() < 0.5) fileCase('bully', to, from); }
   }
   markDirty();
   if (activeTab === 'texts' && !sheet.hidden) refreshPanel(false);
@@ -5458,12 +5704,12 @@ function doing(p) {
   const k = p.task?.kind;
   if (k === 'away' && p.away) return `visiting ${ISLES[p.away.to].name}`;
   if (p.inside && k === 'home') return W.t >= 0.63 || W.t < 0.008 ? 'asleep' : 'at home';
-  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend' }[k] || 'wandering';
+  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', court: 'at Glimmer Hall', service: 'doing community service' }[k] || 'wandering';
 }
 function showTab(t) {
   activeTab = t;
   document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === t)));
-  for (const id of ['people', 'mail', 'texts', 'shops', 'gifts', 'build', 'board', 'diary', 'box']) $('#pane-' + id).hidden = id !== t;
+  for (const id of ['people', 'mail', 'texts', 'shops', 'gifts', 'build', 'board', 'court', 'diary', 'box']) $('#pane-' + id).hidden = id !== t;
   refreshPanel(true);
 }
 let lastPanel = 0, panelBusy = false;
@@ -5479,6 +5725,7 @@ function refreshPanel(force) {
   else if (activeTab === 'board') renderBoard();
   else if (activeTab === 'diary') renderDiary();
   else if (activeTab === 'texts') renderTexts();
+  else if (activeTab === 'court') renderCourt();
   else if (activeTab === 'box') { renderLink(); if (force) renderBrainSettings(); }
   pane.scrollTop = scroll;
 }
@@ -5681,6 +5928,10 @@ sheet.addEventListener('click', (e) => {
   const d = t.dataset;
   if (d.thread !== undefined) { textThread = d.thread || null; refreshPanel(true); if (textThread) $('#pane-texts').scrollTop = 1e6; else $('#pane-texts').scrollTop = 0; return; }
   if (d.renamecat !== undefined) { const n = prompt("What's her cat's name?", catName()); if (n && n.trim()) send({ t: 'catname', name: n.trim().slice(0, 20) }); return; }
+  if (d.rule) { send({ t: 'rule', id: d.rule, choice: d.choice }); return; }
+  if (d.hallview !== undefined) { send({ t: 'hallview' }); if (MODE === 'host') sheet.hidden = true; return; }
+  if (d.debateform !== undefined) { debateForm = !debateForm; refreshPanel(true); return; }
+  if (d.startdebate !== undefined) { const a = $('#dbA').value, b = $('#dbB').value, topic = ($('#dbCustom').value.trim() || $('#dbTopic').value).slice(0, 80); if (a === b) { toast('Pick two different residents.'); return; } debateForm = false; send({ t: 'debate', a, b, topic }); return; }
   if (d.craft) { send({ t: 'craft', kind: d.craft, id: d.cid, color: d.color || $('#craftColor')?.value }); return; }
   if (d.sell) { send({ t: 'sell', uid: d.sell }); return; }
   if (d.plotpick !== undefined) { plotPick = plotPick === Number(d.plotpick) ? null : Number(d.plotpick); refreshPanel(true); return; }
@@ -5783,6 +6034,7 @@ function wireTownInput() {
       const tp = h.object.userData.tap;
       if (tp.kind === 'person') { const q = person(tp.pid); const asleep = q && q.inside && q.task?.kind === 'home' && (W.t >= 0.6 || W.t < 0.02); openInteract(tp.pid, asleep ? { text: 'Mmm… zzz… Huh? Creator? It\'s the middle of the night…' } : {}); }
       else if (tp.kind === 'buy') openBuy(tp.shop, tp.uid, tp.food);
+      else if (tp.kind === 'judge') { activeTab = 'court'; openSheet(); }
       else if (tp.kind === 'arcade') { Sound.levelup(); toast(pick(['High score!', 'Game over. Insert coin?', 'You beat the boss!', 'New record: AAA'])); }
       return;
     }
@@ -5804,6 +6056,7 @@ function wireTownInput() {
     if (tp.kind === 'shop') { openInterior({ kind: 'shop', shop: tp.shop }); }
     else if (tp.kind === 'mail') { activeTab = 'mail'; mailOpen = null; openSheet(); }
     else if (tp.kind === 'fish') openFishing();
+    else if (tp.kind === 'hall') openInterior({ kind: 'hall' });
     else if (tp.kind === 'tgarden') { const r = applyCmd({ t: 'gather', bed: 'tgarden', x: TOWN.garden.spot[0], z: TOWN.garden.spot[1] }); if (r) toast(r); }
     else if (tp.kind === 'placed') { const pl = (W.placed || []).find((q) => q.id === tp.id); if (pl && ['flowers', 'planter', 'arch', 'tree'].includes(pl.type)) { const r = applyCmd({ t: 'gather', bed: pl.id, wood: pl.type === 'tree', x: pl.x, z: pl.z }); if (r) toast(r); } }
     else if (tp.kind === 'node' || tp.kind === 'tree') { const r = applyCmd({ t: 'gather', id: tp.id, tree: tp.kind === 'tree', x: tp.x, z: tp.z }); if (r) toast(r); }
@@ -5931,7 +6184,7 @@ async function boot() {
     step(dt);
     if (interior) roomControls.update();
     else { controls.autoRotate = cfg.spin && now - lastTouch > 10 && !keysDown.size; const tx = controls.target.x, tz = controls.target.z; controls.update(); if (Math.abs(controls.target.x - tx) + Math.abs(controls.target.z - tz) > 1e-4) { userPanned(); clampView(); } }
-    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); seasonFrame(dt); catFrame(dt); claudeTick(dt); shineFrame(dt); nodeFrame(dt);
+    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); courtTick(); seasonFrame(dt); catFrame(dt); claudeTick(dt); shineFrame(dt); nodeFrame(dt);
     renderer.render(interior ? roomScene : scene, interior ? roomCam : camera);
     if (wantPhoto) { wantPhoto = false; try { takePhoto(); } catch (e) { console.error(e); toast('The camera jammed. Try again?'); } }
     if (now - lastHud > 0.5) { hud(); lastHud = now; }
@@ -5941,7 +6194,7 @@ async function boot() {
   }
   requestAnimationFrame(frame);
 }
-if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, cupdate: (live) => claudeUpdate(live), away: () => { lastTouch = -9999; }, back: () => userReturned(true), convo: () => { nextConvoAt = 0; }, resetView: () => resetView(), watchdog: () => claudeWatchdog(true), text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
+if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, file: (k, a, b, x) => fileCase(k, person(a), person(b), x || {}), cases: () => W.cases, court: () => courtTick(), courtAM: () => courtMorning(), cupdate: (live) => claudeUpdate(live), away: () => { lastTouch = -9999; }, back: () => userReturned(true), convo: () => { nextConvoAt = 0; }, resetView: () => resetView(), watchdog: () => claudeWatchdog(true), text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
 boot();
 })();
 </script>
