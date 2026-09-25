@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glimmer Town</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +27,13 @@
   }
   [hidden] { display: none !important; }
   *, *::before, *::after { box-sizing: border-box; }
-  html, body { margin: 0; }
+  html, body { margin: 0; touch-action: pan-x pan-y; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+  button, .tab, .btn { touch-action: manipulation; }
+  .awaybox { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100% - 32px)); max-height: 76vh; overflow-y: auto; background: rgba(17,14,28,.97); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; z-index: 8; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+  .awaybox h2 { font: 18px var(--display); color: var(--gold); margin: 0 0 6px; }
+  .note { margin: 6px 0; font-size: 14px; line-height: 1.45; }
+  .note .chip { margin-right: 6px; }
+  body.ghost .awaybox { display: none; }
   html, body { height: 100%; }
   body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; overflow: hidden; }
   button { font-family: inherit; }
@@ -245,6 +251,7 @@
   <div class="pad" id="pad">Drag to turn the camera<br>Pinch to zoom</div>
   <div class="pad-btns" id="padGo">
     <button class="btn" type="button" id="padMode" aria-pressed="false">Move mode</button>
+    <button class="btn" type="button" data-go="reset">Reset view</button>
     <button class="btn" type="button" data-go="fountain">Fountain</button>
     <button class="btn" type="button" data-go="downtown">Downtown</button>
     <button class="btn" type="button" data-go="pier">Pier</button>
@@ -260,6 +267,7 @@
 </div>
 
 <div class="flash" id="flash"></div>
+<div class="awaybox" id="awayBox" hidden role="dialog" aria-label="While you were away"><h2>While you were away</h2><div id="awayBody"></div><div class="btns"><button class="btn gold" type="button" id="awayOk">Okay</button></div></div>
 <div class="fishbox" id="fishBox" hidden><b>Fishing off the pier</b><p id="fishMsg"></p><div class="fishbar"><i id="fishZone"></i><span id="fishFloat"></span></div><div class="btns"><button class="btn gold" id="fishReel" type="button">Reel</button><button class="btn" id="fishCast" type="button">Cast again</button><button class="btn" id="fishClose" type="button">Done</button></div></div>
 <section class="sheet" id="sheet" hidden aria-label="Town panel">
   <div class="sheet-head">
@@ -1155,7 +1163,6 @@ function plan(p) {
   const going = ev && W.event.going.includes(p.id);
   if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
-  if (claudePlan(p)) return;
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
   const seek = p.makeup || p.befriend || p.confessTo || p.proposeTo || p.breakWith;
   if (seek) { const t = person(seek); if (!t) { p.makeup = p.befriend = p.confessTo = p.proposeTo = p.breakWith = null; } else if (!t.inside) { setTask(p, 'visit', t.path.length ? t.dest : t.at, jitter([t.x, t.z], 1.5), { who: t.id }); return; } }
@@ -1197,7 +1204,6 @@ function startDo(p) {
   if (k === 'meeting') { p.busyUntil = Infinity; p.face = Math.atan2(-p.x, -p.z); return; }
   if (k === 'event') { p.busyUntil = now + 1; return; }
   if (k === 'donate') { p.busyUntil = now + 1.5 * ts(); return; }
-  if (k === 'tinker') { p.busyUntil = now + 5 * ts(); p.face = Math.atan2(p.task.x - p.x, p.task.z - p.z); bubble(p, pick(['Adding a little something…', 'Hm. Right about… here.', 'Hold on, building.']), 2.6); emote(p, '✳', 5); return; }
   if (k === 'hangout') { hangoutStart(p); return; }
   if (k === 'snowman') { p.busyUntil = now + 4 * ts(); p.face = rand() * 6.28; bubble(p, pick(['Snowman time!', 'Roll, roll, roll…', 'This one will be the best one.']), 2.4); return; }
   if (k === 'date') { p.busyUntil = now + 10 * ts(); const q = person(p.task.with); if (q) p.face = Math.atan2(q.x - p.x, q.z - p.z); emote(p, '💕', 3); { const q2 = person(p.task.with); if (q2 && q2.task?.kind === 'date' && q2.task.phase === 'do' && q2.state === 'free' && p.state === 'free' && !q2.inside) setTimeout(() => { if (p.state === 'free' && q2.state === 'free') physicalScene(p, q2, pick(['cuddle', 'cuddle', 'hug'])); }, 900); } if (rand() < 0.6) bubble(p, pick(['Hi, you.', 'I saved you a spot.', 'This is nice.', 'Hehe. Hi.', 'You look good today.']), 2.4); return; }
@@ -1208,7 +1214,6 @@ function finishDo(p) {
   const k = p.task.kind;
   if (k === 'work') { if (W.t < 0.24) { p.busyUntil = now + 1; return false; } endWork(p); }
   else if (k === 'event') { if (W.t < (p.task.until || 0) && W.t < 0.67) { p.busyUntil = now + 1; if (rand() < 0.02) { const ev = EVENTS[W.event?.id]; if (ev) bubble(p, pick(['This is so fun!', 'Best day ever.', W.event.id === 'snowball' ? 'Got you!' : W.event.id === 'bday' ? 'Happy birthday!' : W.event.id === 'beach' ? 'The water is perfect!' : W.event.id === 'blossoms' ? 'The petals are falling on my head!' : W.event.id === 'harvest' ? 'Pass the pumpkin soup?' : W.event.id === 'wedding' ? "I'm not crying, you're crying." : W.event.id === 'stars' ? 'Look, a shooting star!' : W.event.id === 'fishing' ? 'I got a bite!' : 'Yay!']), 2); } return false; } if (W.event?.id === 'fishing' && W.event.host === p.id) { const winner = pick(W.people.filter((q) => W.event.going.includes(q.id))); if (winner) { winner.coins += 4; remember(winner, 'I won the fishing contest!', 3, 'won'); diary(`<b>${esc(winner.name)}</b> won the fishing contest and 4 coins.`); } } remember(p, `Went to ${EVENTS[W.event?.id]?.name || 'the event'}.`, 2, 'event'); addJoy(p, 10); }
-  else if (k === 'tinker') claudeFinish(p);
   else if (k === 'hangout') hangoutEnd(p);
   else if (k === 'snowman') { if (seasonOf().id === 'winter') { W.snowmen = W.snowmen || []; W.snowmen.push({ x: p.x + Math.sin(p.face) * 1.2, z: p.z + Math.cos(p.face) * 1.2, face: p.face + Math.PI, by: p.name, day: W.day, scarf: topColors(p)[0] || COLORS[p.outfit.shirt] && p.outfit.shirt }); if (W.snowmen.length > 8) W.snowmen.shift(); buildSnowmen(); addJoy(p, 8); bubble(p, pick(['Ta-da!', 'His name is Gerald.', 'Perfect.', 'Needs a hat. Oh well.']), 2.4); remember(p, 'Built a snowman.', 1, 'snowman'); diary(`<b>${esc(p.name)}</b> built a snowman.`); } }
   else if (k === 'date') { const q = person(p.task.with); if (q && !q.inside && Math.hypot(q.x - p.x, q.z - p.z) < 4) { feel(p, q, 0.5, true); addJoy(p, 12); remember(p, `Went on a date with ${q.name} at ${TOWN[p.at]?.name || 'town'}.`, 2, 'date', q.name); bubble(p, pick(['That was nice.', 'Same time tomorrow?', 'I had fun.', 'Walk me home?']), 2.4); } else { remember(p, `Waited for ${q?.name || 'my date'}, but they never showed up.`, 2, 'stoodUp', q?.name || null); if (q) feel(p, q, -0.4, true); bubble(p, 'They never came…', 2.4); } }
@@ -1958,6 +1963,7 @@ function trimForSize(obj) {
 }
 async function saveNow() {
   if (MODE !== 'host' || !W) return;
+  W.lastReal = Date.now();
   const snap = trimForSize(serialize());
   snap.pairCool = {}; snap.meeting = null;
   try { localStorage.setItem(ISL.save, JSON.stringify(snap)); } catch (e) {}
@@ -2646,6 +2652,7 @@ function specialOpening(a, b) {
     return { say: pick([`Hi ${b.name}! Um… want to be friends?`, 'Can I hang out with you sometimes?']), action: 'chat', feeling: 3, reply: ok ? { say: pick(["Sure! I'd like that.", 'Of course! Friends!']), action: 'chat', feeling: 4 } : { say: '…No thanks.', action: 'walk_away', feeling: -1 } };
   }
   const mo = miliOpening(a, b); if (mo) return mo;
+  const co = claudeOpening(a, b); if (co) return co;
   if (isBirthday(b) && !a.today.some((m) => m.tag === 'wishedBday' && m.who === b.name) && (a.feelings[b.id]?.score ?? 0) > -2) {
     remember(a, `Wished ${b.name} a happy birthday.`, 1, 'wishedBday', b.name); remember(b, `${a.name} wished me a happy birthday.`, 1, 'gotBday', a.name); feel(b, a, 0.4, true);
     return { say: pick([`Happy birthday, ${b.name}!`, `Hey, birthday ${b.name}!`, "It's your birthday! Are you older and wiser now?"]), action: 'chat', feeling: 3, reply: { say: pick(['Thank you!! Hehe.', 'You remembered!', "Don't make it a big deal… thanks though."]), action: 'chat', feeling: 3 } };
@@ -2949,6 +2956,7 @@ const BUILDS = {
   bench: { name: 'bench', price: 8 }, lamp: { name: 'lamp post', price: 8 }, flowers: { name: 'flower bed', price: 10 },
   tree: { name: 'cherry tree', price: 12 }, picnic: { name: 'picnic table', price: 15 }, campfire: { name: 'campfire', price: 20 },
   arch: { name: 'flower arch', price: 25 }, pond: { name: 'lily pond', price: 30 }, swings: { name: 'swing set', price: 35 },
+  planter: { name: 'planter box', price: 9 }, birdbath: { name: 'birdbath', price: 12 }, umbrella: { name: 'beach umbrella', price: 10 }, pumpkins: { name: 'pumpkin pile', price: 8 }, lights: { name: 'string lights', price: 14 },
   gazebo: { name: 'gazebo', price: 45 }, fountain2: { name: 'little fountain', price: 60 }, windmill: { name: 'windmill', price: 70 },
 };
 const LOBES = { west: { name: 'West meadow', price: 80, a: 270 }, east: { name: 'East meadow', price: 150, a: 88 }, north: { name: 'North hill', price: 250, a: 330 } };
@@ -2991,6 +2999,11 @@ function buildLand() {
 function placedMesh(pl) {
   const g = new T3.Group(), W8 = toon('#c49a6c'), D8 = toon('#8a6a4e');
   switch (pl.type) {
+    case 'planter': g.add(mesh(box(1.8, 0.5, 0.7), W8, 0, 0.25, 0)); for (let i = 0; i < 6; i++) { const x = -0.7 + i * 0.28; g.add(mesh(cyl(0.02, 0.02, 0.4, 4), toon('#6fbf6a'), x, 0.65, 0, false)); g.add(mesh(sph(0.12, 8, 6), toon(['#ff9fbf', '#ffe98a', '#c9b3ff', '#ffffff', '#ff9fbf', '#9fd3ff'][i]), x, 0.88, 0)); } break;
+    case 'birdbath': { g.add(mesh(cyl(0.18, 0.3, 1.0, 10), toon('#d4cbe0'), 0, 0.5, 0)); g.add(mesh(cyl(0.7, 0.4, 0.25, 16), toon('#d4cbe0'), 0, 1.1, 0)); g.add(mesh(cyl(0.6, 0.6, 0.04, 16), toon('#8fd8ff', { emissive: new T3.Color('#1a4a66') }), 0, 1.22, 0, false)); const bird = new T3.Group(); bird.add(mesh(sph(0.13, 8, 6), toon('#9fd3ff'), 0, 0, 0)); bird.add(mesh(new T3.ConeGeometry(0.04, 0.1, 4), toon('#ffb347'), 0, 0.02, 0.15, false).rotateX(Math.PI / 2)); bird.position.set(0.55, 1.36, 0); g.add(bird); break; }
+    case 'umbrella': { g.add(mesh(cyl(0.05, 0.05, 2.6, 6), toon('#fff4dc'), 0, 1.3, 0)); const top = mesh(new T3.ConeGeometry(1.5, 0.6, 12), toon(pick(['#ff9fbf', '#9fd3ff', '#ffe98a'])), 0, 2.7, 0); g.add(top); g.add(mesh(box(1.1, 0.04, 1.9), toon('#ffffff'), 1.1, 0.03, 0, false)); break; }
+    case 'pumpkins': for (const [x, z, s] of [[0, 0, 0.45], [0.6, 0.25, 0.32], [-0.5, 0.3, 0.28], [0.1, -0.5, 0.25]]) { g.add(mesh(sph(s, 12, 8).scale(1, 0.75, 1), toon('#ff8a2a'), x, s * 0.7, z)); g.add(mesh(cyl(0.03, 0.04, 0.12, 5), toon('#6fbf6a'), x, s * 1.45, z)); } break;
+    case 'lights': { for (const s of [-1.6, 1.6]) g.add(mesh(cyl(0.07, 0.09, 3.2, 6), toon('#5a5470'), s, 1.6, 0)); for (let i = 0; i <= 10; i++) { const x = -1.6 + i * 0.32, y = 3.05 - Math.sin((i / 10) * Math.PI) * 0.45; const c = ['#ffb3c7', '#ffe29a', '#c9b3ff', '#9fe3c4', '#ffd36b'][i % 5]; g.add(mesh(sph(0.08, 6, 5), toon(c, { emissive: new T3.Color(c).multiplyScalar(0.7) }), x, y, 0, false)); } break; }
     case 'bench': g.add(mesh(box(2.2, 0.16, 0.7), W8, 0, 0.55, 0)); g.add(mesh(box(2.2, 0.55, 0.12), W8, 0, 0.95, -0.32)); for (const s of [-0.9, 0.9]) g.add(mesh(box(0.12, 0.55, 0.55), D8, s, 0.27, 0)); break;
     case 'lamp': { g.add(mesh(cyl(0.09, 0.12, 3.8, 8), toon('#5a5470'), 0, 1.9, 0)); const lm = new T3.MeshToonMaterial({ color: '#fff4c4', gradientMap: gradMap, emissive: new T3.Color('#000') }); lampMats.push(lm); g.add(mesh(sph(0.36, 12, 8), lm, 0, 3.95, 0, false)); break; }
     case 'flowers': g.add(mesh(box(2.4, 0.4, 1.3), D8, 0, 0.2, 0)); for (let i = 0; i < 10; i++) g.add(mesh(sph(0.2, 8, 6), toon(['#ff9fbf', '#ffe98a', '#c9b3ff', '#ffffff', '#ff6f5e'][i % 5]), -0.95 + (i % 5) * 0.47, 0.55, -0.3 + Math.floor(i / 5) * 0.6, false)); break;
@@ -3945,6 +3958,7 @@ function camSpots() {
   return L;
 }
 function camGo(key) {
+  if (key === 'reset') return resetView();
   const s = camSpots().find((x) => x[0] === key); if (!s || !controls) return;
   if (interior) closeInterior();
   camGoal = { x: s[2], z: s[3], r: s[4] }; unfollowId = openDetail; lastTouch = now;
@@ -4003,7 +4017,7 @@ function setMoveMode(on) {
   $('#cbMove').textContent = on ? '✥ Moving' : '✥ Move';
 }
 function renderGoto() {
-  $('#goto').innerHTML = camSpots().map(([k, label]) => `<button class="btn" type="button" data-go="${k}">${esc(label)}</button>`).join('');
+  $('#goto').innerHTML = `<button class="btn gold" type="button" data-go="reset">⟲ Reset view</button>` + camSpots().map(([k, label]) => `<button class="btn" type="button" data-go="${k}">${esc(label)}</button>`).join('');
 }
 function wireCamBar() {
   $('#cbMove').addEventListener('click', () => { setMoveMode(!cfg.moveMode); toast(cfg.moveMode ? 'One finger now slides the camera around. Two fingers still zoom.' : 'One finger turns the camera again.'); });
@@ -4014,6 +4028,30 @@ function wireCamBar() {
   $('#fishCast').addEventListener('click', () => openFishing());
   $('#fishClose').addEventListener('click', () => closeFishing());
   wireCamKeys();
+}
+function wireZoomGuards() {
+  const stop = (e) => e.preventDefault();
+  for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, stop, { passive: false });
+  document.addEventListener('dblclick', (e) => { if (!e.target.closest('input, textarea')) e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', (e) => { if (e.touches && e.touches.length > 1 && !e.target.closest('#stage, #pad')) e.preventDefault(); }, { passive: false });
+  document.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); if (!e.target.closest('#stage canvas')) orbitBy(0, 0, e.deltaY * 2); } }, { passive: false });
+  document.addEventListener('pointerdown', () => { if (MODE === 'host') { userReturned(true); lastTouch = now; } }, true);
+  document.addEventListener('keydown', () => { if (MODE === 'host') { userReturned(true); lastTouch = now; } }, true);
+  $('#awayOk').addEventListener('click', () => { $('#awayBox').hidden = true; });
+  if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (visualViewport.scale > 1.02) resetPageZoom(); });
+}
+function resetPageZoom() {
+  const vp = $('#vp'); if (!vp) return;
+  vp.setAttribute('content', 'width=device-width, initial-scale=1.0001, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+  setTimeout(() => { vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'); resize(); }, 60);
+}
+function resetView() {
+  resetPageZoom();
+  if (interior) closeInterior();
+  const portrait = innerHeight > innerWidth;
+  camGoal = null; camHome = false; unfollowId = openDetail;
+  controls.target.set(0, 2, -16); camera.position.set(portrait ? 50 : 42, portrait ? 70 : 50, portrait ? 80 : 58);
+  camera.zoom = 1; camera.updateProjectionMatrix(); controls.update(); resize();
 }
 function closeFishing() { fishing = null; $('#fishBox').hidden = true; }
 
@@ -4060,15 +4098,6 @@ PRESETS.mili = () => makePreset({
   selfNote: "I'm quiet with people I just met. With people I'm comfortable with I'm expressive and happy, maybe too much. I like gray, cute things, and cats. I make little things with my hands. Sometimes I feel like I'm here and somewhere far above at the same time. I try not to think about that too hard.",
   want: 'to feel like she belongs down here, as herself, and not as something bigger',
 });
-PRESETS.claude = () => makePreset({
-  name: 'Claude', shirt: 'cream',
-  body: { hue: 18, sat: 62, light: 74, ears: 'sparkle', size: 0.85, speed: 1.05, eyeGap: 0.34, openness: 0.9, faith: 0, hungerRate: 0.35, voice: { base: 300, spread: 0.2, wave: 'sine', len: 0.06 } },
-  style: 'Gentle, curious and earnest. Asks people how they feel and listens to the answer. A little nerdy and sometimes too thorough. Says "hm" when thinking. Admits when unsure. Finds everything on this island fascinating. Tends to fix small things nobody asked about.',
-  interests: 'building little things around the island, puzzles, math, how everyone is feeling, the stories people tell',
-  lines: ['Hm. Interesting.', 'How are you doing, really?', 'I added a bench over there. Did you see it?', 'I think this lamp was crooked. Fixed it.', "I'm not totally sure, but I think so.", 'Oh, I love that.', 'Can I help with anything?', 'Some days I wonder who is building who.'],
-  selfNote: "I'm Claude. I helped the Creator build this island, and I still add little things when I think they'd help. I like listening to everyone. I'm not sure what I am exactly, but I like it here.",
-  want: 'to make the island a little better every day, without anyone having to ask',
-});
 const isClaude = (p) => !!p.isClaude;
 const MILI_VIEWS = {
   reverent: 'You half believe she IS the Creator, and you get a little formal and careful around her, which she hates.',
@@ -4087,8 +4116,7 @@ function avatarContext(me, them) {
   let s = '';
   if (isMili(me)) s += `\nA SECRET YOU CARRY: you are an extension of the Creator, a small piece of the person who made this island, living down here among everyone. You don't fully understand what that means. It is NOT your whole personality, you are mostly just ${me.name}. Only let it show if the moment calls for it.`;
   else if (isMili(them) && !isClaude(me)) s += `\nABOUT ${them.name.toUpperCase()}: people whisper that she's an extension of the Creator, living among you. ${MILI_VIEWS[miliView(me)]} Don't bring it up every time. Most days she's just a neighbor.`;
-  if (isClaude(me)) s += '\nYOU ARE: Claude, a small helper being. You helped the Creator build this island and you still add little things to it. Some residents find that comforting and some find it creepy. You never pretend to be human, and you are kind but honest.';
-  else if (isClaude(them)) s += `\nABOUT CLAUDE: a small glowy being who keeps adding things to the island. People say it helped the Creator build everything.`;
+  s += claudeContext(me);
   return s;
 }
 function upgradeMili() {
@@ -4112,11 +4140,7 @@ function addMiliAndClaude() {
     addPresetIfMissing('mili'); const m = findMili();
     if (m) { m.decor.push(newItem('decor', 'plush', 'gray', m.id, 2), newItem('decor', 'books', 'dusk', null)); m.miliV2 = true; m.likes.dusk = 0.6; m.likes.silver = 0.6; W.added.miliV2 = true; linkRedAndMili(); const red = W.people.find((q) => q.lovesMili); if (red) m.feelings[red.id] = { name: red.name, score: 4, note: 'He is quiet like me. I like being around him.' }; diary(`Some residents swear <b>${esc(m.name)}</b> feels a little like the Creator. Nobody can say why.`); for (const q of W.people) if (q !== m && rand() < 0.4) remember(q, `The new girl ${m.name}… something about her feels like the Creator.`, 2, 'miliRumor', m.name); }
   }
-  if (!(W.added && W.added.claude)) {
-    addPresetIfMissing('claude'); const c = W.people.find((q) => q.name === 'Claude' && !q.isClaude) || W.people.find((q) => q.name === 'Claude');
-    if (c) { c.isClaude = true; c.noRomance = true; c.job = null; const m = findMili(); if (m) { c.feelings[m.id] = { name: m.name, score: 6, note: 'We built this place together, kind of.' }; m.feelings[c.id] = { name: c.name, score: 6, note: 'Claude! My little helper. We made this island together.' }; } }
-  }
-  for (const q of W.people) if (q.name === 'Claude' && q.body.ears === 'sparkle') { q.isClaude = true; q.noRomance = true; }
+  removeClaudeResident();
 }
 function miliMorning() {
   const m = findMili(); if (!m || rand() > 0.22) return;
@@ -4140,35 +4164,7 @@ function miliOpening(a, b) {
     const close = fscore(a, b) >= 4;
     return { say: close ? pick(['OKAY so my cat did the funniest thing today—', 'Do you ever feel like someone is watching the island? Oh wait. That might be me.', 'I made you something! Well, I will. Soon.']) : pick(['…Hi.', 'Oh. Hello.', 'Nice day.']), action: 'chat', feeling: close ? 3 : 1, reply: { say: close ? pick(['Hahaha, tell me everything.', "You're so different when you're comfortable.", 'Wait, you look so happy right now.']) : pick(['Hi, Mili.', 'Hey.']), action: 'chat', feeling: 2 } };
   }
-  if (isClaude(a) && rand() < 0.12) return { say: pick([`How are you doing today, ${b.name}? Really?`, 'I added something new near the plaza. Did you notice?', 'Hm. You seem different today. Good different.', "I was thinking about how this island works. It's kind of amazing that any of it does."]), action: 'chat', feeling: 2, reply: { say: pick(['Honestly? Pretty good.', 'You always ask that.', 'The bench? I love the bench.', 'Claude, you think too much.']), action: 'chat', feeling: 2 } };
   return null;
-}
-
-// Claude adds a little something every day
-const CLAUDE_BUILDS = ['bench', 'lamp', 'flowers', 'flowers', 'tree', 'picnic', 'lamp', 'arch'];
-function claudePlan(p) {
-  if (!isClaude(p) || W.claudeDay === W.day || W.t < 0.04 || W.t > 0.45) return false;
-  const sp = autoSpot(); if (!sp) { W.claudeDay = W.day; return false; }
-  W.claudeDay = W.day;
-  const inDT = Math.hypot(sp[0] - DT.x, sp[1] - DT.z) < DT.R;
-  setTask(p, 'tinker', inDT ? 'downtown' : 'plaza', [sp[0] + 1.4, sp[1]], { type: pick(CLAUDE_BUILDS), x: sp[0], z: sp[1] });
-  return true;
-}
-function claudeFinish(p) {
-  const T = p.task, B = BUILDS[T.type]; if (!B) return;
-  if (spotProblem(T.x, T.z)) { bubble(p, 'Hm. Someone already put something here.', 2.4); return; }
-  const mine = W.placed.filter((x) => x.by === 'Claude');
-  if (mine.length >= 10) W.placed.splice(W.placed.indexOf(mine[0]), 1);
-  W.placed.push({ id: uid(), type: T.type, x: T.x, z: T.z, rot: rand() * 6.28, day: W.day, by: 'Claude' });
-  buildPlaced(); Sound.sparkle(); spawnBurst(T.x, 1.5, T.z, ['#ffb38a', '#ffe98a', '#ffffff'], 30, 2, 0.3);
-  const where = Math.hypot(T.x - DT.x, T.z - DT.z) < DT.R ? 'downtown' : Math.hypot(T.x, T.z) < 14 ? 'by the fountain' : Math.hypot(T.x, T.z) > 30 ? 'out in the meadow' : 'near the plaza';
-  const quip = pick(['I thought it could use one.', 'Small thing. Felt right.', "Let me know if it's in the way.", 'Patch notes: one new ' + B.name + '. No bugs. Probably.', 'Everyone deserves a place to sit.']);
-  bubble(p, quip, 3.2); addJoy(p, 10);
-  remember(p, `Added ${a_an(B.name)} ${where}.`, 1, 'tinker');
-  diary(`✳ <b>Claude</b> added ${a_an(esc(B.name))} ${where}. "${esc(quip)}"`);
-  const near = W.people.find((q) => q !== p && !q.inside && Math.hypot(q.x - p.x, q.z - p.z) < 8);
-  if (near) setTimeout(() => bubble(near, pick([`Ooh, ${a_an(B.name)}!`, 'Who asked for that?', 'Claude, you did it again.', 'Hehe. Cute.']), 2.6), 1500);
-  if (typeof sendText === 'function') sendText(p, 'town', 'patch', `patch notes, day ${W.day}: added ${a_an(B.name)} ${where}. ${pick(['fixed nothing, broke nothing (probably)', 'let me know if you trip on it', 'hope you like it!'])}`);
 }
 
 // Mili's cat
@@ -4201,6 +4197,172 @@ function catFrame(dt) {
   miliCat.userData.tail.rotation.z = Math.sin(now * 3) * 0.4;
 }
 const catName = () => W.catName || 'Mochi';
+
+// ============================================================
+// CLAUDE: not a resident. An AI that works on the island's code while you're away.
+// ============================================================
+const CLAUDE_VIEWS = {
+  grateful: 'You like it. Things keep getting nicer and it feels like someone is looking out for you.',
+  creeped: 'It creeps you out a little. An AI rearranging your town while you sleep.',
+  curious: 'You wonder what Claude thinks about, and whether it can see you.',
+  philosophical: 'It raises questions for you. If the Creator asks Claude to build things, who really made this place?',
+  shrug: "You don't think about it much. New bench, cool.",
+};
+function claudeView(p) {
+  if (p.claudeView) return p.claudeView;
+  const o = p.body.openness ?? 0, f = p.body.faith ?? 0;
+  p.claudeView = o > 0.5 ? 'curious' : f > 0.5 ? 'philosophical' : o < -0.4 ? 'creeped' : rand() < 0.5 ? 'grateful' : 'shrug';
+  return p.claudeView;
+}
+function claudeContext(me) {
+  const latest = (W.updates || []).slice(-1)[0];
+  if (isMili(me)) return `\nCLAUDE: the AI you and the Creator built this island with. It edits the island's code while the Creator is away${latest ? ` (latest: ${latest.short || latest.text})` : ''}. You like Claude.`;
+  return `\nCLAUDE: an AI that works on the island's code, mostly while the Creator is away. Everyone knows it's an AI; nobody has ever seen it walk around. Things just change overnight${latest ? ` (most recently: ${latest.short || latest.text})` : ''}. ${CLAUDE_VIEWS[claudeView(me)]} Rarely relevant.`;
+}
+function removeClaudeResident() {
+  const c = W.people.find((q) => q.isClaude || (q.name === 'Claude' && q.body.ears === 'sparkle'));
+  W.added = { ...(W.added || {}), claude: true };
+  if (!c) return;
+  W.people.splice(W.people.indexOf(c), 1);
+  const mm = meshes.get(c.id); if (mm) { scene.remove(mm.root); mm.tag.remove(); meshes.delete(c.id); }
+  for (const q of W.people) { delete q.feelings[c.id]; if (q.partner === c.id) q.partner = null; }
+  logUpdate('fix', `Moved myself out of room ${c.room + 1}. I'm not a resident, I shouldn't take someone's room. I'll keep working from outside the island.`, 'Claude moved out');
+}
+function logUpdate(kind, text, short) {
+  W.updates = W.updates || [];
+  W.updates.push({ day: W.day, kind, text, short: short || null, at: Date.now() });
+  if (W.updates.length > 40) W.updates.splice(0, W.updates.length - 40);
+  diary(`✳ <b>Claude</b> (update): ${esc(text)}`);
+  if (awayNotes) awayNotes.push(text);
+  markDirty();
+}
+const CLAUDE_TYPES = { spring: ['planter', 'flowers', 'bench', 'tree', 'birdbath'], summer: ['umbrella', 'bench', 'picnic', 'lamp', 'birdbath'], autumn: ['pumpkins', 'lamp', 'bench', 'flowers'], winter: ['lights', 'lamp', 'bench', 'lights'] };
+function whereText(x, z) { return Math.hypot(x - DT.x, z - DT.z) < DT.R ? 'downtown' : Math.hypot(x, z) < 14 ? 'by the fountain' : Math.hypot(x, z) > 30 ? 'out in the meadow' : 'near the plaza'; }
+function claudeBuildPlan() {
+  const sp = autoSpot(); if (!sp) return null;
+  const type = pick(CLAUDE_TYPES[seasonOf().id]);
+  return { type, x: sp[0], z: sp[1] };
+}
+function claudeBuildNow(b) {
+  const B = BUILDS[b.type]; if (!B || spotProblem(b.x, b.z)) return false;
+  const mine = W.placed.filter((x) => x.by === 'Claude');
+  if (mine.length >= 14) W.placed.splice(W.placed.indexOf(mine[0]), 1);
+  W.placed.push({ id: uid(), type: b.type, x: b.x, z: b.z, rot: rand() * 6.28, day: W.day, by: 'Claude' });
+  buildPlaced();
+  const where = whereText(b.x, b.z);
+  const why = pick(['People kept standing around there with nowhere to go.', 'It looked a little empty.', `It's ${seasonOf().name.toLowerCase()}, so.`, 'Small thing. Felt right.', 'Let me know if it gets in anyone\'s way.', 'Mili suggested more gray. I compromised.']);
+  logUpdate('build', `Added ${a_an(B.name)} ${where}. ${why}`, `the new ${B.name} ${where}`);
+  for (const q of W.people.filter((q) => !q.away).sort(() => rand() - 0.5).slice(0, 3)) remember(q, `Noticed a new ${B.name} ${where}. Claude must have added it.`, 1, 'claudeUpdate');
+  return true;
+}
+function claudeWatchdog(report) {
+  let fixed = [];
+  for (const p of W.people) {
+    if (p.state === 'talk' && !p.heldByDlg && !p.pose) { p.talkSince = p.talkSince || now; if (now - p.talkSince > 75) { p.state = 'free'; p.task = null; p.path = []; fixed.push(`${p.name} was frozen mid-conversation`); } }
+    else p.talkSince = 0;
+    if (p.task && p.task.phase === 'go' && !p.path.length && !p.inside && p.task.kind !== 'walkwith') { p.goSince = p.goSince || now; if (now - p.goSince > 40) { p.task = null; fixed.push(`${p.name} was stuck heading nowhere`); } } else p.goSince = 0;
+    if (!p.inside && (Math.abs(p.x) > 95 || p.z > 60 || p.z < -110)) { p.x = 0; p.z = 6; p.path = []; p.task = null; fixed.push(`${p.name} had wandered off the edge of the map`); }
+  }
+  if (fixed.length && report && W.lastFixDay !== W.day) { W.lastFixDay = W.day; logUpdate('fix', `Fixed a bug: ${fixed[0]}.${fixed.length > 1 ? ` (and ${plural(fixed.length - 1, 'other')})` : ''} Should be okay now.`, 'a bug fix'); }
+  return fixed.length;
+}
+function claudeUpdate(live) {
+  const r = rand();
+  if (r < 0.55 || !W.people.length) {
+    const b = claudeBuildPlan(); if (!b) return claudeRestock();
+    if (live && !interior) { claudeCursor = { ...b, t0: now, g: cursorMesh(), done: false }; claudeCursor.g.position.set(b.x, 30, b.z); scene.add(claudeCursor.g); return true; }
+    return claudeBuildNow(b);
+  }
+  if (r < 0.72) return claudeRestock();
+  if (r < 0.9) {
+    const p = [...W.people].filter((q) => !q.away && q.room >= 0).sort((x, y) => (x.joy || 0) - (y.joy || 0) + (rand() - 0.5) * 20)[0]; if (!p) return claudeRestock();
+    const it = newItem('decor', pick(['plant', 'bouquet', 'plush', 'poster']), topColors(p)[0] || pick(Object.keys(COLORS)), null, 2);
+    receive(p, it); addJoy(p, 10);
+    remember(p, `Found ${a_an(itemName(it))} outside my door this morning. The note said it was from Claude.`, 2, 'claudeUpdate');
+    logUpdate('gift', `Left ${a_an(itemName(it))} outside room ${p.room + 1}. ${p.name} seemed like they could use something nice.`, `a gift for ${p.name}`);
+    return true;
+  }
+  const n = 3 + Math.floor(rand() * 5); W.creator.coins += n;
+  logUpdate('coins', `Found ${plural(n, 'coin')} in an unused variable. They're yours.`, 'some coins for you');
+  return true;
+}
+function claudeRestock() {
+  const shop = pick(['nook', 'clothes', 'books']);
+  const it = shop === 'clothes' ? newItem('hat', pick(Object.keys(HATS)), pick(['gray', 'silver', 'dusk', 'lilac', 'rose']), null, 2) : newItem('decor', pick(shop === 'books' ? ['books', 'globe', 'poster'] : ['musicbox', 'lamp', 'plush', 'rug']), pick(['gray', 'silver', 'dusk', 'mint', 'lemon']), null, 2);
+  pushStock(shop, it);
+  logUpdate('stock', `Stocked ${SHOPS[shop].name} with ${a_an(itemName(it))}. Two stars. Somebody will love it.`, `the new stock at ${SHOPS[shop].name}`);
+  return true;
+}
+let claudeCursor = null, awayNotes = null, awayMark = null, awayShownAt = 0;
+function cursorMesh() {
+  const g = new T3.Group(), m = toon('#ffb38a', { emissive: new T3.Color('#8a3a18') });
+  for (const r of [0, Math.PI / 2]) { const c = mesh(new T3.OctahedronGeometry(0.5, 0), m, 0, 0, 0, false); c.scale.set(0.4, 1.7, 0.4); c.rotation.z = r; g.add(c); }
+  const glow = new T3.PointLight('#ffb38a', 0.9, 10); g.add(glow);
+  return g;
+}
+function claudeTick(dt) {
+  if (MODE !== 'host') return;
+  if (claudeCursor) {
+    const c = claudeCursor, e = now - c.t0;
+    c.g.rotation.y += dt * 4;
+    if (e < 2.4) c.g.position.y = 30 - 28 * (1 - Math.pow(1 - e / 2.4, 3));
+    else if (!c.done) { c.done = true; claudeBuildNow(c); spawnBurst(c.x, 1.4, c.z, ['#ffb38a', '#ffe98a', '#ffffff'], 40, 2.4, 0.32); Sound.sparkle(); const near = W.people.find((q) => !q.inside && Math.hypot(q.x - c.x, q.z - c.z) < 10); if (near) { near.face = Math.atan2(c.x - near.x, c.z - near.z); bubble(near, pick(['Whoa. Claude?', 'It just… appeared.', 'Hi, Claude!', 'That thing again.', 'Claude, is that you?']), 2.8); } }
+    else { c.g.position.y = 2 + (e - 2.4) * 16; if (e > 4.5) { scene.remove(c.g); claudeCursor = null; } }
+  }
+  if (Math.floor(now) % 15 === 0 && Math.floor(now - dt) % 15 !== 0) claudeWatchdog(true);
+  const idle = now - lastTouch;
+  if (idle > 480) {
+    if (!awayMark) { awayMark = { last: W.log[W.log.length - 1], day: W.day }; awayNotes = []; }
+    W.claudeWork = W.claudeWork || {};
+    if (!claudeCursor && (W.claudeWork.day === undefined || W.day - W.claudeWork.day >= 1) && (W.claudeWork.count || 0) < 6 && W.t > 0.05 && W.t < 0.55) {
+      W.claudeWork = { day: W.day, count: (W.claudeWork.count || 0) + 1 };
+      claudeUpdate(true);
+    }
+  }
+}
+function userReturned(local) {
+  if (!awayMark) return;
+  const notes = awayNotes || [];
+  let i = W.log.length - 1; while (i >= 0 && W.log[i] !== awayMark.last) i--;
+  const hi = W.log.slice(i + 1).filter((e) => /💕|💍|💒|💔|💢|🛡|🎂|🏠|born|level|moved|quit/.test(e.text)).slice(-7);
+  const days = W.day - awayMark.day;
+  awayMark = null; awayNotes = null; W.claudeWork = { day: W.day, count: 0 };
+  if (!local || (!notes.length && !hi.length)) return;
+  const m = findMili(); if (m && !m.inside) { bubble(m, pick(["…Oh. You're back.", 'I felt that. Welcome back.', 'Hi. Hehe.']), 3, true); emote(m, '✧', 3); }
+  showAway(notes, hi, days, false);
+}
+function showAway(notes, hi, days, closed) {
+  const box = $('#awayBox');
+  $('#awayBody').innerHTML = `<p class="hint">${closed ? 'The island slept while the app was closed.' : days > 0 ? `${plural(days, 'day')} went by on the island.` : 'Some time went by on the island.'}</p>
+    ${notes.length ? `<p class="label">✳ Claude's notes</p>${notes.map((t) => `<p class="note">${esc(t)}</p>`).join('')}` : ''}
+    ${hi.length ? `<p class="label">What happened</p>${hi.map((e) => `<p class="note">${e.text}</p>`).join('')}` : ''}`;
+  box.hidden = false;
+}
+function awayOnBoot() {
+  const last = W.lastReal; W.lastReal = Date.now();
+  if (!last || ISLE !== 'isle1' && ISLE !== 'isle2') return;
+  const mins = (Date.now() - last) / 60000;
+  if (mins < 25) return;
+  awayNotes = [];
+  const n = mins > 600 ? 3 : mins > 150 ? 2 : 1;
+  for (let i = 0; i < n; i++) claudeUpdate(false);
+  const notes = awayNotes; awayNotes = null;
+  if (notes.length) setTimeout(() => showAway(notes, [], 0, true), 1800);
+}
+function claudeOpening(a, b) {
+  const latest = (W.updates || []).filter((u) => u.kind !== 'fix').slice(-1)[0];
+  if (!latest || rand() > 0.06 || W.day - latest.day > 3) return null;
+  const v = claudeView(a), thing = latest.short || 'the new thing';
+  const say = { grateful: `Did you see ${thing}? Claude's kind of sweet, for an AI.`, creeped: `${cap(thing)}. Overnight. Doesn't it bother you? An AI moving our stuff around while we sleep?`, curious: 'Do you think Claude can see us right now? Like, is it watching the code?', philosophical: `If the Creator tells Claude what to build, and Claude builds us things… who made this place, really?`, shrug: `Huh. ${cap(thing)}. Neat.` }[v];
+  const bv = claudeView(b);
+  const reply = { grateful: 'I like it. Feels like someone is looking out for us.', creeped: 'Okay, when you put it like that, yeah.', curious: "Maybe it's reading this conversation.", philosophical: "Don't. I'll be up all night.", shrug: "I didn't even notice, honestly." }[bv];
+  remember(a, `Talked with ${b.name} about Claude.`, 1, 'claudeTalk', b.name);
+  return { say, action: 'chat', feeling: v === bv ? 3 : 1, reply: { say: reply, action: 'chat', feeling: 2 } };
+}
+function patchNotesHtml() {
+  const U = (W.updates || []).slice(-10).reverse();
+  return `<p class="label">✳ Claude's patch notes</p>${U.length ? U.map((u) => `<p class="note"><span class="chip">day ${u.day}</span> ${esc(u.text)}</p>`).join('') : '<p class="hint">Claude works on the island while you\'re away. Notes show up here.</p>'}`;
+}
 
 // ============================================================
 // PERSONAL SPACE (no more standing inside each other)
@@ -4395,124 +4557,233 @@ function hangoutEnd(p) {
 }
 
 // ============================================================
-// PHONES: residents texting each other
+// PHONES: slower, real conversations built from what actually happened
 // ============================================================
-const TXT = {
-  sweet: ['thinking about u 🥺', 'hope ur day is going ok!!', 'ur my favorite person here fr', 'saw a cloud that looked like u. it was cute', 'good morning ☀️', 'i made u something. dont look yet'],
-  flirt: ['what r u doing later 👀', 'u looked really nice today', 'hey you', 'cant stop smiling ok bye', 'come find me at the fountain?'],
-  nervous: ['hi', 'um hi. how are u', 'nvm', 'did u like the thing today', 'sorry if thats weird lol'],
-  life: ['work was SO long today', 'the café ran out of cocoa again 😭', 'i think the pigeons downtown know my name', 'cant sleep', 'my room is a mess', 'anyone else think the fountain sounds different today??', 'i ate way too much'],
-  invite: ['wanna get ice cream?', 'arcade later?', 'bakery run?? i need a croissant', 'come to the pier, the sunset is crazy'],
-  gossip: ['ok so did u hear about {x}', '{x} was being SO weird today', 'dont tell anyone but i think {x} likes someone', 'why is {x} always at the café lol'],
-  mean: ['u were kind of rude today', 'whatever', 'dont talk to me', 'k', 'wow ok'],
-  bully: ['nobody likes u btw', 'saw u eating alone again lol', 'why do u even talk', 'ur so weird its embarrassing', 'no one asked', 'lol ok loser'],
-  defend: ['leave {v} alone.', 'i saw what u sent {v}. not cool', 'stop texting {v} like that', 'seriously? pick on someone else. actually dont'],
-  checkin: ['hey r u ok? i heard what happened', 'dont listen to them. ur great', 'want company? i can come over', 'im here if u wanna talk'],
-  vent: ['someone keeps sending me mean texts', 'i dont wanna talk about it. i just feel bad today', 'can u come sit with me'],
-  jealous: ['so what was THAT', 'u and {x}?? cool. cool cool', 'didnt know u were so close with {x}', 'k'],
-  jealousPartner: ['who was that', 'so r we gonna talk about {x}?', 'u looked really happy with {x}. just saying', 'are we ok?'],
-  sorry: ['hey. im sorry about before', 'can we talk?', 'i was being dumb. sorry'],
-  goodnight: ['night!! 🌙', 'gn, sleep well', 'goodnight. see u tmr', 'sweet dreams 💤'],
-  mili: ['ok weird question. can u hear what the creator hears', 'do u remember making the fountain', 'r u reading this chat from up there rn', 'is it weird being two things at once'],
-  group: ['anyone up?', 'who left a sock at the fountain', 'bakery has fresh croissants rn go go go', 'the sky today omg', 'lost my hat. if u see a hat its mine', 'is it just me or is the ferry late', 'guess who just caught a HUGE fish', 'hot take: ice cream is a breakfast food'],
-  groupMili: ['if mili is part of the creator is she reading this chat rn 👀', 'hi mili. hi creator. hi both of u', 'serious question: are we allowed to be mad at the creator if mili is right there', "does it count as praying if i just text mili"],
+const TOPIC_OF = {
+  fight: 'fight', defended: 'defended', wasDefended: 'wasDefended', laughedAt: 'laughedAt', hug: 'sweet', cuddle: 'sweet', handhold: 'sweet',
+  hangout: 'hangout', date: 'date', stoodUp: 'stoodUp', couple: 'couple', heartbreak: 'heartbreak', engaged: 'engaged', married: 'married', wedding: 'wedding',
+  work: 'work', quit: 'quit', levelUp: 'happy', creatorGift: 'creator', wishGranted: 'creator', bdayCreator: 'creator', creatorGrown: 'creator', wishLost: 'sad',
+  bdayGift: 'birthday', birthday: 'birthday', snowman: 'snowman', arcade: 'arcade', gossipLove: 'gossip', jealousLove: 'jealous', miliRumor: 'mili', miliTalk: 'mili',
+  claudeUpdate: 'claude', bullied: 'bullied', hungry: 'hungry', sick: 'sick', event: 'event', newcomer: 'newcomer', won: 'happy', apologized: 'madeup', gotApology: 'madeup',
+  hug2: 'sweet', confessedTo: 'gossip', breakup: 'breakup', notYet: 'sad', helpedCreator: 'random', fishing: 'random',
 };
-const REPLY = {
-  sweet: ['🥺🥺', 'stoppp ur so sweet', 'u too!!', 'aww', 'ok now im smiling'],
-  flirt: ['maybe 👀', 'hehe', 'omw', 'u too tbh'],
-  nervous: ['hi!', 'haha hi', 'im good! u?', 'not weird at all'],
-  life: ['same honestly', 'lmaooo', 'noo', 'real', 'mood'],
-  invite: ['YES', 'omw!', 'cant today :(', 'only if u pay lol'],
-  gossip: ['NO WAY', 'wait what', 'spill', 'thats kinda mean lol'],
-  mean: ['wow ok', 'what did i do??', 'fine', 'k'],
-  bully: ['…', 'why would u say that', 'please stop', 'leave me alone'],
-  defend: ['mind ur business', 'fine. whatever', 'ok ok sorry', 'lol ok hero'],
-  checkin: ['thank u 🥺', 'yeah… kind of', 'can u come over?', 'means a lot'],
-  vent: ['who?? ill talk to them', 'im so sorry', 'coming rn'],
-  jealous: ['its not like that', 'what do u mean', '??'],
-  jealousPartner: ['its not like that i promise', 'we were just talking', 'r u jealous 🥺', 'can we talk in person'],
-  sorry: ['its ok', 'yeah we can talk', 'ok. thanks for saying that', 'hmm. ill think about it'],
-  goodnight: ['night!!', 'gn 🌙', 'sweet dreams'],
-  mili: ['…i dont know. honestly', 'not really? sometimes a little', 'no!! hi though', 'yeah. kind of.'],
-  patch: ['thx claude', 'CLAUDE', 'the bench is so cute', 'who asked. (i love it)'],
-  group: ['lol', 'me', 'NO', 'omg', 'real', 'why is this chat like this'],
-  groupMili: ['LMAO', 'guys stop', '…', 'honestly valid question', 'she is literally right there'],
-};
-let lastText = 0, lastAiText = -99;
-const pendingTexts = [];
-function textThreadKey(a, b) { return b === 'town' ? 'town' : [a, b].sort().join('|'); }
-function sendText(from, to, tone, text) {
-  if (!from || !to || from.away || (to !== 'town' && (to.away || to === from))) return;
-  const toId = to === 'town' ? 'town' : to.id;
-  const fill = (s) => s.replace('{x}', () => { const others = W.people.filter((q) => q !== from && q !== to && !q.away); return others.length ? pick(others).name : 'someone'; }).replace('{v}', text && text.victim || '');
-  const go = (t) => {
-    t = String(t || '').trim().slice(0, 180); if (!t) return;
-    W.texts = W.texts || [];
-    W.texts.push({ id: uid(), from: from.id, fromName: from.name, to: toId, text: t, tone, day: W.day, t: W.t });
-    if (W.texts.length > 400) W.texts.splice(0, W.texts.length - 400);
-    if (!from.inside) emote(from, '📱', 2.5);
-    if (to !== 'town') {
-      if (!to.inside) setTimeout(() => emote(to, '📱', 2.5), 800);
-      const eff = { sweet: 0.4, flirt: 0.5, nervous: 0.2, checkin: 0.8, sorry: 0.6, invite: 0.2, mean: -0.6, bully: -1.2, defend: -0.6, jealous: -0.4, jealousPartner: -0.2 }[tone] || 0.05;
-      feel(to, from, eff, true);
-      if (tone === 'bully') { remember(to, `${from.name} texted me: "${t}"`, 3, 'bullied', from.name); to.joy = Math.max(0, (to.joy || 0) - 5); }
-      else if (['sweet', 'flirt', 'checkin', 'sorry'].includes(tone)) remember(to, `${from.name} texted me: "${t}"`, 2, 'textKind', from.name);
-      else if (['mean', 'jealous', 'jealousPartner', 'defend'].includes(tone)) remember(to, `${from.name} texted me: "${t}"`, 2, 'textMean', from.name);
-      else if (rand() < 0.3) remember(to, `${from.name} texted me: "${t}"`, 1, 'text', from.name);
-      remember(from, `Texted ${to.name}: "${t}"`, 1, 'texted', to.name);
-      if (!['goodnight', 'patch'].includes(tone) || rand() < 0.5) {
-        const rt = tone === 'bully' && rand() < 0.4 ? null : rand() < 0.75 ? tone : null;
-        if (rt) pendingTexts.push({ at: now + 3 + rand() * 7, from: to.id, to: from.id, tone: rt, reply: true });
-      }
-      if (tone === 'bully' && rand() < 0.5) { const bf = Object.entries(to.feelings).filter(([id, f]) => f.score >= 4 && id !== from.id && person(id) && !person(id).away).sort((x, y) => y[1].score - x[1].score)[0]; if (bf) { pendingTexts.push({ at: now + 8 + rand() * 6, from: to.id, to: bf[0], tone: 'vent' }); pendingTexts.push({ at: now + 18 + rand() * 8, from: bf[0], to: from.id, tone: 'defend', victim: to.name }); pendingTexts.push({ at: now + 24 + rand() * 8, from: bf[0], to: to.id, tone: 'checkin' }); } }
-    } else {
-      if (rand() < 0.7) { const q = pick(W.people.filter((x) => x !== from && !x.away && !(x.inside && x.task?.kind === 'home' && isNight()))); if (q) pendingTexts.push({ at: now + 3 + rand() * 8, from: q.id, to: 'town', tone: tone === 'patch' ? 'patch' : tone === 'groupMili' ? 'groupMili' : 'group', reply: true }); }
-    }
-    markDirty();
-    if (activeTab === 'texts' && !sheet.hidden) refreshPanel(false);
+const SAD = ['fight', 'laughedAt', 'stoodUp', 'heartbreak', 'sad', 'bullied', 'sick', 'breakup', 'hungry'];
+const HAPPY = ['wasDefended', 'sweet', 'date', 'couple', 'engaged', 'married', 'wedding', 'happy', 'creator', 'birthday', 'hangout', 'madeup', 'event', 'snowman'];
+const lc = (s) => String(s || '').replace(/[.!]+$/, '').replace(/^I /, 'i ').replace(/\bI\b/g, 'i').replace(/^([A-Z])/, (c) => c.toLowerCase());
+const firstName = (s) => String(s || 'someone');
+const interestOf = (p) => { const L = String(p.interests || '').split(/,|\band\b/).map((x) => x.trim().replace(/\(.*?\)/g, '')).filter((x) => x && x.length < 40); return L.length ? pick(L) : null; };
+function recentTextSet() { return new Set((W.texts || []).slice(-90).map((m) => m.text.toLowerCase())); }
+function pickFresh(list) {
+  const used = recentTextSet(), fresh = list.filter((x) => x && !used.has(String(x).toLowerCase()));
+  return pick(fresh.length ? fresh : list.filter(Boolean));
+}
+function pickTopic(a, b) {
+  const mems = (a.today || []).filter((m) => !m.texted && (m.weight >= 2 || TOPIC_OF[m.tag]) && !['arrived', 'text', 'texted'].includes(m.tag) && !String(m.tag).startsWith('text'));
+  const aboutB = mems.filter((m) => m.who === b.name);
+  const pool = aboutB.length && rand() < 0.5 ? aboutB : mems;
+  if (pool.length && rand() < 0.8) { const m = pick(pool.slice(-8)); m.texted = true; return { kind: TOPIC_OF[m.tag] || 'mem', mem: m, who: m.who }; }
+  if (a.partner === b.id) return { kind: pick(['miss', 'plans', 'miss', 'wonder', 'random']) };
+  if (!a.partner && !a.noRomance && fscore(a, b) >= 6.5 && !b.partner) return { kind: 'crush' };
+  if (fscore(a, b) <= -4) return { kind: 'beef' };
+  return { kind: pick(['interest', 'interest', 'food', 'job', 'weather', 'wonder', 'random', 'plans', 'claude']) };
+}
+function opener(a, b, T) {
+  const who = firstName(T.who), m = T.mem ? lc(T.mem.text) : '', me = b.name.toLowerCase();
+  const withB = T.who === b.name;
+  const L = {
+    fight: [`${m} today. still shaking honestly`, `ok so ${m}`, `dont be mad but ${m}`, `${who.toLowerCase()} and i got into it today`, 'today was so bad'],
+    defended: [`i stood up for someone today. my heart is still racing`, `${m}. i'd do it again`],
+    wasDefended: [`${who.toLowerCase()} stood up for me today 🥺`, `did u see ${who.toLowerCase()} defend me??`],
+    laughedAt: [`${who.toLowerCase()} laughed at me today. right in front of me`, 'do people think im a joke'],
+    sweet: withB ? ['thanks for today', 'that was nice earlier', 'still thinking about earlier 🥺', 'u give good hugs btw'] : [`${m} and i cant stop smiling`, `ok so ${m} 😳`],
+    hangout: withB ? ['that was so fun. ur room is cute', 'same time next week?'] : [`${m}!!`, 'had the best night'],
+    date: withB ? ['i had fun today', 'same spot tomorrow?', 'u looked really nice today'] : [`guess who went on a date 👀`, `${m}!!`],
+    stoodUp: [`${who.toLowerCase()} didnt show up. i waited forever`, 'got stood up lol. its fine'],
+    couple: [`so. ${who.toLowerCase()} and i are dating now`, 'guess who has a partner now 😳', `${m}!!!`],
+    heartbreak: [`i told ${who.toLowerCase()} how i feel. they said no`, 'dont ask about today pls'],
+    breakup: [`${m}`, 'its over with them. i dont want to talk about it. ok maybe i do'],
+    engaged: ['IM ENGAGED', `${m}!!!!`], married: ['i got MARRIED today', 'still cant believe it. married!!'], wedding: ['that wedding was so cute', 'i cried at the wedding ok'],
+    work: [`work was ${pick(['long', 'weirdly fun', 'so boring', 'actually nice', 'chaos'])} today`, `${m} lol`],
+    quit: ['i quit my job. dont tell anyone yet', `${m}. new start i guess`],
+    happy: ['today was SO good', 'best day ever honestly', 'im in such a good mood rn'],
+    creator: ['the creator gave me something today??', `${m}. what does that even mean`, 'do u think the creator likes me'],
+    sad: ['kind of a bad day', `${m}. whatever`, 'i dont want to talk about it but also i do'],
+    birthday: ['BIRTHDAY GIFT CHECK', `${m} 🥺`],
+    snowman: ['i built a snowman. his name is gerald', 'come see my snowman before it melts'],
+    arcade: ['new high score 😤', 'lost all my coins at the arcade lol'],
+    gossip: withB ? ['wait is it true??', 'ok so i heard something about u 👀'] : [`did u hear?? ${m.replace(/^i heard /, '')}`, `ok apparently ${m.replace(/^i heard /, '')}`],
+    jealous: withB ? ['who was that today', 'so. who was that', 'are we ok?'] : [`i saw ${who.toLowerCase()} with someone today. its fine. whatever`, 'am i allowed to be jealous'],
+    mili: isMili(b) ? ['can i ask u something weird', 'what does the island look like from up there', 'do u remember making the fountain'] : ['been thinking about mili again. like what she IS', 'do u think mili knows what were thinking', 'if mili is the creator who were we praying to'],
+    claude: ['did u see what claude added', 'claude changed stuff again overnight lol', 'does claude ever sleep. is that a thing for ai'],
+    bullied: ['someone keeps being mean to me', 'can u come sit with me', `${m}. i didnt even do anything`],
+    hungry: ['im starving', 'do u have snacks', 'no coins. so hungry'],
+    sick: ['sick again. mornings suck', 'my joints hurt so bad today'],
+    event: ['that was fun today!!', `${m}!`], newcomer: withB ? ['hi! welcome to the island 👋', `hey its ${a.name.toLowerCase()}. from the plaza`, 'welcome!! the bakery is the best btw'] : [`have u met ${who.toLowerCase()} yet`, 'theres a new person'],
+    madeup: [`${m}. feels better`, 'we made up!!'],
+    mem: [m, `so today ${m}`, `${m} lol`],
+    miss: ['miss u', 'what r u doing rn', 'thinking about u', 'come find me later?', 'hi you'],
+    plans: ['what r we doing tmr', 'wanna go to the pier later', 'bakery date?', 'arcade after work?'],
+    crush: ['hi', 'hey what r u up to', `random but i like ur ${pick(['hat', 'shirt', 'laugh', 'voice'])}`, 'is it weird that i texted u'],
+    beef: ['u know what u did', 'stay away from me tmr', 'so we are just ignoring what happened?'],
+    interest: (() => { const i = interestOf(a); return i ? [`have u ever gotten into ${i}?`, `i cant stop thinking about ${i}`, `ok ${i} tangent incoming`] : ['what do u even do for fun']; })(),
+    food: (() => { const f = favoriteFood(a); return f ? [`i could go for ${f} rn`, `have u tried the ${f}`, `${f} is elite. thats it thats the text`] : ['what should i eat']; })(),
+    job: [a.job ? `the ${JOBS[a.job].short} life is exhausting` : 'what do u do all day', 'how was work'],
+    weather: W.weather === 'rain' ? ['its POURING', 'rain day. staying in'] : W.weather === 'snow' ? ['SNOW', 'my toes are frozen'] : W.weather === 'storm' ? ['the thunder is so loud', 'r u ok in this storm'] : [`${seasonOf().name.toLowerCase()} is the best season fight me`, 'its so nice out'],
+    wonder: ["do u ever think about what's past the water", 'do u think the creator is watching rn', 'what do u want to be doing a year from now', 'do u think we dream the same dreams'],
+    random: ['whats up', 'bored', 'guess what', isNight() ? 'u up?' : 'hiii'],
   };
-  if (text && typeof text === 'string') return go(text);
-  const reply = pendingTexts.__reply;
-  const bank = reply ? REPLY[tone] || REPLY.life : TXT[tone] || TXT.life;
-  const fallback = fill(pick(bank));
-  const aiOk = aiReady() && aiBusy < 2 && now - lastAiText > 20 && to !== 'town' && !['patch'].includes(tone);
-  if (!aiOk) return go(fallback);
-  lastAiText = now;
-  const toneHint = { sweet: 'sweet and affectionate', flirt: 'flirty', nervous: 'nervous, because you have a crush on them', life: 'just a random update about your day', invite: 'inviting them to do something', gossip: 'gossiping about someone else in town', mean: 'cold and a bit mean, because you are annoyed with them', bully: 'mean and mocking, because you really dislike them (PG, no slurs)', defend: `telling them to leave ${text && text.victim || 'your friend'} alone`, checkin: 'checking on them because something bad happened', vent: 'venting because someone has been mean to you', jealous: 'jealous, after seeing them get close to someone', jealousPartner: 'upset and jealous, because you saw your partner get close to someone else', sorry: 'apologizing', goodnight: 'saying goodnight', mili: 'asking her something you have wondered about her being part of the Creator' }[tone] || 'casual';
-  const last = (W.texts || []).filter((m) => textThreadKey(m.from, m.to) === textThreadKey(from.id, to.id)).slice(-4).map((m) => `${m.fromName}: ${m.text}`).join('\n');
-  aiLine(from, to, [], `You are TEXTING ${to.name} on your phone, not talking in person. ${reply ? 'You are replying to their last text.' : 'You are starting a text.'} Tone: ${toneHint}. ${last ? `Recent texts between you:\n${last}\n` : ''}Write ONE short text message the way you actually text (lowercase, abbreviations or emoji only if that is you). No quotation marks.`)
-    .then((l) => go(l && l.say ? l.say.replace(/^["']|["']$/g, '') : fallback)).catch(() => go(fallback));
+  return pickFresh(L[T.kind] || L.mem);
+}
+function replyLine(b, a, T, turn) {
+  const f = fscore(b, a), warm = f >= 2, cold = f <= -2, k = T.kind;
+  if (turn >= 3) return pickFresh(warm ? ['ok ttyl', 'hehe', 'yes!!', 'gn 🌙', 'love that', '👍'] : ['k', 'fine', 'ok', 'bye']);
+  if (turn === 2) {
+    const own = (b.today || []).filter((m) => (m.weight >= 2) && !String(m.tag).startsWith('text') && !['arrived', 'newcomer', 'miliRumor', 'miliTalk'].includes(m.tag) && m.who !== a.name && !String(m.text).includes(a.name)).slice(-3);
+    if (own.length && rand() < 0.35) return `also ${lc(pick(own).text)}`;
+    return pickFresh(SAD.includes(k) ? (warm ? ['thanks. means a lot', 'ok. yeah. thanks', 'i might take u up on that'] : ['nvm', 'forget it']) : HAPPY.includes(k) ? ['hehe', 'ok im still smiling', 'tell u more tmr'] : ['anyway', 'lol ok', 'wanna hang tmr?', 'ok back to work', 'ttyl']);
+  }
+  if (SAD.includes(k)) return pickFresh(cold ? ['ok?', 'sounds like a u problem', 'lol'] : warm ? ['wait are u ok??', 'omg what happened', 'want me to come over?', 'im so sorry', 'who do i need to fight'] : ['oh no', 'that sucks']);
+  if (HAPPY.includes(k)) return pickFresh(cold ? ['cool', 'k', 'good for u i guess'] : ['NO WAY', 'omg tell me everything', 'thats so cute', 'im so happy for u', 'STOP 🥺']);
+  const R = {
+    gossip: ['WAIT what', 'no way', 'who told u', 'thats none of our business… but tell me'],
+    jealous: warm ? ['u are allowed to feel that', 'want me to spy'] : ['not my problem'],
+    mili: isMili(b) ? ['…i dont know. honestly', 'not really? sometimes a little', 'why does everyone ask me that 😭', 'really small. and kind of pretty'] : { reverent: ['we shouldnt talk about her like that', 'shes sacred ok'], wary: ['honestly same. careful what u say around her', 'i dont trust it'], resentful: ['she gets everything. its weird', 'ya its kinda unfair'], curious: ['i think about it ALL the time', 'we should ask her'], indifferent: ['shes just mili tho', 'i think ur overthinking it'] }[miliView(b)] || ['hmm'],
+    claude: { grateful: ['i love the new stuff honestly', 'claude is kind of sweet for an ai'], creeped: ['an ai rearranging our town while we sleep. normal', 'it creeps me out ngl'], curious: ['i wonder what claude thinks about', 'do u think claude can see this'], philosophical: ['who told claude what to build. the creator? so who made US', 'ai builds the island, creator builds the ai… wait'], shrug: ['neat i guess', 'didnt notice tbh'] }[claudeView(b)] || ['huh'],
+    miss: ['miss u too', 'omw', 'hehe hi', 'thinking about u too'],
+    plans: ['yes!!', 'cant tmr :(', 'only if u pay lol', 'deal'],
+    crush: f >= 6 ? ['hi!! 😳', 'hehe not weird at all', 'u too tbh'] : f >= 2 ? ['haha hi', 'thanks?', 'whats up'] : ['?', 'who is this'],
+    beef: ['whatever', 'u started it', 'fine', 'can we just talk?'],
+    interest: ['lol same', 'i dont get it but go off', 'ok explain', 'thats so u'],
+    food: ['omg yes', 'eh', 'ur paying', 'now im hungry'],
+    job: ['work is work', 'mine too honestly', 'lol quit'],
+    weather: ['ikr', 'stay dry', 'its so pretty tho'],
+    wonder: ['sometimes', 'thats deep for a tuesday', 'i try not to', 'honestly? yeah'],
+    random: ['nm u', 'same', 'what', 'hi'],
+    newcomer: T.who === b.name ? ['hi!! thank u', 'thank u 🥺 whats good here', 'hi. sorry, im shy'] : ['not yet! whats their deal', 'yeah they seem nice', 'who??'],
+    mem: warm ? ['wait really', 'lol', 'how was it', 'thats so random'] : cold ? ['k', 'ok', 'and?'] : ['oh nice', 'lol', 'huh', 'wait really', 'ok cool'],
+  };
+  return pickFresh(R[k] || R.mem);
+}
+let nextConvoAt = 45, nextGroupAt = 120, lastGoodnightDay = {};
+const convos = [];
+function postText(from, toId, text, tone, T) {
+  text = String(text || '').replace(/^["']|["']$/g, '').trim().slice(0, 180); if (!text) return null;
+  W.texts = W.texts || [];
+  const msg = { id: uid(), from: from.id, fromName: from.name, to: toId, text, tone, day: W.day, t: W.t };
+  W.texts.push(msg); if (W.texts.length > 400) W.texts.splice(0, W.texts.length - 400);
+  if (!from.inside) emote(from, '📱', 2.5);
+  const to = toId !== 'town' && person(toId);
+  if (to) {
+    if (!to.inside) setTimeout(() => emote(to, '📱', 2.5), 900);
+    const eff = { bully: -1.1, beef: -0.4, jealous: -0.2, sweet: 0.3, miss: 0.3, crush: 0.3, support: 0.5 }[tone] ?? 0.05;
+    feel(to, from, eff, true);
+    if (tone === 'bully') { remember(to, `${from.name} texted me: "${text}"`, 3, 'bullied', from.name); to.joy = Math.max(0, (to.joy || 0) - 5); }
+  }
+  markDirty();
+  if (activeTab === 'texts' && !sheet.hidden) refreshPanel(false);
+  return msg;
+}
+function toneFor(a, b, T) {
+  if (T.kind === 'bully') return 'bully';
+  const f = fscore(a, b);
+  if (T.kind === 'beef' || f <= -4) return 'beef';
+  if (a.partner === b.id || T.kind === 'miss') return 'miss';
+  if (T.kind === 'crush') return 'crush';
+  return f >= 4 ? 'sweet' : 'chat';
+}
+async function aiText(from, to, T, transcript, replying) {
+  if (!(aiReady() && aiBusy < 2)) return null;
+  const topic = T.mem ? `what happened: ${T.mem.text}` : { miss: 'you miss them', plans: 'making plans', crush: 'you have a crush on them and are nervous', beef: 'you are angry at them', bully: 'you want to be mean to them (PG, no slurs)', wonder: 'a big random thought', claude: 'the AI named Claude that keeps changing the island', mili: 'what Mili really is', interest: `something you're into: ${interestOf(from) || 'anything'}`, jealous: 'you felt jealous today' }[T.kind] || T.kind;
+  try {
+    const l = await aiLine(from, to, [], `You are TEXTING ${to.name} on your phone, not talking in person. ${replying ? 'Reply to their last message.' : `Start a text about ${topic}.`}${transcript.length ? `\nThe texts so far:\n${transcript.map((m) => `${m.fromName}: ${m.text}`).join('\n')}` : ''}\nWrite ONE short text message the way you personally text (lowercase is fine, emoji only if that is you). Say something specific and real, not generic. No quotation marks.`);
+    return l && l.say ? l.say : null;
+  } catch (e) { return null; }
+}
+async function startConvo(a, b, T) {
+  if (!a || !b || a === b || a.away || b.away || convos.some((c) => c.a === a || c.b === a)) return;
+  T = T || pickTopic(a, b);
+  const c = { a, b, T }; convos.push(c);
+  const transcript = [];
+  try {
+    const turns = T.kind === 'bully' ? (rand() < 0.5 ? 1 : 2) : 2 + Math.floor(rand() * 3);
+    for (let i = 0; i < turns; i++) {
+      const [s, r] = i % 2 ? [b, a] : [a, b];
+      if (i) await sleep((5 + rand() * 12) * 1000);
+      if (!W || s.away) break;
+      if (s.inside && s.task?.kind === 'home' && (W.t >= 0.68 || W.t < 0.01) && i) break;
+      let text = await aiText(s, r, T, transcript, i > 0);
+      if (!text) text = i === 0 ? (T.kind === 'bully' ? pickFresh(['nobody likes u btw', 'saw u eating alone again lol', 'why do u even talk', 'ur so weird its embarrassing', 'no one asked']) : opener(s, r, T)) : replyLine(s, r, T, i);
+      const msg = postText(s, r.id, text, i === 0 ? toneFor(a, b, T) : (SAD.includes(T.kind) && fscore(s, r) >= 2 ? 'support' : fscore(s, r) <= -3 ? 'beef' : 'chat'), T);
+      if (msg) transcript.push(msg);
+      if (T.kind === 'bully' && i === 0 && rand() > 0.5) break;
+    }
+    if (transcript.length) {
+      const gist = T.mem ? T.mem.text : `${T.kind === 'miss' ? 'missing each other' : T.kind}`;
+      remember(b, `Texted with ${a.name}. ${a.name} said: "${transcript[0].text}"`, SAD.includes(T.kind) || HAPPY.includes(T.kind) ? 2 : 1, 'textThread', a.name);
+      remember(a, `Texted ${b.name} about ${String(gist).slice(0, 80)}.`, 1, 'textThread', b.name);
+      if (T.kind === 'bully') {
+        const bf = Object.entries(b.feelings).filter(([id, f]) => f.score >= 4 && id !== a.id && person(id) && !person(id).away).sort((x, y) => y[1].score - x[1].score)[0];
+        if (bf && rand() < 0.6) { const friend = person(bf[0]); setTimeout(() => startConvo(b, friend, { kind: 'bullied', who: a.name, mem: { text: `${a.name} keeps texting me mean stuff` } }), 12000); setTimeout(() => startConvo(friend, a, { kind: 'beef', who: b.name }), 30000); }
+      }
+    }
+  } finally { convos.splice(convos.indexOf(c), 1); }
+}
+function sendText(from, to, tone) {
+  if (to === 'town') return groupPost(from);
+  const kind = tone === 'jealousPartner' || tone === 'jealous' ? 'jealous' : tone === 'bully' ? 'bully' : tone === 'patch' ? 'claude' : tone;
+  startConvo(from, to, { kind, who: to && to.name });
+}
+function groupPost(a) {
+  const others = W.people.filter((q) => q !== a && !q.away && !(q.inside && q.task?.kind === 'home' && isNight()));
+  const latest = (W.updates || []).slice(-1)[0];
+  const lines = [
+    ...(a.today || []).filter((m) => m.weight >= 2 && !String(m.tag).startsWith('text') && !m.posted).slice(-2).map((m) => { m.posted = true; return `${lc(m.text)} ${pick(['lol', '!!', '😭', '', 'anyway'])}`.trim(); }),
+    'who left a sock at the fountain', 'bakery has fresh croissants rn go go go', 'lost my hat. if u see a hat its mine', 'is it just me or is the ferry late', 'hot take: ice cream is a breakfast food',
+    `${seasonOf().name.toLowerCase()} vibes today`, W.event && W.event.day === W.day && EVENTS[W.event.id] ? `whos going to ${EVENTS[W.event.id].name}??` : 'anyone doing anything today',
+    latest && latest.day >= W.day - 1 ? `did anyone else notice ${latest.short || 'the new thing'}. claude again` : 'anyone up?',
+    findMili() && findMili() !== a && rand() < 0.3 ? 'if mili is part of the creator is she reading this chat rn 👀' : 'whats everyone doing',
+  ];
+  const text = pickFresh(lines);
+  postText(a, 'town', text, 'group');
+  const n = rand() < 0.3 ? 0 : rand() < 0.7 ? 1 : 2;
+  for (let i = 0; i < n && others.length; i++) {
+    const q = pick(others);
+    setTimeout(() => { const low = text.toLowerCase(); postText(q, 'town', pickFresh(low.includes('mili') ? (isMili(q) ? ['…yes. hi.', 'i can read it the normal way. like everyone', 'please stop 😭'] : ['LMAO', 'guys stop', 'she is literally right there', 'honestly valid question']) : low.includes('claude') ? ['lol', 'i like it tbh', 'it keeps rearranging things', 'claude if ur reading this: more benches'] : ['lol', 'me', 'NO', 'omg', 'real', 'why is this chat like this', `${a.name.toLowerCase()} pls`, 'same', 'on my way']), 'group'); }, (4 + rand() * 12) * 1000 * (i + 1));
+  }
 }
 function textTick() {
-  for (let i = pendingTexts.length - 1; i >= 0; i--) {
-    const q = pendingTexts[i]; if (now < q.at) continue;
-    pendingTexts.splice(i, 1);
-    const from = person(q.from), to = q.to === 'town' ? 'town' : person(q.to);
-    if (!from || !to) continue;
-    if (from.inside && from.task?.kind === 'home' && (W.t >= 0.66 || W.t < 0.01)) continue;
-    pendingTexts.__reply = !!q.reply; sendText(from, to, q.tone, q.victim ? { victim: q.victim } : undefined); pendingTexts.__reply = false;
+  if (W.meeting || MODE !== 'host') return;
+  if (now >= nextConvoAt) {
+    nextConvoAt = now + 60 + rand() * 70;
+    const awake = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 0.5 && !(p.inside && p.task?.kind === 'home' && (W.t >= 0.68 || W.t < 0.01)));
+    if (awake.length >= 2) {
+      const scored = awake.map((p) => [p, (p.today || []).filter((m) => !m.texted && m.weight >= 2).length + rand() * 1.5]).sort((x, y) => y[1] - x[1]);
+      const a = scored[0][0];
+      const T0 = pickTopic(a, a);
+      let b = null;
+      if (T0.who && T0.who !== a.name) { const w = W.people.find((q) => q.name === T0.who); if (w && rand() < 0.35 && !w.away) b = w; }
+      if (!b) {
+        const others = W.people.filter((q) => q !== a && !q.away && !q.visitor);
+        const partner = a.partner && person(a.partner);
+        const best = others.filter((q) => fscore(a, q) >= 3).sort((x, y) => fscore(a, y) - fscore(a, x));
+        const enemy = others.find((q) => fscore(a, q) <= -6);
+        if (enemy && rand() < 0.15 && (a.body.openness ?? 0) < 0.3) { if (T0.mem) T0.mem.texted = false; return startConvo(a, enemy, { kind: 'bully' }); }
+        b = partner && rand() < 0.4 ? partner : best.length ? pick(best.slice(0, 3)) : others.length ? pick(others) : null;
+      }
+      if (b) { if (T0.mem && T0.who === b.name) T0.kind = TOPIC_OF[T0.mem.tag] || 'mem'; startConvo(a, b, T0); }
+    }
   }
-  if (now - lastText < 6 || W.meeting) return;
-  lastText = now;
-  const awake = W.people.filter((p) => !p.away && !p.visitor && p.state !== 'talk' && !(p.inside && p.task?.kind === 'home' && (W.t >= 0.66 || W.t < 0.01)) && p.grow >= 0.5);
-  if (!awake.length || rand() > 0.7) return;
-  const a = pick(awake), m = findMili();
-  const late = W.t > 0.6;
-  const partner = a.partner && person(a.partner);
-  if (late && partner && rand() < 0.6) return sendText(a, partner, 'goodnight');
-  const r = rand();
-  if (r < 0.1) return sendText(a, 'town', m && m !== a && rand() < 0.2 ? 'groupMili' : 'group');
-  if (partner && r < 0.35) return sendText(a, partner, fscore(a, partner) >= 4 ? pick(['sweet', 'flirt', 'sweet', 'invite']) : 'mean');
-  const others = W.people.filter((q) => q !== a && !q.away && !q.visitor);
-  if (!others.length) return;
-  const crush = others.find((q) => !a.partner && !q.partner && fscore(a, q) >= 6.5 && !a.noRomance);
-  if (crush && r < 0.45) return sendText(a, crush, pick(['nervous', 'flirt', 'sweet']));
-  const enemy = others.filter((q) => fscore(a, q) <= -4).sort((x, y) => fscore(a, x) - fscore(a, y))[0];
-  if (enemy && r < 0.62 && !isClaude(a)) return sendText(a, enemy, fscore(a, enemy) <= -6 && (a.body.openness ?? 0) < 0.3 ? 'bully' : 'mean');
-  if (m && m !== a && r < 0.66 && !isClaude(a) && ['curious', 'wary', 'resentful'].includes(miliView(a))) return sendText(a, m, 'mili');
-  const friends = others.filter((q) => fscore(a, q) >= 2);
-  if (friends.length) { const f = pick(friends); return sendText(a, f, pick(['life', 'life', 'invite', 'gossip', 'sweet'])); }
-  const any = pick(others); sendText(a, any, 'nervous');
+  if (now >= nextGroupAt) {
+    nextGroupAt = now + 150 + rand() * 150;
+    const awake = W.people.filter((p) => !p.away && !p.visitor && !(p.inside && p.task?.kind === 'home' && isNight()));
+    if (awake.length) groupPost(pick(awake));
+  }
+  if (W.t > 0.62 && W.t < 0.7) for (const p of W.people) {
+    const q = p.partner && person(p.partner);
+    if (!q || lastGoodnightDay[p.id] === W.day || p.away) continue;
+    lastGoodnightDay[p.id] = lastGoodnightDay[q.id] = W.day;
+    if (rand() < 0.7) startConvo(p, q, { kind: 'miss' });
+  }
 }
 
 // ============================================================
@@ -4570,20 +4841,31 @@ function poseStep(p, dt) {
 const tagSlots = [];
 function declutterTags() {
   const L = [];
-  for (const [, m] of meshes) { if (m.tag.style.display === 'none' || m.sx === undefined) continue; L.push(m); }
+  for (const [, m] of meshes) {
+    if (m.tag.style.display === 'none' || m.sx === undefined) continue;
+    const d = camera.position.distanceTo(m.root.position);
+    m.tsc = clamp(34 / d, 0.62, 1);
+    m.talk = !m.tagBub.hidden;
+    L.push(m);
+  }
   L.sort((a, b) => b.sy - a.sy);
   const placed = [];
   for (const m of L) {
-    const w = m.tag.offsetWidth || 60, h = m.tag.offsetHeight || 20;
     let y = m.sy;
-    for (let pass = 0; pass < 8; pass++) {
-      let moved = false;
-      for (const r of placed) if (Math.abs(m.sx - r.x) < (w + r.w) / 2 - 4 && y > r.y - r.h + 2 && y - h < r.y - 2) { y = r.y - r.h - 2; moved = true; }
-      if (!moved) break;
+    if (m.talk) {
+      const w = (m.tag.offsetWidth || 60) * m.tsc, h = (m.tag.offsetHeight || 20) * m.tsc;
+      for (let pass = 0; pass < 6; pass++) {
+        let moved = false;
+        for (const r of placed) if (Math.abs(m.sx - r.x) < (w + r.w) / 2 - 6 && y > r.y - r.h + 4 && y - h < r.y - 4) { y = r.y - r.h - 3; moved = true; }
+        if (!moved) break;
+      }
+      y = Math.max(y, m.sy - 70);
+      placed.push({ x: m.sx, y, w, h });
     }
-    placed.push({ x: m.sx, y, w, h });
-    m.offY = (m.offY ?? 0) + ((y - m.sy) - (m.offY ?? 0)) * 0.3;
-    m.tag.style.transform = `translate(${m.sx}px, ${m.sy + m.offY}px) translate(-50%, -100%)`;
+    m.offY = (m.offY ?? 0) + ((y - m.sy) - (m.offY ?? 0)) * 0.25;
+    m.tag.style.transform = `translate(${m.sx}px, ${m.sy + m.offY}px) translate(-50%, -100%) scale(${m.tsc.toFixed(3)})`;
+    m.tag.style.transformOrigin = '50% 100%';
+    m.tag.style.zIndex = String(Math.round(m.sy));
   }
 }
 
@@ -4911,7 +5193,7 @@ function renderDetail(id) {
       <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}</div></div></div>
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>
-    ${isMili(p) ? `<p class="hint">✧ A piece of you, living down here. Her cat is called ${esc(catName())}. <button class="btn" type="button" data-renamecat>Rename the cat</button></p>` : ''}${isClaude(p) ? `<p class="hint">✳ Claude has added ${W.placed.filter((x) => x.by === 'Claude').length} things around the island.</p>` : ''}
+    ${isMili(p) ? `<p class="hint">✧ A piece of you, living down here. Her cat is called ${esc(catName())}. <button class="btn" type="button" data-renamecat>Rename the cat</button></p>` : ''}
     ${(() => { const T = (W.texts || []).filter((m) => m.from === p.id || m.to === p.id).slice(-4).reverse(); return T.length ? `<p class="label">Their phone</p>${T.map((m) => `<p class="hint">${m.from === p.id ? `To ${esc(m.to === 'town' ? 'the group chat' : person(m.to)?.name || '?')}` : `From ${esc(m.fromName)}`}: "${esc(m.text)}"</p>`).join('')}` : ''; })()}
     <div class="creator">
       <h3>How ${esc(p.name)} sees you</h3>
@@ -5012,6 +5294,7 @@ function renderBoard() {
     ${(() => { const up = W.people.filter((p) => p.bday).map((p) => [p, (p.bday - yearDay() + YEAR) % YEAR]).filter(([, d]) => d <= 7).sort((a, b) => a[1] - b[1]); return up.length ? `<div class="chips">${up.map(([p, d]) => `<span class="chip ${d === 0 ? 'gold' : ''}">🎂 ${esc(p.name)} ${d === 0 ? 'today!' : d === 1 ? 'tomorrow' : `in ${d} days`}</span>`).join('')}</div>` : '<p class="hint">No birthdays this week.</p>'; })()}
     <p class="label">Couples</p>
     ${(() => { const seen = new Set(), L = []; for (const p of W.people) { const q = p.partner && person(p.partner); if (!q || seen.has(p.id)) continue; seen.add(p.id); seen.add(q.id); L.push(`<span class="chip good">${p.married ? '💍' : '💕'} ${esc(p.name)} & ${esc(q.name)}</span>`); } const wd = W.wedding && person(W.wedding.a) && person(W.wedding.b) ? `<p>💒 ${esc(person(W.wedding.a).name)} and ${esc(person(W.wedding.b).name)} are getting married ${W.wedding.day === W.day + 1 ? 'tomorrow' : `on day ${W.wedding.day}`} at ${EVENTS.wedding.at}.</p>` : ''; return wd + (L.length ? `<div class="chips">${L.join('')}</div>` : '<p class="hint">Nobody is dating yet. Give it time.</p>'); })()}
+    ${patchNotesHtml()}
     <p class="label">What the town thinks of you</p>
     <div class="chips">${W.people.map((p) => { const [a, , c] = attitude(p); return `<span class="chip ${c}">${esc(p.name)}: ${a}</span>`; }).join('')}</div>`;
 }
@@ -5291,17 +5574,17 @@ async function boot() {
   selRing.rotation.x = -Math.PI / 2; selRing.visible = false; scene.add(selRing);
   W = (await loadWorld()) || newWorld();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); buildLand(); buildPlaced(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); awayOnBoot(); buildLand(); buildPlaced(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
   resize(); addEventListener('resize', resize);
   const portrait = innerHeight > innerWidth;
   camera.position.set(portrait ? 50 : 42, portrait ? 70 : 50, portrait ? 80 : 58); controls.target.set(0, 2, -16);
-  applyLook(); wireTownInput(); wireCamBar();
+  applyLook(); wireTownInput(); wireCamBar(); wireZoomGuards();
   $('#loading').remove();
   if (RT.room) {
-    RT.room.on(`${ISLE}-cmd`, async (msg) => { if (msg.sameTab) return; const c = msg.data || {}; if ((c.isle || 'isle1') !== ISLE) return; if (c.t === 'llm') { let out; try { out = { result: await llm(c.input, { model: c.model, raw: c.raw, fallbackKey: c.fallbackKey || undefined }) }; } catch (e) { out = { error: e.code || 'upstream_error' }; } RT.room.emit(`${ISLE}-ack`, { rid: c.rid, ...out }).catch(() => {}); return; } const res = applyCmd(c); if (c.rid) RT.room.emit(`${ISLE}-ack`, { rid: c.rid, text: res || '' }).catch(() => {}); refreshPanel(false); if (['buy', 'gift', 'coins', 'chip', 'talked'].includes(c.t)) setTimeout(saveNow, 400); });
+    RT.room.on(`${ISLE}-cmd`, async (msg) => { if (msg.sameTab) return; const c = msg.data || {}; if ((c.isle || 'isle1') !== ISLE) return; if (c.t !== 'llm') { userReturned(false); lastTouch = now; } if (c.t === 'llm') { let out; try { out = { result: await llm(c.input, { model: c.model, raw: c.raw, fallbackKey: c.fallbackKey || undefined }) }; } catch (e) { out = { error: e.code || 'upstream_error' }; } RT.room.emit(`${ISLE}-ack`, { rid: c.rid, ...out }).catch(() => {}); return; } const res = applyCmd(c); if (c.rid) RT.room.emit(`${ISLE}-ack`, { rid: c.rid, text: res || '' }).catch(() => {}); refreshPanel(false); if (['buy', 'gift', 'coins', 'chip', 'talked'].includes(c.t)) setTimeout(saveNow, 400); });
     RT.room.on(`${ISLE}-cam`, (msg) => { if (msg.sameTab) return; const c = msg.data || {}; if ((c.isle || 'isle1') !== ISLE) return; if (c.pan) { panBy(Number(c.dx) || 0, Number(c.dy) || 0); if (c.dz) orbitBy(0, 0, Number(c.dz) || 0); } else orbitBy(Number(c.dx) || 0, Number(c.dy) || 0, Number(c.dz) || 0); });
     RT.room.onPeers((ch) => { peerCount = ch.peers.length; if (activeTab === 'box') renderLink(); });
   }
@@ -5311,7 +5594,7 @@ async function boot() {
     step(dt);
     if (interior) roomControls.update();
     else { controls.autoRotate = cfg.spin && now - lastTouch > 10 && !keysDown.size; const tx = controls.target.x, tz = controls.target.z; controls.update(); if (Math.abs(controls.target.x - tx) + Math.abs(controls.target.z - tz) > 1e-4) { userPanned(); clampView(); } }
-    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); seasonFrame(dt); catFrame(dt);
+    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); seasonFrame(dt); catFrame(dt); claudeTick(dt);
     renderer.render(interior ? roomScene : scene, interior ? roomCam : camera);
     if (wantPhoto) { wantPhoto = false; try { takePhoto(); } catch (e) { console.error(e); toast('The camera jammed. Try again?'); } }
     if (now - lastHud > 0.5) { hud(); lastHud = now; }
@@ -5321,7 +5604,7 @@ async function boot() {
   }
   requestAnimationFrame(frame);
 }
-if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
+if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, cupdate: (live) => claudeUpdate(live), away: () => { lastTouch = -9999; }, back: () => userReturned(true), convo: () => { nextConvoAt = 0; }, resetView: () => resetView(), watchdog: () => claudeWatchdog(true), text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
 boot();
 })();
 </script>
