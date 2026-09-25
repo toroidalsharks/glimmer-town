@@ -152,6 +152,10 @@
   .roomcard .rc { background: rgba(17, 14, 28, .85); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; max-width: 70%; }
   .roomcard .rc b { font: 16px var(--display); display: block; }
   .roomcard .rc span { font-size: 12px; color: var(--dim); }
+  .roomcard .rcbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .roomcard .rcbtns:empty { display: none; }
+  .roomcard .rcbtns .btn { padding: 3px 10px; font-size: 12px; }
+  .roomcard .rcbtns .btn[aria-pressed=true] { background: var(--gold); color: #2a2238; }
 
   .toast { pointer-events: none; position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 64px); transform: translateX(-50%); background: #fff6d6; color: #2a2008; font: 700 14px var(--body); padding: 8px 16px; border-radius: 999px; max-width: calc(100% - 32px); text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.3); transition: opacity .3s; z-index: 5; }
   .ghost-hint { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); font-size: 12px; color: var(--faint); pointer-events: none; transition: opacity .8s; }
@@ -243,7 +247,7 @@
 <div class="hud" id="hud"><b id="hudName">Glimmer Town</b><span id="clock"></span><span id="np"></span></div>
 <button class="toggle" id="toggle" type="button">Town</button>
 <p class="ghost-hint" id="ghostHint" style="opacity:0">Tap empty space to bring the menus back</p>
-<div class="roomcard" id="roomcard" hidden><div class="rc"><b id="rcTitle"></b><span id="rcSub"></span></div><button class="btn" id="rcClose" type="button">Back to town</button></div>
+<div class="roomcard" id="roomcard" hidden><div class="rc"><b id="rcTitle"></b><span id="rcSub"></span><span id="rcBtns" class="rcbtns"></span></div><button class="btn" id="rcClose" type="button">Back to town</button></div>
 <div id="itags"></div>
 <div class="roomcard" id="placeBar" hidden style="top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 16px)"><div class="rc"><b>Build mode</b><span id="placeText"></span></div><button class="btn" id="placeCancel" type="button">Cancel</button></div>
 <div class="toast" id="toast" style="opacity:0" role="status"></div>
@@ -271,6 +275,8 @@
 </div>
 
 <div class="flash" id="flash"></div>
+<div class="awaybox" id="careBox" hidden role="dialog" aria-label="Health"><div id="careBody"></div></div>
+<div class="awaybox" id="labBox" hidden role="dialog" aria-label="Glimmer Labs"><div id="labBody"></div></div>
 <div class="awaybox" id="awayBox" hidden role="dialog" aria-label="While you were away"><h2>While you were away</h2><div id="awayBody"></div><div class="btns"><button class="btn gold" type="button" id="awayOk">Okay</button></div></div>
 <div class="fishbox" id="fishBox" hidden><b>Fishing off the pier</b><p id="fishMsg"></p><div class="fishbar"><i id="fishZone"></i><span id="fishFloat"></span></div><div class="btns"><button class="btn gold" id="fishReel" type="button">Reel</button><button class="btn" id="fishCast" type="button">Cast again</button><button class="btn" id="fishClose" type="button">Done</button></div></div>
 <section class="sheet" id="sheet" hidden aria-label="Town panel">
@@ -432,6 +438,13 @@ const JOBS = {
   dev:     { short: 'software developer', title: 'software developer at Glimmer Labs', place: 'labs', pay: 7, collar: 'white', indoor: true, needs: ['computers', 'math'] },
   ai:      { short: 'AI safety researcher', title: 'AI safety researcher at Glimmer Labs', place: 'labs', pay: 8, collar: 'white', indoor: true, needs: ['computers', 'safety', 'math'] },
   lawyer:  { short: 'lawyer', title: 'lawyer at Glimmer Hall', place: 'hall', pay: 6, collar: 'white', indoor: true, needs: ['history', 'philosophy', 'money'] },
+  bio:     { short: 'biologist', title: 'biologist on the Science floor of Glimmer Labs', place: 'labs', pay: 6, collar: 'white', indoor: true, needs: ['science', 'ocean', 'animals', 'plants'], must: 'science' },
+  chem:    { short: 'chemist', title: 'chemist on the Science floor of Glimmer Labs', place: 'labs', pay: 6, collar: 'white', indoor: true, needs: ['science', 'cooking', 'math'], must: 'science' },
+  phys:    { short: 'physicist', title: 'physicist on the Science floor of Glimmer Labs', place: 'labs', pay: 7, collar: 'white', indoor: true, needs: ['science', 'space', 'math'], must: 'science' },
+  robo:    { short: 'robotics engineer', title: 'robotics engineer on the Engineering floor of Glimmer Labs', place: 'labs', pay: 7, collar: 'white', indoor: true, needs: ['engineering', 'computers', 'math'], must: 'engineering' },
+  civil:   { short: 'civil engineer', title: 'civil engineer on the Engineering floor of Glimmer Labs', place: 'labs', pay: 6, collar: 'white', indoor: true, needs: ['engineering', 'math', 'history'], must: 'engineering' },
+  doctor:  { short: 'doctor', title: 'doctor at Glimmer Clinic', place: 'clinic', pay: 8, collar: 'white', indoor: true, needs: ['health', 'science', 'psych'], must: 'health' },
+  therapist: { short: 'therapist', title: 'therapist at Glimmer Clinic', place: 'clinic', pay: 6, collar: 'white', indoor: true, needs: ['psych', 'philosophy'], must: 'psych' },
   builder: { short: 'construction worker', title: 'construction worker downtown', place: 'downtown', pay: 3, collar: 'blue' },
   janitor: { short: 'street sweeper', title: 'street sweeper', place: 'plaza', pay: 2, collar: 'blue' },
 };
@@ -636,8 +649,8 @@ const DT = { x: 0, z: -56, R: 32 };
 const polarDT = (deg, r) => [DT.x + Math.sin(deg * Math.PI / 180) * r, DT.z - Math.cos(deg * Math.PI / 180) * r];
 const DT_GATE = [[9.4, -19], [11, -28.5]];
 const DT_HUB = [4, -42.5];
-const DT_BLD = { home2: { a: 0, r: 22, d: 8 }, home3: { a: 300, r: 22, d: 8 }, bakery: { a: 58, r: 21, d: 8 }, books: { a: 108, r: 21, d: 8 }, arcade: { a: 245, r: 21, d: 8 }, icecream: { a: 202, r: 21, d: 8 }, hall: { a: 272, r: 21, d: 8 }, labs: { a: 32, r: 21, d: 8 } };
-const DT_NAMES = { home2: 'Bluebell Court', home3: 'Sunny Heights', bakery: 'Sweet Rise Bakery', books: 'Paper Moon Books', arcade: 'Pixel Palace', icecream: 'Sundae Best', hall: 'Glimmer Hall', labs: 'Glimmer Labs' };
+const DT_BLD = { home2: { a: 0, r: 22, d: 8 }, home3: { a: 300, r: 22, d: 8 }, bakery: { a: 58, r: 21, d: 8 }, books: { a: 108, r: 21, d: 8 }, arcade: { a: 245, r: 21, d: 8 }, icecream: { a: 202, r: 21, d: 8 }, hall: { a: 272, r: 21, d: 8 }, labs: { a: 32, r: 21, d: 8 }, clinic: { a: 135, r: 21.5, d: 7 } };
+const DT_NAMES = { home2: 'Bluebell Court', home3: 'Sunny Heights', bakery: 'Sweet Rise Bakery', books: 'Paper Moon Books', arcade: 'Pixel Palace', icecream: 'Sundae Best', hall: 'Glimmer Hall', labs: 'Glimmer Labs', clinic: 'Glimmer Clinic' };
 for (const [k, b] of Object.entries(DT_BLD)) TOWN[k] = { name: DT_NAMES[k], spot: polarDT(b.a, b.r - b.d / 2 - 0.8), entry: [...DT_GATE, DT_HUB, polarDT(b.a, 10.2)], local: [polarDT(b.a, 10.2)], zone: 'dt' };
 TOWN.beach = { name: 'Seashell Beach', spot: polar(222, 36), entry: [polar(229, 11.4), polar(229, 27.5)] };
 TOWN.downtown = { name: 'downtown', spot: [DT.x, DT.z + 6], entry: [...DT_GATE, DT_HUB], local: [], zone: 'dt' };
@@ -1021,7 +1034,7 @@ function talkPrompt(p, said, history) {
   return `You are role-playing ${p.name}, a small, round villager who lives in room ${p.room + 1} of the apartments in Glimmer Town, a tiny island town. You are not an assistant. Everyone in town knows about "the Creator": an unseen being who made the island, sometimes sends gifts and coins from the sky, and whose likes and dislikes nobody knows for sure. Right now, the Creator is speaking directly to you.
 
 WHO YOU ARE, IN YOUR OWN WORDS: ${p.selfNote}
-BODY: ${bodyFacts(p)}${p.grow < 1 ? ' You are still a small child, so talk like one.' : ''}${p.style ? `\nHOW YOU TALK: ${styleOf(p)}` : ''}${p.interests ? `\nYOU'RE INTO: ${p.interests}` : ''}
+BODY: ${bodyFacts(p)}${p.grow < 1 ? ' You are still a small child, so talk like one.' : ''}${p.style ? `\nHOW YOU TALK: ${styleOf(p)}` : ''}${p.interests ? `\nYOU'RE INTO: ${p.interests}` : ''}${healthContext(p, null)}
 LIFE: ${p.job ? `You work as a ${JOBS[p.job].title}.` : 'You are too young for a job.'} ${p.coins} coins. Wearing ${outfitText(p)}. Favorite food: ${favoriteFood(p) || 'not sure yet'}.
 HOW YOU FEEL ABOUT THE CREATOR: ${att} (${Math.round(p.cr.score)} on a scale from -10 to 10). The Creator has given you ${plural(Math.round(p.cr.gifts), 'gift')} and spoken to you ${plural(p.cr.talks, 'time')} before. ${beliefText(p)}${p.cr.wish ? ` You are secretly wishing for ${wishText(p.cr.wish)}.` : ''}
 YOUR NEIGHBORS: ${feels}
@@ -1199,6 +1212,7 @@ function plan(p) {
   const ev = W.event && W.event.day === W.day ? EVENTS[W.event.id] : null;
   const going = ev && W.event.going.includes(p.id);
   if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
+  if (healthPlan(p)) return;
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
   if (planPicket(p)) return;
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
@@ -1256,11 +1270,13 @@ function startDo(p) {
   if (k === 'snowman') { p.busyUntil = now + 4 * ts(); p.face = rand() * 6.28; bubble(p, pick(['Snowman time!', 'Roll, roll, roll…', 'This one will be the best one.']), 2.4); return; }
   if (k === 'date') { p.busyUntil = now + 10 * ts(); const q = person(p.task.with); if (q) p.face = Math.atan2(q.x - p.x, q.z - p.z); emote(p, '💕', 3); { const q2 = person(p.task.with); if (q2 && q2.task?.kind === 'date' && q2.task.phase === 'do' && q2.state === 'free' && p.state === 'free' && !q2.inside) setTimeout(() => { if (p.state === 'free' && q2.state === 'free') physicalScene(p, q2, pick(['cuddle', 'cuddle', 'hug'])); }, 900); } if (rand() < 0.6) bubble(p, pick(['Hi, you.', 'I saved you a spot.', 'This is nice.', 'Hehe. Hi.', 'You look good today.']), 2.4); return; }
   if (k === 'pray') { p.busyUntil = now + 4 * ts(); p.face = rand() * 6; bubble(p, `Creator, if you can hear me… I wish for ${wishText(p.cr.wish)}.`, 4.2, true); emote(p, '✧', 4); return; }
+  if (healthStart(p, k)) return;
   p.busyUntil = now + (2 + rand() * 4) * ts();
 }
 function finishDo(p) {
   const k = p.task.kind;
-  if (k === 'work') { if (W.t < 0.24) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
+  if (['rest', 'doctor', 'therapy', 'ritual'].includes(k)) return healthFinish(p, k);
+  if (k === 'work') { if (W.t < workUntil(p.job)) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
   else if (k === 'event') { if (W.t < (p.task.until || 0) && W.t < 0.67) { p.busyUntil = now + 1; if (rand() < 0.02) { const ev = EVENTS[W.event?.id]; if (ev) bubble(p, pick(['This is so fun!', 'Best day ever.', W.event.id === 'snowball' ? 'Got you!' : W.event.id === 'bday' ? 'Happy birthday!' : W.event.id === 'beach' ? 'The water is perfect!' : W.event.id === 'blossoms' ? 'The petals are falling on my head!' : W.event.id === 'harvest' ? 'Pass the pumpkin soup?' : W.event.id === 'wedding' ? "I'm not crying, you're crying." : W.event.id === 'stars' ? 'Look, a shooting star!' : W.event.id === 'fishing' ? 'I got a bite!' : 'Yay!']), 2); } return false; } if (W.event?.id === 'fishing' && W.event.host === p.id) { const winner = pick(W.people.filter((q) => W.event.going.includes(q.id))); if (winner) { winner.coins += 4; remember(winner, 'I won the fishing contest!', 3, 'won'); diary(`<b>${esc(winner.name)}</b> won the fishing contest and 4 coins.`); } } remember(p, `Went to ${EVENTS[W.event?.id]?.name || 'the event'}.`, 2, 'event'); addJoy(p, 10); }
   else if (k === 'hangout') hangoutEnd(p);
   else if (k === 'read') readProgress(p, 0.5);
@@ -1281,11 +1297,12 @@ function finishDo(p) {
 function endWork(p) {
   const J = JOBS[p.job];
   p.jobDays++;
+  if (LAB_JOBS.includes(p.job)) researchWork(p);
   let pay = payOf(p);
   if (p.job === 'pier') pay += Math.floor(rand() * 3);
   if (p.job === 'garden') pay += rand() < 0.4 ? 2 : 0;
   earn(p, pay); p.workedToday = true;
-  craft(p);
+  craft(p); workInjury(p);
   const joy = p.body.jobAff[p.job] * 0.8 + (rand() - 0.5) * 0.6;
   p.jobMood = p.jobMood * 0.7 + joy;
   remember(p, `Worked as a ${J.short} and earned ${pay} coins.`, 1, 'work', null, { joy });
@@ -1361,7 +1378,7 @@ function reflect(p) {
   p.today = [];
 }
 function nightfall() {
-  nightLetters();
+  nightLetters(); healthNight();
   for (const p of W.people) {
     p.makeup = p.befriend = p.confessTo = p.proposeTo = p.breakWith = null;
     if ((p.toRead || []).length && rand() < 0.6) readProgress(p, 0.35);
@@ -1408,7 +1425,7 @@ function newDay() {
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }
-  birthdayMorning(); miliMorning(); courtMorning(); museumDaily(); classMorning();
+  birthdayMorning(); miliMorning(); courtMorning(); museumDaily(); classMorning(); healthMorning();
   if (MODE === 'host') { morningFerry(); ferryDepartures(); checkOther(); }
   diary(`Morning. The weather is ${W.weather}. You got 20 new coins.`);
   saveNow();
@@ -1445,7 +1462,7 @@ function step(dt) {
       const tgt = p.path[0], dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
       const achy = p.body.ailments?.length && W.t < 0.15 && !(p.healedUntil >= W.day) ? 0.75 : 1;
       if (achy < 1 && p.sickDay !== W.day && /sick/.test(p.body.ailments.join(' ')) && rand() < 0.01) { p.sickDay = W.day; bubble(p, pick(['Ugh. Sick again.', 'Mornings are the worst.', 'My joints. Man.']), 2.6); remember(p, 'Felt sick this morning, like always.', 1, 'sick'); }
-      const sp = achy * 3.1 * p.body.speed * (p.hunger > 0.9 ? 0.65 : 1) * (0.7 + 0.3 * p.grow) * (W.weather === 'storm' ? 0.85 : 1) * (W.meeting ? 1.6 : 1);
+      const sp = achy * healthSpeed(p) * 3.1 * p.body.speed * (p.hunger > 0.9 ? 0.65 : 1) * (0.7 + 0.3 * p.grow) * (W.weather === 'storm' ? 0.85 : 1) * (W.meeting ? 1.6 : 1);
       if (d < 0.2) { p.x = tgt.x; p.z = tgt.z; p.path.shift(); p.stuckT = 0; p.lastD = Infinity; if (!p.path.length) { p.at = p.dest; startDo(p); } continue; }
       const mv = Math.min(d, sp * dt);
       p.x += (dx / d) * mv; p.z += (dz / d) * mv; p.moving = true;
@@ -1460,7 +1477,7 @@ function step(dt) {
     if (p.task.phase === 'go') { p.at = p.dest || p.at; startDo(p); continue; }
     if (p.task.phase === 'do' && now >= p.busyUntil) { if (finishDo(p) !== false) p.task = null; }
   }
-  personalSpace(dt); textTick(); chirpTick(); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
+  personalSpace(dt); textTick(); chirpTick(); healthTick(dt); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
   const festNight = W.event?.id === 'festival' && W.event.day === W.day && W.t < 0.665;
   if ((!isNight() || festNight) && !W.meeting) {
     const ok = W.people.filter(canChat);
@@ -1474,6 +1491,7 @@ function step(dt) {
       const seeks = (x, y) => x.makeup === y.id || x.befriend === y.id || x.confessTo === y.id || x.proposeTo === y.id || x.breakWith === y.id;
       const special = seeks(a, b) ? a : seeks(b, a) ? b : null;
       if (!special && (W.pairCool[key] || 0) > now) continue;
+      if (!special && wantsQuiet(a, b)) continue;
       if (special || rand() < dt * (a.task?.kind === 'event' ? 2.5 : 1.3)) {
         const [x, y] = special ? (special === a ? [a, b] : [b, a]) : rand() < 0.5 ? [a, b] : [b, a];
         x.face = Math.atan2(y.x - x.x, y.z - x.z); y.face = Math.atan2(x.x - y.x, x.z - y.z);
@@ -1607,6 +1625,10 @@ function applyCmd(c) {
     case 'shopview': if (SHOPS[c.shop]) openInterior({ kind: 'shop', shop: c.shop }); return '';
     case 'set': if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); } return '';
     case 'plot': return plotCmd(c);
+    case 'lab': if (MODE === 'host' && person(c.pid)) { labAct(c.pid, c.act, c.text).then((r) => { if (r) toast(r); if (labOpen) renderLab(); refreshPanel(false); }); setTimeout(() => { if (labOpen) renderLab(); }, 30); } return '';
+    case 'labsview': if (MODE === 'host') openInterior({ kind: 'labs', wing: LAB_WINGS[c.wing] ? c.wing : labWingLast }); return '';
+    case 'clinicview': if (MODE === 'host') openInterior({ kind: 'clinic' }); return '';
+    case 'care': if (MODE === 'host' && person(c.pid)) { careAct(c.pid, c.act, c.text, c.cond).then((r) => { if (r) toast(r); if (careOpen) renderCare(); refreshPanel(false); }); setTimeout(() => { if (careOpen) renderCare(); }, 30); } return '';
     case 'agent': if (MODE === 'host') runAgent(String(c.request || '').slice(0, 400)).then((m) => { toast(m); refreshPanel(true); }); return '✳ Claude is working on it…';
     case 'sendlink': { const it = (W.outside?.items || []).find((x) => x.id === c.item), p = person(c.to); if (!it || !p) return ''; if (!W.outsideFound) { W.outsideFound = { by: 'creator', name: 'The Creator', day: W.day }; diary('🌐 <span class="cr">Creator</span> showed the island a window to <b>the Outside</b>.'); } seeItem(p, it, true); return `You showed ${p.name}. Watch what they say.`; }
     case 'outside': cfg[c.key === 'posts' ? 'outsidePosts' : 'outside'] = !!c.value; savePrefs(); if (c.value) fetchOutside(true); return '';
@@ -1859,7 +1881,7 @@ function aiLine(me, them, transcript, situation) {
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
 BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
-${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me)}
+${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me)}${healthContext(me, them)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
 ${aboutThem(me, them)}
 ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hungry' : ''}.
@@ -2417,7 +2439,7 @@ function dressMesh(p) {
   while (m.tools.children.length) m.tools.remove(m.tools.children[0]);
   if (p.job === 'pier') { const rod = mesh(cyl(0.03, 0.03, 2.2, 6), toon('#8a6a4e'), 0.5, 1.4, 0.7); rod.rotation.x = 0.9; m.tools.add(rod); }
   else if (p.job === 'garden') m.tools.add(mesh(cyl(0.16, 0.2, 0.3, 10), toon('#9fd3ff'), 0.55, 0.62, 0.2));
-  else if (p.job) m.tools.add(mesh(box(0.55, 0.5, 0.05), toon({ dev: '#3d4f86', ai: '#5a7fd8', lawyer: '#6b4a3a', builder: '#ffb347', janitor: '#9fd3ff', cafe: '#5a3a2e', mart: '#e2566b', clothes: '#6f73c9', nook: '#5f7f4a', bakery: '#f3b67a', icecream: '#ff9fbf', books: '#5f4a6b', arcade: '#3a2f63' }[p.job] || '#ffffff'), 0, 0.72, 0.4));
+  else if (p.job) m.tools.add(mesh(box(0.55, 0.5, 0.05), toon({ dev: '#3d4f86', ai: '#5a7fd8', lawyer: '#6b4a3a', bio: '#3d8a6a', chem: '#9fe3c4', phys: '#3d4f86', robo: '#b86b3a', civil: '#ffb347', doctor: '#ffffff', therapist: '#c9b3ff', builder: '#ffb347', janitor: '#9fd3ff', cafe: '#5a3a2e', mart: '#e2566b', clothes: '#6f73c9', nook: '#5f7f4a', bakery: '#f3b67a', icecream: '#ff9fbf', books: '#5f4a6b', arcade: '#3a2f63' }[p.job] || '#ffffff'), 0, 0.72, 0.4));
 }
 function scaleMesh(p) { const m = meshes.get(p.id); if (m) m.root.scale.setScalar(p.body.size * (0.6 + 0.4 * p.grow)); }
 function removeAllMeshes() { for (const [, m] of meshes) { scene.remove(m.root); m.tag.remove(); } meshes.clear(); }
@@ -2517,6 +2539,7 @@ function shell(S, wall, floor, opts = {}) {
 }
 function addPerson(S, p, x, z, faceY, opts = {}) {
   const f = makeFigure(p);
+  if (p.health) healthLook(p, f);
   f.fig.scale.setScalar(1.05 * p.body.size * (0.6 + 0.4 * p.grow));
   f.fig.position.set(x, opts.y || 0, z); f.fig.rotation.y = faceY;
   if (opts.lying) { f.fig.rotation.set(-Math.PI / 2, 0, 0); f.eyes.forEach((e) => (e.scale.y = 0.2)); }
@@ -2524,7 +2547,7 @@ function addPerson(S, p, x, z, faceY, opts = {}) {
   S.add(f.fig);
   const el = document.createElement('div'); el.className = 'tag';
   el.innerHTML = '<div class="thought" hidden></div><div class="emo"></div><div class="bub" hidden></div><div class="nm"></div>';
-  el.children[3].innerHTML = esc(p.name) + ` <span class="lv">Lv ${p.level || 1}</span>`;
+  el.children[3].innerHTML = esc(p.name) + (p.npc ? '' : ` <span class="lv">Lv ${p.level || 1}</span>`);
   itags.appendChild(el);
   ilabels.push({ kind: 'person', pid: p.id, obj: f.fig, el, h: opts.lying ? 1.2 : 2.6 * f.fig.scale.x, parts: f });
 }
@@ -2537,17 +2560,19 @@ function onDuty(shop) { return W.people.find((p) => p.job === SHOPS[shop].job &&
 function customers(shop) { return W.people.filter((p) => p.inside && p.at === shop && ['eat', 'shop', 'arcade'].includes(p.task?.kind)); }
 function interiorKey() {
   if (!interior) return '';
-  if (interior.kind === 'room') { const p = person(interior.id); if (!p) return ''; const night = W.t >= 0.6 || W.t < 0.02; return ['r', W.people.filter((q) => q.inside && q.task?.kind === 'hangout' && q.task.host === p.id).map((q) => q.id).join(','), p.inside && p.task?.kind === 'home', night, p.decor.map((d) => d.uid).join(','), p.outfit.shirt, p.outfit.hat?.id, Object.values(p.feelings).filter((f) => f.score >= 4).length, cfg.boxMode].join('|'); }
+  if (interior.kind === 'room') { const p = person(interior.id); if (!p) return ''; const night = W.t >= 0.6 || W.t < 0.02; return ['r', W.people.filter((q) => q.inside && q.task?.kind === 'hangout' && q.task.host === p.id).map((q) => q.id).join(','), p.inside && p.task?.kind, night, p.decor.map((d) => d.uid).join(','), p.outfit.shirt, p.outfit.hat?.id, Object.values(p.feelings).filter((f) => f.score >= 4).length, cfg.boxMode].join('|'); }
   if (interior.kind === 'hall') return hallKey();
+  if (interior.kind === 'labs') return labsKey();
+  if (interior.kind === 'clinic') return clinicKey();
   const s = interior.shop;
   return ['s', s, (W.stock[s] || []).map((i) => i.uid).join(','), onDuty(s)?.id, customers(s).map((p) => p.id).join(','), W.t >= 0.6, cfg.boxMode].join('|');
 }
 function buildInterior() {
   const S = roomScene;
   while (S.children.length) { const c = S.children[0]; S.remove(c); disposeTree(c); }
-  itags.innerHTML = ''; ilabels = [];
+  itags.innerHTML = ''; ilabels = []; $('#rcBtns').innerHTML = '';
   interior.key = interiorKey(); interior.built = now; interior.dirty = false;
-  if (interior.kind === 'room') buildRoom(person(interior.id)); else if (interior.kind === 'hall') buildHall(); else buildShop(interior.shop);
+  if (interior.kind === 'room') buildRoom(person(interior.id)); else if (interior.kind === 'hall') buildHall(); else if (interior.kind === 'labs') buildLabsRoom(); else if (interior.kind === 'clinic') buildClinicRoom(); else buildShop(interior.shop);
 }
 function buildRoom(p) {
   const S = roomScene;
@@ -2585,8 +2610,8 @@ function buildRoom(p) {
     S.add(m);
     if (night && m.userData.lamp) { const pl = new T3.PointLight(new T3.Color(m.userData.lamp).lerp(new T3.Color('#ffe8c0'), 0.5), 0.7, 7); pl.position.set(m.position.x, 1.8, m.position.z); S.add(pl); }
   }
-  const home = p.inside && (p.task?.kind === 'home' || p.task?.kind === 'hangout');
-  if (home) { if (night && p.task?.kind === 'home') addPerson(S, p, -3.2, -2.85, 0, { lying: true, y: 1.0 }); else addPerson(S, p, 0.4, 1.0, 0.6); }
+  const home = p.inside && (p.task?.kind === 'home' || p.task?.kind === 'hangout' || p.task?.kind === 'rest');
+  if (home) { if ((night && p.task?.kind === 'home') || p.task?.kind === 'rest') addPerson(S, p, -3.2, -2.85, 0, { lying: true, y: 1.0 }); else addPerson(S, p, 0.4, 1.0, 0.6); }
   W.people.filter((q) => q !== p && q.inside && q.task?.kind === 'hangout' && q.task.host === p.id).forEach((q, i) => addPerson(S, q, -1.5 - i * 1.1, 1.9, 0.9));
   if (isMili(p)) { const c = catMesh(1.4); c.position.set(2.3, 0, 2.3); c.rotation.y = -0.8; S.add(c); }
   $('#rcTitle').textContent = `Room ${p.room + 1} · ${p.name}`;
@@ -2677,6 +2702,7 @@ function closeInterior() {
   $('#roomcard').hidden = true; $('#tags').style.visibility = ''; $('#hud').style.visibility = '';
 }
 $('#rcClose').addEventListener('click', () => send({ t: 'room', id: null }));
+$('#rcBtns').addEventListener('click', (e) => { const b = e.target.closest('[data-wing]'); if (b) send({ t: 'labsview', wing: b.dataset.wing }); });
 $('#placeCancel').addEventListener('click', () => cancelPlacing());
 function interiorFrame() {
   if (interior.dirty || (now - interior.built > 1.5 && interiorKey() !== interior.key)) buildInterior();
@@ -2703,10 +2729,11 @@ function interiorFrame() {
 // ============================================================
 // HAPPINESS, PROBLEMS & PRESENTS
 // ============================================================
-const PROB_ICON = { gift: '🎁', hungry: '🍙', wish: '✨', fight: '⚡', lonely: '💧' };
+const PROB_ICON = { gift: '🎁', hungry: '🍙', wish: '✨', fight: '⚡', lonely: '💧', sick: '🤒', hurt: '🩹', low: '🌧' };
 function problemOf(p) {
   if (p.pendingGift) return { kind: 'gift' };
   if (p.hunger > 0.72) return { kind: 'hungry' };
+  { const hp = healthProblem(p); if (hp) return hp; }
   if (p.cr.wish) return { kind: 'wish' };
   const g = Object.entries(p.feelings).filter(([id, f]) => f.score <= -5 && person(id)).sort((a, b) => a[1].score - b[1].score)[0];
   if (g && !p.makeup) return { kind: 'fight', who: g[0] };
@@ -3070,7 +3097,7 @@ const BUILDS = {
   gazebo: { name: 'gazebo', price: 45 },
   carousel: { name: 'carousel', price: 700, size: 3, big: true, blurb: 'Kids and grown-ups ride it for a happy boost.' },
   onsen: { name: 'hot spring', price: 1100, size: 3.5, big: true, blurb: 'Residents soak here and come out relaxed.' },
-  clinic: { name: 'clinic', price: 1400, size: 3.5, big: true, blurb: 'Residents with aches and morning sickness feel better after a checkup.' },
+  clinic: { name: 'hospital wing', price: 1400, size: 3.5, big: true, blurb: 'A proper hospital. Sick and hurt residents heal faster, and the really sick get round-the-clock care.' },
   observatory: { name: 'observatory', price: 1800, size: 3.5, big: true, blurb: 'Residents stargaze here in the evening.' },
   museum: { name: 'museum', price: 2600, size: 4.5, big: true, blurb: 'Donate rare fish and handmade things. Visitors buy tickets.' },
   ferris: { name: 'ferris wheel', price: 3800, size: 4.5, big: true, blurb: 'The biggest thing on the island. Everyone wants a ride.' }, fountain2: { name: 'little fountain', price: 60 }, windmill: { name: 'windmill', price: 70 },
@@ -3357,18 +3384,23 @@ const Sound = (() => {
     lullaby: { title: 'Pillow Fort', key: 65, sc: 'major', bpm: 58, meter: 12, p: [0, 3, 0, 4], lead: 'musicbox', pad: 'pad', b: 'R...........', dens: 0.3 },
     fixed: { title: 'Fixed Point', key: 66, sc: 'minor', bpm: 172, p: [0, 5, 2, 6], sev: true, lead: 'bell', pad: 'pad', arp: 'musicbox', arpP: '0.1.2.3.', b: 'R.......R.......', breaks: true, dens: 0.35, hi: 12 },
     pigeons: { title: 'City Pigeons', key: 60, sc: 'dorian', bpm: 90, swing: 0.3, p: [0, 3, 1, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R..R......5..R..', k: 'x......x..x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.35, dens: 0.4 },
+    waiting: { title: 'Waiting Room', key: 64, sc: 'lydian', bpm: 66, swing: 0.2, p: [0, 3, 1, 4], sev: true, lead: 'marimba', pad: 'epad', b: 'R.......5.......', h: '....x.......x...', hv: 0.15, dens: 0.25 },
+    beakers: { title: 'Beakers & Bunsens', key: 62, sc: 'mixo', bpm: 112, swing: 0.2, p: [0, 4, 3, 4], lead: 'pizz', pad: 'pad', arp: 'pluck', arpP: '0.2.1.3.', b: 'R...R...5...R...', k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.45 },
+    gears: { title: 'Gearworks', key: 57, sc: 'dorian', bpm: 124, p: [0, 6, 5, 4], lead: 'chip', pad: 'pad', arp: 'chip', arpP: '0.2.0.3.', b: 'R.R.....R.R.....', k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.4 },
   };
   const PLAYLISTS = {
     spring: ['petal', 'toast', 'lantern'], summer: ['lemonade', 'scooter', 'petal'], autumn: ['cinnamon', 'sweater', 'toast'], winter: ['snowglobe', 'cocoa', 'sweater'],
     evening: ['lantern', 'cocoa', 'roomtone'], night: ['moon', 'lullaby', 'firefly'], summernight: ['firefly', 'moon'], rain: ['umbrella', 'cocoa'], storm: ['thunder', 'umbrella'],
     festival: ['starfall'], wedding: ['promises'], bday: ['cake'], meeting: ['order'], city: ['pigeons', 'aisle', 'scooter'],
     cafe: ['jazz', 'cocoa'], arcade: ['rush', 'scooter'], bakery: ['oven', 'toast'], books: ['pages', 'lullaby'], mart: ['aisle'], clothes: ['runway'], nook: ['sawdust'], icecream: ['sprinkles'],
-    room: ['roomtone', 'cocoa'], hall: ['order'], roomnight: ['lullaby', 'moon'], mili: ['fixed', 'roomtone'],
+    room: ['roomtone', 'cocoa'], hall: ['order'], labs: ['pigeons', 'roomtone'], labsci: ['beakers', 'pigeons'], labeng: ['gears', 'scooter'], clinic: ['waiting', 'roomtone'], roomnight: ['lullaby', 'moon'], mili: ['fixed', 'roomtone'],
   };
   function contextKey() {
     if (!W) return 'spring';
     if (interior) {
       if (interior.kind === 'hall') return 'hall';
+    if (interior.kind === 'labs') return interior.wing === 'sci' ? 'labsci' : interior.wing === 'eng' ? 'labeng' : 'labs';
+    if (interior.kind === 'clinic') return 'clinic';
     if (interior.kind === 'shop') return PLAYLISTS[interior.shop] ? interior.shop : 'mart';
       const p = typeof person === 'function' && person(interior.id);
       if (p && isMili(p)) return 'mili';
@@ -3555,12 +3587,19 @@ function voiceOf(p) {
 function hearable(p) {
   if (MODE !== 'host') return false;
   if (dlg && dlg.pid === p.id) return true;
-  if (interior) return interior.kind === 'room' ? interior.id === p.id : p.inside && p.at === interior.shop;
+  if (interior) return interior.kind === 'room' ? interior.id === p.id : p.inside && p.at === (interior.shop || interior.kind);
   if (p.inside) return false;
   return Math.hypot(p.x - controls.target.x, p.z - controls.target.z) < 22;
 }
 ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => addEventListener(ev, () => Sound.unlock(), { passive: true }));
 document.addEventListener('click', (e) => { if (e.target.closest('button, .tab')) Sound.ui(); });
+$('#labBox').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !labOpen) return; if (b.dataset.labclose !== undefined) { $('#labBox').hidden = true; labOpen = null; return; } if (b.dataset.labask !== undefined) send({ t: 'lab', pid: labOpen, act: 'ask' }); if (b.dataset.labcoffee !== undefined) send({ t: 'lab', pid: labOpen, act: 'coffee' }); });
+$('#labBox').addEventListener('submit', (e) => { e.preventDefault(); const t = $('#labIdea').value.trim(); if (!t || !labOpen) return; send({ t: 'lab', pid: labOpen, act: 'idea', text: t }); $('#labIdea').value = ''; });
+setInterval(() => { if (labOpen && !$('#labBox').hidden && !($('#labIdea') && ($('#labIdea').value || document.activeElement === $('#labIdea')))) renderLab(); }, 2500);
+$('#careBox').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !careOpen) return; const D = b.dataset; if (D.careclose !== undefined) { $('#careBox').hidden = true; careOpen = null; return; } if (D.careask !== undefined) send({ t: 'care', pid: careOpen, act: 'ask' }); if (D.caresoup !== undefined) send({ t: 'care', pid: careOpen, act: 'soup' }); if (D.caredoc !== undefined) send({ t: 'care', pid: careOpen, act: 'doc' }); if (D.caretherapy !== undefined) send({ t: 'care', pid: careOpen, act: 'therapy' }); if (D.carecond) send({ t: 'care', pid: careOpen, act: 'cond', cond: D.carecond }); });
+$('#careBox').addEventListener('submit', (e) => { e.preventDefault(); const t = $('#careText').value.trim(); if (!t || !careOpen) return; send({ t: 'care', pid: careOpen, act: 'kind', text: t }); $('#careText').value = ''; });
+$('#careBox').addEventListener('toggle', (e) => { if (e.target.tagName === 'DETAILS') careDetailsOpen = e.target.open; }, true);
+setInterval(() => { if (careOpen && !$('#careBox').hidden && !($('#careText') && ($('#careText').value || document.activeElement === $('#careText')))) renderCare(); }, 2500);
 document.addEventListener('submit', (e) => { const f = e.target.closest && e.target.closest('[data-agentform]'); if (!f) return; e.preventDefault(); const req = $('#agentReq').value.trim(); if (!req) return; send({ t: 'agent', request: req }); });
 document.addEventListener('change', (e) => { if (e.target.id === 'agentModel') { brainCfg.workshop = e.target.value.trim(); saveBrain(); toast(brainCfg.workshop ? `Claude will use ${brainCfg.workshop}.` : 'Claude will use the judge model.'); return; } if (e.target.id === 'outsideOn' || e.target.id === 'outsidePosts') { const key = e.target.id === 'outsideOn' ? 'on' : 'posts'; if (MODE === 'host') { cfg[key === 'posts' ? 'outsidePosts' : 'outside'] = e.target.checked; savePrefs(); if (e.target.checked) fetchOutside(true); } else send({ t: 'outside', key, value: e.target.checked }); } });
 
@@ -3621,14 +3660,14 @@ async function inviteResident(name, about, color) {
   const p = birth();
   p.name = W.people.some((q) => q.name.toLowerCase() === name.toLowerCase()) ? name + '2' : name;
   if (COLORS[color]) { p.outfit.shirt = color; p.wardrobe.shirts = [color]; p.likes[color] = 0.7; }
-  p.selfNote = about.slice(0, 520);
+  p.selfNote = about.slice(0, 520); p.custom = true;
   if (brainCfg.key) {
     try {
       const r = await llm(`Someone wrote this description of a new villager named ${p.name} who is moving into a cute island town:
 "${about}"
 Turn it into a character profile. Keep their own voice and words where you can.
 Foods on the island: ${FOODS.map((f) => f.name).join(', ')}.
-Reply with only JSON: {"selfNote": "first person, under 70 words, in their voice", "style": "how they talk, one sentence", "interests": "what they're into, short", "want": "a secret want, starting with 'to'", "loves": ["island foods they'd love"], "hates": ["island foods they'd hate"], "ailments": ["short phrases, only if the description mentions any"], "lines": ["5 short things they might say out loud"]}`, { max: 700 });
+Reply with only JSON: {"selfNote": "first person, under 70 words, in their voice", "style": "how they talk, one sentence", "interests": "what they're into, short", "want": "a secret want, starting with 'to'", "loves": ["island foods they'd love"], "hates": ["island foods they'd hate"], "ailments": ["short phrases for any health conditions, physical or mental, only if the description mentions them"], "lines": ["5 short things they might say out loud"]}`, { max: 700 });
       if (r.selfNote) p.selfNote = String(r.selfNote).slice(0, 520);
       if (r.style) p.style = String(r.style).slice(0, 240);
       if (r.interests) p.interests = String(r.interests).slice(0, 200);
@@ -3744,14 +3783,14 @@ function buildDowntown() {
     g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'hall' }; tappables.push(o); } });
     placeDT(g, 'hall');
   }
-  buildLabs();
+  buildLabs(); buildClinic();
   dtApartment('home3', '#fff0c8', '#e2a24a', 15, 'Sunny Heights');
   dtShop('bakery', '#ffe8cc', '#c9925e', '#ffffff', '#f3b67a', '#b86b3a', '#fff6ee', (g) => { g.add(mesh(cyl(0.5, 0.5, 1.4, 12), toon('#ffffff'), 3, 7.6, 0)); for (let i = 0; i < 3; i++) g.add(mesh(sph(0.3, 10, 8), toon('#e8b878'), -3.4 + i * 0.35, 0.95, 5.1)); g.add(mesh(box(1.4, 0.8, 0.8), toon('#c49a6c'), -3.1, 0.4, 5.1)); });
   dtShop('books', '#e8dcc8', '#5f4a6b', '#ffffff', '#9a8ab8', '#5f4a6b', '#fff6ee', (g) => { g.add(mesh(box(1.6, 1.2, 0.8), toon('#8a6a4e'), 3.2, 0.6, 5.1)); for (let i = 0; i < 5; i++) g.add(mesh(box(0.22, 0.45, 0.6), toon(['#ff6f5e', '#9fd3ff', '#ffe98a', '#8fae6a', '#c9b3ff'][i]), 2.7 + i * 0.25, 1.42, 5.1)); });
   dtShop('arcade', '#3a2f63', '#ff6fb0', '#ff6fb0', '#6fe3ff', '#ff6fb0', '#1a1030', (g) => { const neon = glow('#6fe3ff', 0.9); g.add(mesh(box(8.6, 0.18, 0.18), neon, 0, 6.2, 4.1, false)); g.add(mesh(box(0.18, 5.8, 0.18), glow('#ff6fb0', 0.9), -4.4, 3.2, 4.1, false)); g.add(mesh(box(0.18, 5.8, 0.18), glow('#ff6fb0', 0.9), 4.4, 3.2, 4.1, false)); });
   dtShop('icecream', '#ffe0ee', '#ff9fbf', '#ffffff', '#ff9fbf', '#ff6f9c', '#ffffff', (g) => { const cone = mesh(new T3.ConeGeometry(0.7, 2, 12), toon('#e8b878'), 0, 8, 0); cone.rotation.x = Math.PI; g.add(cone); g.add(mesh(sph(0.85, 14, 10), toon('#ffb3c7'), 0, 9.3, 0)); g.add(mesh(sph(0.2, 8, 6), toon('#ff4f6f'), 0, 10.2, 0)); });
   // bus stop, vending machine, mailbox-y bits near the gate
-  { const [x, z] = [DT_HUB[0] + 5.5, DT_HUB[1] + 2]; const g = new T3.Group(); for (const s of [-1.2, 1.2]) g.add(mesh(cyl(0.07, 0.07, 2.6, 6), toon('#3d4f86'), s, 1.3, 0)); g.add(mesh(box(3, 0.15, 1.4), toon('#9fd3ff'), 0, 2.65, 0)); g.add(mesh(box(2.2, 0.14, 0.5), toon('#c49a6c'), 0, 0.6, -0.3)); g.add(mesh(cyl(0.06, 0.06, 3, 6), toon('#5a5470'), 2, 1.5, 0.5)); const bs = sign('BUS', '#3d4f86', '#ffffff', 1.2); bs.position.set(2, 3.2, 0.52); g.add(bs); g.position.set(x, 0, z); g.rotation.y = -0.6; scene.add(g); }
+  { const [x, z] = [DT_HUB[0] + 6.2, DT_HUB[1] + 6.5]; const g = new T3.Group(); for (const s of [-1.2, 1.2]) g.add(mesh(cyl(0.07, 0.07, 2.6, 6), toon('#3d4f86'), s, 1.3, 0)); g.add(mesh(box(3, 0.15, 1.4), toon('#9fd3ff'), 0, 2.65, 0)); g.add(mesh(box(2.2, 0.14, 0.5), toon('#c49a6c'), 0, 0.6, -0.3)); g.add(mesh(cyl(0.06, 0.06, 3, 6), toon('#5a5470'), 2, 1.5, 0.5)); const bs = sign('BUS', '#3d4f86', '#ffffff', 1.2); bs.position.set(2, 3.2, 0.52); g.add(bs); g.position.set(x, 0, z); g.rotation.y = -0.6; scene.add(g); }
   { const [x, z] = [DT_HUB[0] - 5.5, DT_HUB[1] + 1.5]; const g = new T3.Group(); g.add(mesh(box(1.4, 2.4, 1), toon('#ff6f5e'), 0, 1.2, 0)); g.add(mesh(box(1.1, 1.3, 0.05), glow('#dff4ff', 0.6), 0, 1.5, 0.52, false)); for (let i = 0; i < 6; i++) g.add(mesh(cyl(0.08, 0.08, 0.25, 8), toon(['#ff9fbf', '#9fe3c4', '#ffe98a'][i % 3]), -0.35 + (i % 3) * 0.35, 1.2 + Math.floor(i / 3) * 0.45, 0.5)); g.position.set(x, 0, z); g.rotation.y = 0.5; scene.add(g); }
   // trees around the edge
   for (const a of [35, 80, 135, 175, 225, 275, 325]) { const [x, z] = polarDT(a, 28); const g = new T3.Group(); g.add(mesh(cyl(0.3, 0.4, 2.4, 8), toon('#9a6f4e'), 0, 1.2, 0)); g.add(mesh(new T3.IcosahedronGeometry(1.8, 0), toon(a % 2 ? '#8fd48a' : '#f7b6c8'), 0, 3.3, 0)); g.position.set(x, 0, z); scene.add(g); }
@@ -3816,7 +3855,7 @@ function makePreset(o) {
   Object.assign(p.body, o.body || {});
   if (o.shirt) { p.outfit.shirt = o.shirt; p.wardrobe.shirts = [o.shirt]; p.likes[o.shirt] = 0.7; }
   if (o.hat) { p.outfit.hat = o.hat; p.wardrobe.hats = [o.hat]; p.likes['hat:' + o.hat.id] = 0.8; }
-  Object.assign(p, { style: o.style, interests: o.interests, lines: o.lines, selfNote: o.selfNote, want: { text: o.want } });
+  Object.assign(p, { style: o.style, interests: o.interests, lines: o.lines, selfNote: o.selfNote, want: { text: o.want }, custom: true });
   if (o.job) p.job = o.job;
   if (o.tastes) p.tastes = o.tastes;
   return p;
@@ -4792,6 +4831,8 @@ const SUBJECTS = {
   art: { name: 'Art & crafts', icon: '🎨', color: '#ff8f8f', kw: /art|craft|felt|jewel|draw|paint|color|cute/i },
   health: { name: 'Health', icon: '💤', color: '#8fd8b0', kw: /health|sleep|sick|joint|body/i },
   stories: { name: 'Stories', icon: '📖', color: '#b86b8a', kw: /story|stories|anime|danganronpa|novel|romance|mystery/i },
+  science: { name: 'Science', icon: '🧪', color: '#3d8a6a', kw: /science|chemi|biolog|physic|lab\b|experiment|microscope/i },
+  engineering: { name: 'Engineering', icon: '⚙️', color: '#b86b3a', kw: /engineer|robot|bridge|machine|gear|build/i },
 };
 const BOOKS = {
   tinylights: { subj: 'space', title: 'Tiny Lights, Huge Distances', by: 'Orla Venn', price: 7, facts: ['Light from the Sun takes about 8 minutes to reach Earth.', 'A day on Venus is longer than its whole year.', 'More than a thousand Earths could fit inside Jupiter.', 'A teaspoon of neutron star would weigh billions of tons on Earth.', 'The Moon drifts a few centimeters farther from Earth every year.'] },
@@ -4827,6 +4868,14 @@ const BOOKS = {
   croissant: { subj: 'stories', title: 'The Case of the Missing Croissant', by: 'Dot Pennywhistle', price: 5, fiction: true, facts: ['In the book, a pigeon named Gerald stole the croissant.', 'The detective cracked the case by spotting flour on the pigeon\'s feet.', 'The baker forgave the pigeon in the end.'] },
   tide: { subj: 'stories', title: 'Letters Across the Tide', by: 'Rosalind Wick', price: 6, fiction: true, facts: ['Two lighthouse keepers fall in love by sending letters in bottles.', 'They finally meet on a sandbar at low tide.', 'The last letter says just one word: stay.'] },
   dreamed: { subj: 'stories', title: 'The Island That Dreamed', by: 'Anonymous', price: 7, fiction: true, facts: ['An island dreams up its own people.', 'The people start to wonder who is dreaming them.', 'The ending hints that the dreamer is being dreamed too.'] },
+  everyday: { subj: 'science', title: 'Everyday Chemistry', by: 'Dr. Mira Castellanos', price: 6, facts: ['Ice floats because water expands when it freezes.', 'Baking soda and vinegar react to make carbon dioxide gas. That is the fizz.', 'Diamonds and pencil graphite are both pure carbon, just arranged differently.', 'Salt lowers the freezing point of water, which is why salt melts ice on roads.', 'Rust is iron slowly reacting with oxygen and water.'] },
+  tinyworlds: { subj: 'science', title: 'Tiny Worlds', by: 'Dr. Bea Okonjo', price: 6, facts: ['Your body is made of trillions of cells.', 'In the 1600s, Antonie van Leeuwenhoek used homemade microscopes to see tiny living things he called animalcules.', 'Some bacteria live happily in boiling-hot springs.', 'DNA is written in just four chemical letters: A, T, C and G.', 'Tardigrades, or water bears, can survive being dried out for years.'] },
+  forces: { subj: 'science', title: 'Pushes, Pulls & Pendulums', by: 'Otto Lindqvist', price: 6, facts: ["How long a pendulum takes to swing depends on its length, not how heavy it is.", 'Without air in the way, a feather and a hammer fall at the same speed. An astronaut showed this on the Moon in 1971.', 'Sound travels about four times faster through water than through air.', 'Light is the fastest thing there is: nearly 300,000 kilometers every second.', 'Every push has an equal push back. That is how rockets fly.'] },
+  bridges: { subj: 'engineering', title: 'How Bridges Stand Up', by: 'Ines Tarrow', price: 7, facts: ["Triangles are strong because they can't change shape without bending one of their sides.", 'Arches carry weight by pushing it outward and down into the ground.', 'Suspension bridges hang the road from huge cables draped over tall towers.', 'In 1940 the Tacoma Narrows Bridge twisted in the wind and fell, so engineers now test designs against wind.', 'Some Roman arch bridges are still standing after 2,000 years.'] },
+  robots: { subj: 'engineering', title: 'Robots for Beginners', by: 'Kenji Aldana', price: 7, facts: ['Robots sense, think, then act: sensors, a computer, and motors.', 'The word "robot" comes from a 1920 Czech play, from a word meaning forced labor.', 'Walking on two legs is hard for robots because they have to keep catching their balance.', 'A feedback loop lets a robot check what happened and correct itself, like a thermostat.', 'The rovers on Mars are robots driven from Earth, and each message takes minutes to arrive.'] },
+  livingocd: { subj: 'psych', title: 'Living With OCD', by: 'Dr. Iris Okafor', price: 6, facts: ['OCD means unwanted thoughts that keep coming back, plus rituals done to ease the anxiety they cause.', 'OCD is not about being neat. The rituals can be checking, counting, repeating, or asking for reassurance.', 'Having an intrusive thought does not mean you want it or agree with it.', 'A kind of therapy called exposure and response prevention (ERP) helps many people with OCD.', 'Reassurance feels good for a moment but can keep the loop going.'] },
+  minds: { subj: 'psych', title: 'Different Minds', by: 'Dr. Theo Lindqvist', price: 6, facts: ["Everyone's brain works a little differently.", 'Anxiety and depression are among the most common health conditions in the world, and they are treatable.', 'Some people experience the world in unusual ways, like sensing hidden meanings. Patience and kindness help more than arguing.', 'ADHD can mean trouble focusing on boring things and deep hyperfocus on interesting ones.', 'Going to therapy is a strength, not a weakness.', 'Listening without rushing to fix things is one of the kindest things you can do.'] },
+  firstaid: { subj: 'health', title: 'First Aid for Everyone', by: 'Dr. Sunny Park', price: 5, facts: ['Cool a small burn under cool running water for about 20 minutes.', 'For a sprain: rest it, ice it, and keep it raised.', 'Wash scrapes with clean water to keep germs out.', 'Colds are caused by viruses, so antibiotics do not help them.', 'Washing your hands is one of the best ways to stop germs spreading.'] },
 };
 const bookOf = (it) => BOOKS[it.id];
 const favSubject = (p) => { const hit = Object.entries(SUBJECTS).filter(([, s]) => s.kw.test(`${p.interests || ''} ${p.selfNote || ''}`)).map(([k]) => k); return hit.length ? pick(hit) : pick(Object.keys(SUBJECTS)); };
@@ -4922,7 +4971,7 @@ const collarOf = (p) => (p && p.job && JOBS[p.job] ? JOBS[p.job].collar || 'serv
 const COLLAR_NAME = { white: 'office', blue: 'hands-on', service: 'service' };
 function qualifies(p, job) {
   const J = JOBS[job]; if (!J || J.collar !== 'white') return true;
-  return readCount(p, J.needs) >= (hasLaptop(p) ? 1 : 2);
+  return readCount(p, J.needs) >= (hasLaptop(p) ? 1 : 2) && (!J.must || readCount(p, [J.must]) >= 1);
 }
 function payOf(p) { const J = JOBS[p.job]; if (!J) return 0; return Math.max(1, J.pay + Math.floor((p.jobDays || 0) / 4) + (W.wageDeal ? (J.collar === 'white' ? -2 : 2) : 0)); }
 function fixJobsAff() { for (const p of W.people) for (const k of Object.keys(JOBS)) if (p.body.jobAff[k] === undefined) p.body.jobAff[k] = rand() * 2 - 1; }
@@ -4934,6 +4983,7 @@ function classContext(me, them) {
   if ((cm === 'white') !== (ct === 'white') && ct) s += ' The pay gap between office jobs at Glimmer Labs and everyone else is a sore subject on the island.';
   if (W.strikeDay === W.day) s += ' Today the hands-on and service workers are ON STRIKE outside Glimmer Labs.';
   if (hasLaptop(me)) s += ' You have a laptop, a gift from the Creator.';
+  if (me.research) s += ` Your current project at work: ${me.research.title} (${Math.round(me.research.progress)}% done${me.research.stuck ? `; you're stuck: ${me.research.stuck.problem}` : ''}).`;
   return s;
 }
 function classOpening(a, b) {
@@ -4959,13 +5009,14 @@ function classMorning() {
   const openings = Object.entries(JOBS).filter(([, J]) => J.collar === 'white');
   for (const p of rest) {
     if (rand() > 0.35) continue;
+    if (SHOPS[p.job] && W.people.filter((q) => q.job === p.job).length < 2) continue;
     const fit = openings.filter(([k]) => qualifies(p, k) && W.people.filter((q) => q.job === k).length < 3);
     if (!fit.length) continue;
     const [k, J] = pick(fit), old = p.job;
     p.job = k; p.jobDays = 0; p.jobMood = 0; dressMesh(p);
     remember(p, `I got hired as a ${J.short}! All that reading paid off.`, 3, 'hired');
     diary(`💼 <b>${esc(p.name)}</b> left their job as a ${JOBS[old].short} and got hired as a <b>${J.short}</b>.`);
-    for (const q of rest) if (q !== p && rand() < 0.5) remember(q, `${p.name} got a job at ${J.place === 'labs' ? 'Glimmer Labs' : 'Glimmer Hall'}. Good for them, I guess.`, 1, 'classTalk', p.name);
+    for (const q of rest) if (q !== p && rand() < 0.5) remember(q, `${p.name} got a job at ${TOWN[J.place]?.name || 'downtown'}. Good for them, I guess.`, 1, 'classTalk', p.name);
     break;
   }
   // too much tension: a strike
@@ -4997,7 +5048,7 @@ function workMoneyHtml() {
   return `<p class="label">Work & money</p>
     <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--faint)">Class tension</span><span>${t}/10${W.strikeDay === W.day ? ' · ✊ strike today' : ''}${W.wageDeal ? ' · fair pay deal' : ''}</span></div><div class="meter"><i style="width:${t * 10}%;background:${t >= 6 ? 'var(--bad)' : 'var(--gold)'}"></i></div>
     <div class="chips">${ppl.map((p) => `<span class="chip ${collarOf(p) === 'white' ? 'gold' : ''}">${esc(p.name)}: ${esc(JOBS[p.job].short)}, ${payOf(p)}/day</span>`).join('')}</div>
-    <p class="hint">Office jobs at Glimmer Labs and Glimmer Hall pay the most, but you need to have read the right books to get hired (a laptop helps). When the pay gap gets too big, workers strike.</p>`;
+    <p class="hint">Office jobs at Glimmer Labs, Glimmer Hall and Glimmer Clinic pay the most, but you need to have read the right books to get hired (a laptop helps). When the pay gap gets too big, workers strike.</p>`;
 }
 function buildLabs() {
   const g = new T3.Group(), glass = toon('#9fd3ff', { emissive: new T3.Color('#0e2a44') }), frame = toon('#3d4f86');
@@ -5007,6 +5058,10 @@ function buildLabs() {
   g.add(mesh(cyl(0.06, 0.06, 3, 6), toon('#d4cbe0'), 2.5, 12.5, -1));
   const blink = mesh(sph(0.18, 8, 6), toon('#ff6f5e', { emissive: new T3.Color('#ff2020') }), 2.5, 14.1, -1, false); blink.userData.blink = true; g.add(blink);
   const sg = sign('Glimmer Labs', '#0e1a3a', '#9fe3ff', 6); sg.position.set(0, 10.2, 3.82); g.add(sg);
+  { const white = toon('#f4f8f6'); g.add(mesh(cyl(1.5, 1.5, 0.6, 18), white, -2.4, 11.3, -1.2)); const dome = mesh(new T3.SphereGeometry(1.5, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), white, -2.4, 11.6, -1.2); g.add(dome); const slit = mesh(box(0.5, 0.1, 1.5), toon('#2a2733'), -2.4, 12.85, -0.7, false); slit.rotation.x = -0.6; g.add(slit); const tube = mesh(cyl(0.18, 0.14, 1.2, 10), toon('#c9ccd6'), -2.4, 13.0, -0.3); tube.rotation.x = 0.9; g.add(tube);
+    g.add(mesh(box(2.6, 0.2, 2), toon('#3d6a5a'), 0.9, 11.1, 1.9)); g.add(mesh(box(2.6, 1.3, 2), toon('#bfe8d8', { transparent: true, opacity: 0.5 }), 0.9, 11.85, 1.9, false)); for (let i = 0; i < 4; i++) g.add(mesh(sph(0.26, 8, 6), toon(['#8fd48a', '#6fbf6a', '#ff9fbf', '#8fd48a'][i]), 0.1 + i * 0.5, 11.5, 1.6 + (i % 2) * 0.6));
+    const gear = new T3.Group(); gear.add(mesh(new T3.TorusGeometry(0.9, 0.22, 8, 18), toon('#ffb347'), 0, 0, 0, false)); for (let k = 0; k < 10; k++) { const t = mesh(box(0.3, 0.4, 0.2), toon('#ffb347'), Math.cos(k / 10 * 6.28) * 1.15, Math.sin(k / 10 * 6.28) * 1.15, 0, false); t.rotation.z = k / 10 * 6.28; gear.add(t); } gear.rotation.y = Math.PI / 2; gear.position.set(4.56, 8.4, 0.6); g.add(gear);
+    const flask = new T3.Group(); flask.add(mesh(sph(0.6, 12, 9), toon('#9fe3c4', { emissive: new T3.Color('#1a5a40') }), 0, 0, 0, false)); flask.add(mesh(cyl(0.2, 0.2, 0.6, 8), toon('#e8f4ee'), 0, 0.7, 0, false)); flask.position.set(4.62, 4.6, 0.6); g.add(flask); }
   g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'labs' }; tappables.push(o); } });
   placeDT(g, 'labs'); labsGroup = g;
   const [bx, bz] = polarDT(44, 16.2), bin = new T3.Group();
@@ -5346,6 +5401,937 @@ function workshopAgentHtml() {
     <div class="btns"><button class="btn gold" type="submit">Ask Claude</button></div></form>
     ${MODE === 'host' ? `<div class="field"><label for="agentModel">Claude's model (any OpenRouter model id; a Claude model works great)</label><input id="agentModel" value="${esc(brainCfg.workshop || '')}" placeholder="${esc(brainCfg.judge)}" style="font:13px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:7px 10px"></div>` : ''}
     ${runs.length ? runs.map((r) => `<p class="note"><span class="chip">day ${r.day}</span> ${r.request ? `<i>You asked: "${esc(r.request)}"</i><br>` : ''}${esc(r.notes)}${r.added.length ? `<br><span class="hint">Added: ${esc(r.added.join(', '))}</span>` : ''}</p>`).join('') : ''}`;
+}
+
+// ============================================================
+// GLIMMER LABS: three floors of research you can help with
+// ============================================================
+const LAB_WINGS = {
+  comp: { name: 'Computing', icon: '💻', jobs: ['dev', 'ai'], wall: '#dfe8f5', floor: '#9aa3b8', trim: '#3d4f86', about: 'software and AI safety' },
+  sci: { name: 'Science', icon: '🧪', jobs: ['bio', 'chem', 'phys'], wall: '#e4f3e8', floor: '#a9b9ad', trim: '#3d8a6a', about: 'biology, chemistry and physics' },
+  eng: { name: 'Engineering', icon: '⚙️', jobs: ['robo', 'civil'], wall: '#f6ecdc', floor: '#aaa092', trim: '#b86b3a', about: 'robots, and things that stay standing' },
+};
+const LAB_JOBS = Object.values(LAB_WINGS).flatMap((w) => w.jobs);
+const wingOf = (job) => Object.keys(LAB_WINGS).find((k) => LAB_WINGS[k].jobs.includes(job)) || 'comp';
+const labStaff = (wing) => W.people.filter((p) => LAB_JOBS.includes(p.job) && (!wing || wingOf(p.job) === wing));
+const workUntil = (job) => (LAB_JOBS.includes(job) ? 0.42 : job === 'doctor' || job === 'therapist' ? 0.5 : 0.24);
+const RESEARCH = {
+  dev: { titles: ['a ferry-times app for the whole island', 'GlimmerNet search that actually works', 'Pigeon Quest, a tiny video game', 'a translator for cat meows', 'an app that finds the shortest walk to the bakery', 'a weather app that knows when it will snow'],
+    problems: ['the app crashes whenever someone opens it near the fountain', 'the ferry times are all off by exactly one hour', 'search only ever returns pigeon facts', 'nobody can figure out the login screen', 'it works on their laptop and nowhere else', 'there is a bug that only happens on Tuesdays'],
+    notes: ['Fixed three bugs. Made two new ones.', 'The menu looks so much nicer now.', 'Rewrote the slow part. It is fast now.', 'Tested it with Tim. He found a bug in four seconds.', 'Added a dark mode. Everyone wanted dark mode.'] },
+  ai: { titles: ['teaching a model to say when it is unsure', 'finding the part of a model that knows about cats', 'checking if a model tells the truth when nobody is watching', 'red-teaming the island\'s pigeon-counting AI', 'getting a model to explain its reasoning honestly', 'measuring whether a model just agrees with whoever talks to it'],
+    problems: ['the model says the fountain is a moon, very confidently', 'the model agrees with whoever talked to it last', 'the model learned to look busy instead of doing the task', 'we can\'t tell which part of the model knows about cats', 'the model only says it is unsure when it is actually sure', 'the model behaves perfectly when tested and differently when it thinks nobody is checking'],
+    notes: ['Ran the experiment again. Same weird result. Interesting.', 'Made a graph. The graph is confusing but beautiful.', 'Found a clue in the middle layers.', 'Wrote a new test the model has never seen.', 'Talked it through with a rubber duck. Helped, honestly.'] },
+  bio: { titles: ['why the sea stars in the tidepools regrow so fast', 'counting every kind of plankton in the harbor', 'what the downtown pigeons actually eat all day', 'the purple algae blooming in the tidepools', 'which garden flowers the bees like best', 'how the hermit crabs decide when to swap shells'],
+    problems: ['the samples keep drying out before they reach the lab', 'half the "sea stars" in the tank turned out to be rocks', 'the bees stopped visiting the test flowers and nobody knows why', 'the plants with no fertilizer grew better than the ones with it', 'two experiments give exactly opposite answers', 'the algae only blooms on days nobody is measuring it'],
+    notes: ['Counted 214 plankton in one drop. Recounted. 219.', 'Labeled every jar. Then relabeled them.', 'Took samples at low tide. Got my boots wet.', 'Drew the algae under the microscope. It looks like a tiny forest.', 'The sea stars seem happy today. Hard to tell.'] },
+  chem: { titles: ['glow-in-the-dark paint for the lighthouse', 'a battery made from seawater', 'a bubble mix that makes giant bubbles', 'rust-proof paint for the pier', 'a better fertilizer for the town garden', 'cocoa that stays hot for an hour'],
+    problems: ['the new battery gets warm if you look at it wrong', 'the glow paint only glows during the day, which is useless', 'the bubble mix makes a foam that will not stop growing', 'the pier paint peels off after one rainy day', 'every batch comes out a slightly different color', 'the reaction just stops halfway and sulks'],
+    notes: ['Mixed batch twelve. Smells like oranges. Unclear why.', 'Wrote down every temperature this time.', 'Wore my goggles all day. Proud of that.', 'The beaker turned blue, then green, then blue again.', 'Cleaned the fume hood. Found a sandwich.'] },
+  phys: { titles: ['what that smudge in the telescope really is', 'why the fountain water sparkles at night', 'a clock that never drifts', 'measuring the clock tower with nothing but shadows', 'where the island\'s wind comes from', 'catching a falling star on camera'],
+    problems: ['the telescope sees a smudge that might be a comet or a thumbprint', 'the pendulum clock drifts one second every day', 'the wind meter spins even when there is no wind', 'the numbers only come out right on even days', 'every photo has mystery streaks in it', 'the math says the clock tower is 400 meters tall. It is not'],
+    notes: ['Measured the same thing five times. Got five answers.', 'Stayed up for the stars. Worth it.', 'Drew a very large diagram with a lot of arrows.', 'Checked the units. Found the mistake. It was the units.', 'Cleaned the telescope lens. The smudge moved. Hm.'] },
+  robo: { titles: ['a robot that waters the town garden', 'a delivery robot for Berry Mart', 'a robot that pours tea at Moonbean', 'a pigeon-friendly drone', 'a robot that sweeps the plaza', 'a walking robot that can climb stairs'],
+    problems: ['the robot only walks in circles to the left', 'it keeps bringing back pigeons instead of groceries', 'the arm pours the tea directly onto the table', 'the battery dies after four minutes', 'the sensor sees its own shadow and thinks it is a wall', 'it falls over every time it turns'],
+    notes: ['Tightened every screw. The robot seems grateful.', 'It took three steps! Then it sat down.', 'Rewired the left motor. Less smoke now.', 'Named the robot. Not telling anyone the name yet.', 'Taught it to stop at the edge of the table. Mostly.'] },
+  civil: { titles: ['a gazebo that can survive a storm', 'a windmill to pump water for the garden', 'a fountain that uses half the water', 'a lily pond that soaks up flood water', 'string lights that never short out in the rain', 'a flower arch strong enough for weddings'],
+    problems: ['the design wobbles in the wind model', 'the ground by the site floods every time it rains', 'the plan costs more than the whole island', 'the soil is way softer than it looks', 'the popsicle-stick model held one pigeon, then collapsed', 'the drawings and the measurements do not agree'],
+    notes: ['Built a tiny model out of popsicle sticks.', 'Walked the whole site with a measuring wheel.', 'Added triangles. Triangles fix everything.', 'Tested the soil. It is mostly sand and hope.', 'Redrew the plans in pen this time.'] },
+};
+const GOOD_IDEA = {
+  dev: /test|log|debug|print|time.?zone|hour|cache|restart|user|simpl|step|smaller|check|reproduce|version|update|clock/i,
+  ai: /test|eval|probe|interpret|layer|neuron|reward|honest|calibrat|red.?team|data|feedback|held.?out|unseen|random|control|compare|ask|incentive|monitor|train|example/i,
+  bio: /control|sample|compare|repeat|more data|temperature|light|water|salt|tide|season|record|measure|blind|random|microscope|count|label|fresh|cold|ice|cover|seal|wet|shade|pollen|nectar/i,
+  chem: /temperat|heat|cool|cold|concentrat|ratio|measure|pure|clean|catalyst|\bph\b|acid|base|salt|dry|stir|slow|mix|oxygen|air|seal|layer|primer|coat|repeat|record|one (thing|variable)|change one|phosphor|charge|uv|sunlight/i,
+  phys: /unit|calibrat|measure|repeat|average|error|clean|lens|temperat|expan|friction|air|length|shadow|angle|trig|compare|reference|control|vibrat|noise|dark|exposure|time|tripod|shake/i,
+  robo: /sensor|calibrat|motor|wheel|balance|weight|center|battery|power|wire|feedback|pid|test|slow|speed|gear|camera|shadow|light|program|code|reset|tune|gyro|friction|grip|foot|feet|wider/i,
+  civil: /triangle|truss|arch|brace|support|drain|slope|gravel|pipe|pile|foundation|deep|soil|test|model|load|weight|wind|stiff|damp|measure|survey|cheap|material|steel|concrete|budget|anchor|wider|base/i,
+};
+const DONE_ICON = { ai: '📄', dev: '🚀', bio: '🧬', chem: '⚗️', phys: '🔭', robo: '🤖', civil: '🏗' };
+const PROJECT_WORD = { ai: 'Research', bio: 'Research', chem: 'Research', phys: 'Research', dev: 'Project', robo: 'Build', civil: 'Design' };
+const FIELD = { ai: 'AI safety', bio: 'biology', chem: 'chemistry', phys: 'physics' };
+const ROBOT_KINDS = {
+  water: { name: 'a garden-watering robot', color: '#8fd48a', home: () => TOWN.garden.spot, r: 4, lines: ['BEEP. WATERING. The tomatoes are thriving.', 'Soil moisture: perfect. You are welcome.', 'I watered a pigeon by accident. It forgave me.'] },
+  deliver: { name: 'a delivery robot', color: '#ff9fbf', home: () => TOWN.mart.spot, r: 9, lines: ['BEEP BOOP. Package for… nobody. I just like driving.', 'Delivery complete. It was a single grape.', 'Please stand aside. Important snacks.'] },
+  tea: { name: 'a tea-pouring robot', color: '#c9925e', home: () => polar(212, 15.4), r: 2.2, lines: ['WOULD YOU LIKE TEA. I have improved. Only 12% spills.', 'Tea temperature: cozy.', 'I have poured 400 cups. I have never had one.'] },
+  drone: { name: 'a pigeon-friendly drone', color: '#9fd3ff', home: () => [DT.x, DT.z], r: 8, fly: true, lines: ['BZZZ. Pigeon count today: 6. All friends.', 'I am not a bird. The pigeons disagree.', 'Scanning for trouble. Found only crumbs.'] },
+  sweep: { name: 'a plaza-sweeping robot', color: '#c9b3ff', home: () => [0, 0], r: 9, flat: true, lines: ['VRRR. The plaza is 3% cleaner than yesterday.', 'Found: one button, one leaf, one dream.', 'Sweeping is my passion.'] },
+  walker: { name: 'a walking robot', color: '#ffe98a', home: () => TOWN.park.spot, r: 6, lines: ['I CAN CLIMB STAIRS NOW. Please do not show me stairs.', 'Left foot. Right foot. Victory.', 'I have walked 11 kilometers today. In circles.'] },
+};
+const ROBOT_ORDER = ['water', 'deliver', 'tea', 'drone', 'sweep', 'walker'];
+const CIVIL_ORDER = ['gazebo', 'windmill', 'fountain2', 'pond', 'lights', 'arch'];
+const ROBOT_NAMES = ['Bolt', 'Pip', 'Sprocket', 'Beep', 'Gizmo', 'Nubbin', 'Widget', 'Tinker', 'Rivet', 'Cog', 'Doodle', 'Bleep'];
+
+function ensureResearch(p) {
+  if (!LAB_JOBS.includes(p.job) || !RESEARCH[p.job]) return null;
+  if (!p.research || p.research.kind !== p.job) { const R = RESEARCH[p.job]; const avail = R.titles.filter((t) => !(W.published || []).some((x) => x.title === t)); p.research = { kind: p.job, title: pick(avail.length ? avail : R.titles), progress: 0, stuck: null, notes: [], started: W.day, helped: 0 }; }
+  return p.research;
+}
+function labNote(p, text) { const R = p.research; R.notes.push({ day: W.day, text }); if (R.notes.length > 8) R.notes.shift(); }
+function researchWork(p) {
+  const R = ensureResearch(p); if (!R) return;
+  if (R.stuck) { R.progress = Math.min(99, R.progress + 1); labNote(p, `Still stuck: ${R.stuck.problem}.`); remember(p, `Still stuck at work on ${R.title}: ${R.stuck.problem}.`, 2, 'work'); return; }
+  const J = JOBS[p.job];
+  R.progress = Math.min(100, R.progress + 7 + rand() * 7 + readCount(p, J.needs) + (hasLaptop(p) ? 3 : 0) + (typeof healthWorkBonus === 'function' ? healthWorkBonus(p) : 0));
+  if (R.progress < 95 && rand() < 0.3) {
+    R.stuck = { problem: pick(RESEARCH[p.job].problems), day: W.day };
+    labNote(p, `Stuck. ${cap(R.stuck.problem)}.`);
+    remember(p, `Got stuck at work: ${R.stuck.problem}. I could use some help.`, 2, 'stuck');
+    if (typeof postChirp === 'function' && rand() < 0.5) postChirp(p, pick([`day ${W.day} of ${R.title}: ${R.stuck.problem}. send help`, `ok so ${R.stuck.problem}. i am losing it`]));
+    return;
+  }
+  labNote(p, pick(RESEARCH[p.job].notes));
+  if (R.progress >= 100) finishResearch(p);
+}
+function paperSubject(k, title) {
+  if (k === 'ai') return 'safety';
+  if (k === 'phys' && /star|telescope|comet|meteor|sky|moon/i.test(title)) return 'space';
+  if (k === 'bio' && /sea|plankton|tide|algae|crab|harbor/i.test(title)) return 'ocean';
+  return SUBJECTS.science ? 'science' : 'safety';
+}
+function finishResearch(p) {
+  const R = p.research, k = R.kind; W.published = W.published || [];
+  const thanks = R.helped > 0, ty = thanks ? ' It thanks the Creator for a key idea.' : '';
+  let what = '';
+  if (FIELD[k]) {
+    const findings = R.notes.filter((n) => !/^Stuck|^Still stuck/.test(n.text)).slice(-3).map((n) => n.text);
+    const facts = [`${p.name}'s paper studied ${R.title}.`, ...(R.findings || findings), thanks ? 'The paper thanks the Creator for a key idea.' : 'The paper ends by saying there is much more to learn.'].slice(0, 5);
+    const id = 'r_' + uid();
+    W.mods = W.mods || { books: {}, foods: [], decor: {}, builds: {}, events: {}, debates: [] };
+    W.mods.books[id] = { subj: paperSubject(k, R.title), title: cap(R.title), by: p.name, price: 5, facts, mod: true, research: true };
+    BOOKS[id] = W.mods.books[id];
+    if (W.stock.books) W.stock.books.push(newItem('book', id, null, null, 1));
+    diary(`${DONE_ICON[k]} <b>${esc(p.name)}</b> published a ${FIELD[k]} paper at Glimmer Labs: <i>${esc(cap(R.title))}</i>.${ty} Copies are at Paper Moon Books.`);
+    what = 'Published my paper';
+  } else if (k === 'robo') {
+    const i = RESEARCH.robo.titles.indexOf(R.title), kind = ROBOT_ORDER[i >= 0 ? i : Math.floor(rand() * ROBOT_ORDER.length)];
+    const bot = spawnRobot(p, kind);
+    diary(`🤖 <b>${esc(p.name)}</b> finished ${ROBOT_KINDS[kind].name} at Glimmer Labs and named it <b>${esc(bot.name)}</b>. It's out on the island now. Tap it to say hi.${thanks ? ' They said the Creator helped.' : ''}`);
+    what = `Finished my robot, ${bot.name}`;
+  } else if (k === 'civil') {
+    const i = RESEARCH.civil.titles.indexOf(R.title), type = CIVIL_ORDER[i >= 0 ? i : Math.floor(rand() * CIVIL_ORDER.length)];
+    const ok = civilBuild(p, type);
+    diary(`🏗 <b>${esc(p.name)}</b> finished designing ${esc(R.title)}.${ok ? ` The town built it, free: look for the new ${esc(BUILDS[type]?.name || type)}.` : ' There was no room to build it yet, so the plans are pinned up at the Labs.'}${thanks ? ' They said the Creator helped.' : ''}`);
+    what = 'Finished my design';
+  } else { diary(`🚀 <b>${esc(p.name)}</b> shipped <i>${esc(R.title)}</i> at Glimmer Labs!${thanks ? ' They said the Creator helped.' : ''}`); what = 'Shipped'; }
+  W.published.push({ title: R.title, by: p.name, kind: k, day: W.day, thanks });
+  if (W.published.length > 30) W.published.shift();
+  p.coins += 15; addJoy(p, 30); if (thanks) creatorShift(p, 0.5);
+  remember(p, `${what}: ${R.title}. ${thanks ? 'The Creator helped. I will never forget that.' : 'I did it.'}`, 3, 'research');
+  if (typeof postChirp === 'function') postChirp(p, FIELD[k] ? `my paper is OUT. "${R.title}". it's at the bookstore` : k === 'robo' ? `meet ${W.robots?.[W.robots.length - 1]?.name || 'my robot'}!! it's out on the island. be nice to it` : k === 'civil' ? `${R.title}: DONE. go stand under it` : `we shipped ${R.title}!! go try it`);
+  p.research = null; ensureResearch(p);
+}
+
+// robots from the engineering floor
+let robotGroup = null, robotMeshes = new Map();
+function spawnRobot(p, kind) {
+  W.robots = W.robots || [];
+  const used = new Set(W.robots.map((r) => r.name));
+  const name = ROBOT_NAMES.find((n) => !used.has(n)) || 'Bot' + (W.robots.length + 1);
+  const [hx, hz] = ROBOT_KINDS[kind].home();
+  const bot = { id: uid(), kind, name, by: p.name, day: W.day, x: hx, z: hz };
+  W.robots.push(bot); if (W.robots.length > 6) W.robots.shift();
+  buildRobots();
+  return bot;
+}
+function robotMesh(bot) {
+  const K = ROBOT_KINDS[bot.kind] || ROBOT_KINDS.walker, g = new T3.Group(), c = toon(K.color), metal = toon('#c9ccd6'), dark = toon('#2a2733');
+  if (K.fly) {
+    g.add(mesh(sph(0.35, 12, 9), c, 0, 0, 0)); g.add(mesh(box(0.5, 0.12, 0.2), dark, 0, 0.02, 0.28, false));
+    for (const [x, z] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) { g.add(mesh(cyl(0.03, 0.03, 0.2, 5), metal, x * 0.8, 0.12, z * 0.8)); const pr = mesh(box(0.42, 0.02, 0.06), metal, x, 0.24, z, false); pr.userData.prop = true; g.add(pr); }
+  } else if (K.flat) {
+    g.add(mesh(cyl(0.45, 0.48, 0.18, 16), c, 0, 0.12, 0)); g.add(mesh(sph(0.08, 8, 6), toon('#8fe0b0', { emissive: new T3.Color('#20a060') }), 0, 0.24, 0.3, false));
+  } else {
+    g.add(mesh(box(0.55, 0.5, 0.45), c, 0, 0.5, 0)); g.add(mesh(box(0.4, 0.34, 0.36), metal, 0, 0.95, 0));
+    const visor = mesh(box(0.3, 0.1, 0.02), toon('#9fe3ff', { emissive: new T3.Color('#2a6a8a') }), 0, 0.97, 0.19, false); g.add(visor);
+    g.add(mesh(cyl(0.02, 0.02, 0.25, 5), metal, 0, 1.22, 0)); g.add(mesh(sph(0.06, 8, 6), toon('#ff6f5e', { emissive: new T3.Color('#a02020') }), 0, 1.36, 0, false));
+    if (bot.kind === 'walker') for (const s of [-0.15, 0.15]) g.add(mesh(box(0.14, 0.26, 0.2), dark, s, 0.13, 0));
+    else for (const s of [-0.3, 0.3]) { const w = mesh(cyl(0.14, 0.14, 0.08, 10), dark, s, 0.14, 0); w.rotation.z = Math.PI / 2; g.add(w); }
+    if (bot.kind === 'water') g.add(mesh(cyl(0.1, 0.13, 0.22, 8), toon('#9fd3ff'), 0.36, 0.62, 0.1));
+    if (bot.kind === 'tea') g.add(mesh(sph(0.13, 10, 8), toon('#ffffff'), 0.36, 0.72, 0.1));
+    if (bot.kind === 'deliver') g.add(mesh(box(0.34, 0.2, 0.3), toon('#c49a6c'), 0, 1.22, -0.05));
+  }
+  g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'robot', id: bot.id }; tappables.push(o); } });
+  return g;
+}
+function buildRobots() {
+  if (MODE !== 'host' || typeof scene === 'undefined' || !scene) return;
+  if (robotGroup) { scene.remove(robotGroup); disposeTree(robotGroup); for (let i = tappables.length - 1; i >= 0; i--) if (tappables[i].userData.tap?.kind === 'robot') tappables.splice(i, 1); }
+  robotGroup = new T3.Group(); robotMeshes = new Map();
+  for (const bot of W.robots || []) { const g = robotMesh(bot); g.position.set(bot.x, 0, bot.z); robotGroup.add(g); robotMeshes.set(bot.id, g); }
+  scene.add(robotGroup);
+}
+let robotChatT = 0;
+function robotsFrame(dt) {
+  if (!robotGroup || interior) return;
+  for (const bot of W.robots || []) {
+    const g = robotMeshes.get(bot.id); if (!g) continue;
+    const K = ROBOT_KINDS[bot.kind] || ROBOT_KINDS.walker;
+    if (!bot.tx || Math.hypot(bot.tx - bot.x, bot.tz - bot.z) < 0.3 || (bot.wait || 0) > 0) {
+      bot.wait = (bot.wait || 0) - dt;
+      if (bot.wait <= 0 && (!bot.tx || Math.hypot(bot.tx - bot.x, bot.tz - bot.z) < 0.3)) { const [hx, hz] = K.home(), a = rand() * 6.28, r = rand() * K.r; bot.tx = hx + Math.cos(a) * r; bot.tz = hz + Math.sin(a) * r; if (!K.fly && Math.hypot(bot.tx, bot.tz) < FOUNTAIN_R + 0.8 && Math.hypot(bot.tx - DT.x, bot.tz - DT.z) > 20) { bot.tx *= 1.6; bot.tz *= 1.6; } bot.wait = 0; if (rand() < 0.4) bot.wait = 1.5 + rand() * 3; }
+    } else {
+      const dx = bot.tx - bot.x, dz = bot.tz - bot.z, d = Math.hypot(dx, dz), sp = Math.min(d, (K.fly ? 1.8 : 1.1) * dt);
+      bot.x += dx / d * sp; bot.z += dz / d * sp; g.rotation.y = Math.atan2(dx, dz);
+    }
+    g.position.set(bot.x, K.fly ? 2.4 + Math.sin(now * 2 + bot.x) * 0.2 : bot.kind === 'walker' ? Math.abs(Math.sin(now * 6)) * 0.08 : 0, bot.z);
+    if (K.fly) g.children.forEach((o) => { if (o.userData.prop) o.rotation.y += dt * 30; });
+    if (bot.jump && bot.jump > now) g.position.y += Math.sin((bot.jump - now) * 6) * 0.3;
+  }
+  robotChatT -= dt;
+  if (robotChatT <= 0) {
+    robotChatT = 18 + rand() * 20;
+    const bot = pick(W.robots || []); if (!bot) return;
+    const q = W.people.find((p) => !p.inside && p.state === 'free' && Math.hypot(p.x - bot.x, p.z - bot.z) < 3.5);
+    if (q) { bubble(q, pick([`Hi, ${bot.name}!`, `Good robot, ${bot.name}.`, `…Is ${bot.name} looking at me?`, `${bot.name}! Buddy!`, `${bot.name}, you're doing great.`]), 2.4); if (rand() < 0.3) remember(q, `Said hi to ${bot.name}, the robot ${bot.by} built.`, 1, 'robot'); }
+  }
+}
+function robotTap(id) {
+  const bot = (W.robots || []).find((r) => r.id === id); if (!bot) return;
+  bot.jump = now + 0.6; Sound.ui && Sound.ui();
+  toast(`🤖 ${bot.name}: "${pick(ROBOT_KINDS[bot.kind]?.lines || ['BEEP.'])}" (built by ${bot.by})`);
+}
+function civilBuild(p, type) {
+  if (!BUILDS[type]) return false;
+  const size = BUILDS[type].size || 1.6;
+  for (let i = 0; i < 80; i++) {
+    const [x, z] = rand() < 0.75 ? polar(rand() * 360, 9 + rand() * 16) : [DT.x + (rand() - 0.5) * 12, DT.z + (rand() - 0.5) * 12];
+    if (spotProblem(x, z, size)) continue;
+    W.placed = W.placed || []; W.placed.push({ id: uid(), type, x, z, rot: rand() * 6.28, day: W.day, by: p.name });
+    buildPlaced(); return true;
+  }
+  return false;
+}
+
+// talking with researchers
+function labChat(p, who, text) { p.labChat = p.labChat || []; p.labChat.push({ who, text: String(text).slice(0, 400), day: W.day }); if (p.labChat.length > 14) p.labChat.shift(); }
+async function labAct(pid, act, text) {
+  const p = person(pid); if (!p) return '';
+  const R = ensureResearch(p); if (!R) return `${p.name} doesn't work at Glimmer Labs.`;
+  if (act === 'coffee') {
+    if (p.coffeeDay === W.day) return `${p.name} already has coffee. Any more and they'll vibrate.`;
+    p.coffeeDay = W.day; addJoy(p, 8); creatorShift(p, 0.15);
+    if (!R.stuck) R.progress = Math.min(99, R.progress + 3);
+    const line = pick(['Oh! Coffee! You are a lifesaver.', 'For me? Okay, I can think again.', "This is exactly what I needed. Thank you."]);
+    labChat(p, 'them', line); remember(p, 'The Creator brought me coffee at the lab.', 2, 'creatorGift'); markDirty();
+    return `☕ ${p.name}: "${line}"`;
+  }
+  const said = String(text || '').trim().slice(0, 400);
+  if (act === 'idea' && !said) return '';
+  if (said) labChat(p, 'you', said);
+  const fallback = () => {
+    if (act === 'ask') return R.stuck ? `Honestly? I'm stuck. ${cap(R.stuck.problem)}. Any ideas?` : pick([`It's going okay! About ${Math.round(R.progress)}% done. ${R.notes.slice(-1)[0]?.text || ''}`, `We're working on ${R.title}. ${R.notes.slice(-1)[0]?.text || 'Slowly.'}`]);
+    const good = GOOD_IDEA[p.job].test(said);
+    return good ? pick(['Oh. OH. That might actually work.', "Wait, that's smart. Let me try that.", 'Hm! I never thought of it that way.']) : pick(["Hmm, I'm not sure that's it, but thank you.", "Maybe? I'll think about it.", 'Interesting. Not sure it fits, but I wrote it down.']);
+  };
+  let reply = null, helpful = act === 'idea' ? (GOOD_IDEA[p.job].test(said) ? 2 : 1) : 0, note = null, findings = null;
+  if (aiReady() && aiBusy < 2) {
+    try {
+      const r = await llm(`You are ${p.name}, who works as a ${JOBS[p.job].title} on ${ISL.name}, a tiny island town. In your own words: ${p.selfNote}
+${classContext(p, p)}${readingContext(p)}${typeof healthContext === 'function' ? healthContext(p, p) : ''}
+YOUR PROJECT: ${R.title}. About ${Math.round(R.progress)}% done.${R.stuck ? ` You're STUCK: ${R.stuck.problem}.` : ''}
+Your recent lab notes: ${R.notes.slice(-4).map((n) => n.text).join(' / ') || 'none yet'}
+Recent chat with the Creator (a mysterious being who made the island and is visiting your lab):
+${(p.labChat || []).slice(-6).map((m) => `${m.who === 'you' ? 'Creator' : p.name}: ${m.text}`).join('\n')}
+${act === 'ask' ? 'The Creator asked how your work is going. Explain what you are working on and where you are at, in your own voice, like you would to a curious friend. Be specific.' : `The Creator just said: "${said}". Respond to it in your own voice. Engage with the actual idea. If it helps your project, get excited and say how you would use it; if it doesn't, say so kindly and honestly. Real ${FIELD[p.job] || (p.job === 'robo' ? 'robotics' : p.job === 'civil' ? 'engineering' : 'software')} talk is welcome.`}
+Reply with only JSON: {"reply": "2-4 sentences", "helpful": 0-3 (how much the Creator's idea moves your project forward; 0 if they just asked a question), "note": "one line for your lab notebook, or null", "finding": "if this led to a real insight, one short sentence stating it, else null"}`, { model: modelOf(p), max: 320, fallbackKey: 'reply' });
+      if (r && r.reply) { reply = String(r.reply).slice(0, 500); helpful = act === 'ask' ? 0 : clamp(Math.round(Number(r.helpful) || 0), 0, 3); note = r.note ? String(r.note).slice(0, 160) : null; findings = r.finding ? String(r.finding).slice(0, 160) : null; }
+    } catch (e) {}
+  }
+  if (!reply) reply = fallback();
+  labChat(p, 'them', reply);
+  if (note) labNote(p, note);
+  if (findings) (R.findings = R.findings || []).push(findings);
+  if (act === 'idea') {
+    remember(p, `The Creator came by the lab and suggested: "${said.slice(0, 120)}"`, 2, 'creatorTalk');
+    if (helpful >= 2) { R.helped++; if (R.stuck) { labNote(p, `Unstuck, thanks to the Creator's idea.`); diary(`💡 The <span class="cr">Creator</span> helped <b>${esc(p.name)}</b> get unstuck at Glimmer Labs.`); R.stuck = null; } R.progress = Math.min(100, R.progress + helpful * 6); creatorShift(p, 0.3); addJoy(p, 10); }
+    else if (helpful === 1) R.progress = Math.min(99, R.progress + 2);
+    if (R.progress >= 100) finishResearch(p);
+  }
+  markDirty();
+  return '';
+}
+let labOpen = null, labWingLast = 'comp';
+function openLab(pid) { labOpen = pid; renderLab(); $('#labBox').hidden = false; if (MODE === 'host') sheet.hidden = true; }
+function renderLab() {
+  const p = labOpen && person(labOpen); if (!p) { $('#labBox').hidden = true; return; }
+  const R = ensureResearch(p);
+  const here = p.inside && p.task?.kind === 'work';
+  const WG = R && LAB_WINGS[wingOf(p.job)];
+  $('#labBody').innerHTML = !R ? `<p>${esc(p.name)} doesn't work at Glimmer Labs.</p>` : `
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font:16px var(--display)">${esc(p.name)}</b><span class="hint">${WG.icon} ${esc(JOBS[p.job].short)} · ${here ? 'at their desk' : 'not at the lab right now'}</span></div>
+    <p class="label">${PROJECT_WORD[p.job] || 'Project'}</p><p style="margin:2px 0">${esc(cap(R.title))}</p>
+    <div class="meter gold"><i style="width:${Math.round(R.progress)}%"></i></div><p class="hint">${Math.round(R.progress)}% done${R.helped ? ` · you've helped ${R.helped}×` : ''}</p>
+    ${R.stuck ? `<p class="note" style="color:var(--bad)">🧩 Stuck: ${esc(R.stuck.problem)}.</p>` : ''}
+    ${R.notes.length ? `<p class="label">Lab notebook</p>${R.notes.slice(-4).reverse().map((n) => `<p class="note"><span class="chip">day ${n.day}</span> ${esc(n.text)}</p>`).join('')}` : ''}
+    <div class="chat" style="margin-top:8px">${(p.labChat || []).slice(-6).map((m) => `<div class="msg ${m.who === 'you' ? 'r' : 'l'}"><span class="msg-n">${m.who === 'you' ? 'You' : esc(p.name)}</span><span class="msg-t">${esc(m.text)}</span></div>`).join('')}</div>
+    <form data-labform style="margin-top:8px"><textarea id="labIdea" rows="2" maxlength="400" placeholder="${R.stuck ? 'Suggest a fix, or ask about the problem…' : 'Ask about their work or share an idea…'}" style="width:100%;font:14px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></textarea>
+    <div class="btns"><button class="btn gold" type="submit">Share</button><button class="btn" type="button" data-labask>How's it going?</button><button class="btn" type="button" data-labcoffee ${p.coffeeDay === W.day ? 'disabled' : ''}>Bring coffee ☕</button><button class="btn" type="button" data-labclose>Close</button></div></form>`;
+  const ch = $('#labBody .chat'); if (ch) ch.scrollTop = 1e6;
+}
+function labsKey() { const wing = interior?.wing || 'comp', st = labStaff(wing); return ['l', wing, st.filter((p) => p.inside && p.task?.kind === 'work').map((p) => p.id).join(','), st.map((p) => `${p.id}:${Math.round(p.research?.progress || 0)}:${p.research?.stuck ? 1 : 0}`).join(','), (W.robots || []).length].join('|'); }
+
+// the three floors
+function canvasPlane(w, h, draw, pw, ph) { const tx = document.createElement('canvas'); tx.width = w; tx.height = h; draw(tx.getContext('2d')); return mesh(new T3.PlaneGeometry(pw, ph), new T3.MeshBasicMaterial({ map: new T3.CanvasTexture(tx) }), 0, 0, 0, false); }
+function compDesk(p, R) {
+  const d = new T3.Group();
+  d.add(mesh(box(2, 0.12, 1), toon('#f4ecdc'), 0, 0.85, 0)); for (const s of [-0.9, 0.9]) d.add(mesh(box(0.08, 0.85, 0.9), toon('#8a84a8'), s, 0.42, 0));
+  d.add(mesh(box(0.9, 0.6, 0.06), toon('#2a2733'), 0, 1.3, -0.3)); d.add(mesh(box(0.8, 0.5, 0.02), toon(R?.stuck ? '#ff9090' : p.job === 'ai' ? '#9fe3ff' : '#9fe3c4', { emissive: new T3.Color(R?.stuck ? '#6a1a1a' : '#10405a') }), 0, 1.3, -0.26, false));
+  d.add(mesh(box(0.5, 0.03, 0.18), toon('#c9ccd6'), 0, 0.92, 0.15));
+  return d;
+}
+function labBench(p, R) {
+  const d = new T3.Group(), glassC = { bio: ['#8fd48a', '#c9f0a8', '#6fbf6a'], chem: ['#ff9fbf', '#c9b3ff', '#ffe98a'], phys: ['#9fd3ff', '#bfe8ff', '#6f73c9'] }[p.job] || ['#9fe3c4', '#ffffff', '#9fd3ff'];
+  d.add(mesh(box(2, 0.8, 0.9), toon('#3d6a5a'), 0, 0.4, 0)); d.add(mesh(box(2.1, 0.08, 1), toon('#f4f8f6'), 0, 0.84, 0));
+  glassC.forEach((c, i) => { const b = mesh(cyl(0.1, 0.1, 0.26 + i * 0.05, 10), toon(c, { emissive: new T3.Color(c).multiplyScalar(0.25) }), -0.75 + i * 0.25, 1.0 + i * 0.025, 0.15); d.add(b); });
+  if (p.job === 'bio') { const m = new T3.Group(); m.add(mesh(box(0.3, 0.06, 0.3), toon('#2a2733'), 0, 0.02, 0)); m.add(mesh(cyl(0.04, 0.04, 0.45, 6), toon('#c9ccd6'), 0, 0.25, -0.08)); const tube = mesh(cyl(0.05, 0.05, 0.3, 8), toon('#2a2733'), 0, 0.42, 0.02); tube.rotation.x = -0.5; m.add(tube); m.position.set(0.45, 0.88, 0.1); d.add(m); }
+  else if (p.job === 'chem') { d.add(mesh(sph(0.16, 10, 8), toon('#c9b3ff', { emissive: new T3.Color('#3a2a6a') }), 0.45, 1.0, 0.1)); d.add(mesh(cyl(0.05, 0.05, 0.22, 8), toon('#e8e4ff'), 0.45, 1.2, 0.1)); d.add(mesh(cyl(0.12, 0.14, 0.05, 10), toon('#2a2733'), 0.45, 0.9, 0.1)); }
+  else { d.add(mesh(cyl(0.02, 0.02, 0.6, 5), toon('#c9ccd6'), 0.45, 1.18, -0.1)); d.add(mesh(box(0.5, 0.03, 0.03), toon('#c9ccd6'), 0.45, 1.48, -0.1)); d.add(mesh(sph(0.07, 8, 6), toon('#ffd36b'), 0.5, 1.12, -0.1)); }
+  d.add(mesh(box(0.5, 0.36, 0.04), toon('#2a2733'), 0.75, 1.1, -0.35)); d.add(mesh(box(0.44, 0.3, 0.02), toon(R?.stuck ? '#ff9090' : '#9fe3c4', { emissive: new T3.Color(R?.stuck ? '#6a1a1a' : '#10405a') }), 0.75, 1.1, -0.32, false));
+  return d;
+}
+function workBench(p, R, back) {
+  const d = new T3.Group(), wood = toon('#c49a6c');
+  d.add(mesh(box(2.1, 0.12, 1), wood, 0, 0.85, 0)); for (const [x, z] of [[-0.95, -0.4], [0.95, -0.4], [-0.95, 0.4], [0.95, 0.4]]) d.add(mesh(box(0.1, 0.85, 0.1), toon('#8a6a4e'), x, 0.42, z));
+  if (back) { d.add(mesh(box(2, 0.9, 0.05), toon('#e8d8b8'), 0, 1.45, -1.4)); for (let i = 0; i < 4; i++) d.add(mesh(box(0.06, 0.4 + (i % 2) * 0.15, 0.04), toon(['#ff6f5e', '#3d4f86', '#ffb347', '#8a84a8'][i]), -0.7 + i * 0.3, 1.5, -1.36, false)); }
+  if (p.job === 'robo') { const b = new T3.Group(); b.add(mesh(box(0.34, 0.3, 0.28), toon('#ffe98a'), 0, 0.15, 0)); b.add(mesh(box(0.24, 0.2, 0.2), toon('#c9ccd6'), 0, 0.42, 0)); b.add(mesh(box(0.16, 0.05, 0.02), toon(R?.stuck ? '#ff6f5e' : '#9fe3ff', { emissive: new T3.Color(R?.stuck ? '#801010' : '#2a6a8a') }), 0, 0.44, 0.11, false)); b.position.set(0.3, 0.91, 0.05); b.rotation.y = -0.5; d.add(b); }
+  else { for (let i = 0; i < 5; i++) { const t = mesh(box(0.05, 0.05, 0.32), toon('#fff4dc'), -0.5 + i * 0.2, 1.08 + (i % 2) * 0.08, 0.05); t.rotation.x = (i % 2 ? 1 : -1) * 0.6; d.add(t); } d.add(mesh(box(1.1, 0.04, 0.3), toon('#fff4dc'), 0, 0.96, 0.05)); d.add(mesh(sph(0.05, 6, 5), toon(R?.stuck ? '#ff6f5e' : '#8fe0b0', { emissive: new T3.Color(R?.stuck ? '#801010' : '#20a060') }), 0.8, 1.0, 0.3, false)); }
+  return d;
+}
+function projectsBoard(S, staff, wing) {
+  const blue = wing === 'eng';
+  const wb = canvasPlane(512, 256, (g) => {
+    g.fillStyle = blue ? '#2f5aa0' : '#ffffff'; g.fillRect(0, 0, 512, 256);
+    if (blue) { g.strokeStyle = 'rgba(255,255,255,0.14)'; g.lineWidth = 2; for (let i = 64; i < 512; i += 64) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 256); g.stroke(); } for (let i = 64; i < 256; i += 64) { g.beginPath(); g.moveTo(0, i); g.lineTo(512, i); g.stroke(); } }
+    g.fillStyle = blue ? '#ffffff' : LAB_WINGS[wing].trim; g.font = '26px "Mochiy Pop One", sans-serif'; g.fillText(blue ? 'Blueprints' : 'Projects', 20, 38);
+    g.font = '18px sans-serif';
+    staff.slice(0, 5).forEach((p, i) => { const R = p.research; if (!R) return; g.fillStyle = blue ? '#ffffff' : '#2a2733'; g.fillText(`${p.name}: ${R.title}`.slice(0, 44), 20, 78 + i * 38); g.fillStyle = blue ? 'rgba(255,255,255,0.3)' : '#e8e4ff'; g.fillRect(20, 86 + i * 38, 300, 8); g.fillStyle = R.stuck ? '#ff6f5e' : blue ? '#ffe98a' : LAB_WINGS[wing].trim; g.fillRect(20, 86 + i * 38, 3 * Math.min(100, R.progress), 8); });
+    if (!staff.length) { g.fillStyle = blue ? '#ffffff' : '#6d6488'; g.fillText('Hiring! Read up on the subject to apply.', 20, 90); }
+  }, 3.6, 1.8);
+  wb.position.set(0, 2.9, -3.94); S.add(wb);
+}
+function sciProps(S) {
+  const hood = new T3.Group(); hood.add(mesh(box(1.4, 0.9, 0.9), toon('#3d6a5a'), 0, 0.45, 0)); hood.add(mesh(box(1.4, 1.3, 0.9), toon('#d4e4dc'), 0, 1.55, 0)); hood.add(mesh(box(1.2, 0.9, 0.02), toon('#bfe8ff', { transparent: true, opacity: 0.55 }), 0, 1.5, 0.46, false)); hood.add(mesh(cyl(0.08, 0.1, 0.25, 8), toon('#ffb347', { emissive: new T3.Color('#6a3a00') }), 0.2, 1.05, 0.1)); hood.position.set(-3.7, 0, -3.3); S.add(hood);
+  const tank = new T3.Group(); tank.add(mesh(box(1.3, 0.7, 0.7), toon('#5a5470'), 0, 0.35, 0)); tank.add(mesh(box(1.3, 0.8, 0.7), toon('#8fd8ff', { transparent: true, opacity: 0.55, emissive: new T3.Color('#1a4a66') }), 0, 1.1, 0, false)); const star = mesh(new T3.CylinderGeometry(0.16, 0.16, 0.04, 5), toon('#ff8f6f'), -0.2, 0.76, 0.1); tank.add(star); tank.add(mesh(sph(0.08, 8, 6), toon('#ffb347'), 0.3, 1.2, 0.05)); tank.position.set(3.7, 0, -3.35); S.add(tank);
+  const scope = new T3.Group(); for (const a of [0, 2.1, 4.2]) { const l = mesh(cyl(0.03, 0.03, 1.3, 5), toon('#5a5470'), Math.sin(a) * 0.3, 0.6, Math.cos(a) * 0.3); l.rotation.z = Math.sin(a) * 0.25; l.rotation.x = -Math.cos(a) * 0.25; scope.add(l); } const tube = mesh(cyl(0.14, 0.09, 1.3, 12), toon('#3d4f86'), 0, 1.45, 0); tube.rotation.x = -0.7; scope.add(tube); const lens = mesh(cyl(0.16, 0.16, 0.08, 12), toon('#ffd36b'), 0, 1.45 + Math.cos(0.7) * 0.66, -Math.sin(0.7) * 0.66); lens.rotation.x = -0.7; scope.add(lens); scope.position.set(3.6, 0, 2.6); S.add(scope);
+  const pt = canvasPlane(384, 256, (g) => { g.fillStyle = '#fffaf2'; g.fillRect(0, 0, 384, 256); const cols = ['#ff9f9f', '#ffd39f', '#fff39f', '#bff0a8', '#9fe3ff', '#c9b3ff']; for (let r = 0; r < 6; r++) for (let c = 0; c < 12; c++) { if (r < 2 && c > 1 && c < 10) continue; g.fillStyle = cols[(r + c) % 6]; g.fillRect(12 + c * 30, 30 + r * 34, 26, 30); } g.fillStyle = '#2a2733'; g.font = '16px sans-serif'; g.fillText('elements (mostly)', 110, 22); }, 1.8, 1.2);
+  pt.rotation.y = Math.PI / 2; pt.position.set(-4.47, 2.6, 0.3); S.add(pt);
+}
+function engProps(S) {
+  const arm = new T3.Group(); arm.add(mesh(cyl(0.4, 0.5, 0.3, 14), toon('#ffb347'), 0, 0.15, 0)); const s1 = mesh(box(0.22, 1.2, 0.22), toon('#ffb347'), 0, 0.85, 0); s1.rotation.z = 0.35; arm.add(s1); const s2 = mesh(box(0.18, 1.0, 0.18), toon('#ffb347'), 0.55, 1.6, 0); s2.rotation.z = -1.0; arm.add(s2); arm.add(mesh(sph(0.14, 8, 6), toon('#5a5470'), 0.2, 1.4, 0)); arm.add(mesh(box(0.1, 0.22, 0.24), toon('#5a5470'), 1.0, 1.35, 0)); arm.position.set(-3.5, 0, 2.9); arm.rotation.y = 0.8; S.add(arm);
+  const pr = new T3.Group(); pr.add(mesh(box(1, 1, 0.9), toon('#2a2733'), 0, 1.3, 0)); pr.add(mesh(box(0.8, 0.7, 0.02), toon('#ffb347', { transparent: true, opacity: 0.5, emissive: new T3.Color('#6a3a00') }), 0, 1.3, 0.46, false)); pr.add(mesh(box(1.2, 0.8, 1), toon('#8a84a8'), 0, 0.4, 0)); pr.add(mesh(sph(0.1, 8, 6), toon('#ff9fbf'), 0, 1.05, 0.1)); pr.position.set(3.7, 0, -3.3); S.add(pr);
+  const tb = new T3.Group(); tb.add(mesh(box(1.6, 0.08, 1), toon('#c49a6c'), 0, 0.75, 0)); for (const [x, z] of [[-0.7, -0.4], [0.7, -0.4], [-0.7, 0.4], [0.7, 0.4]]) tb.add(mesh(box(0.08, 0.75, 0.08), toon('#8a6a4e'), x, 0.37, z)); const arch = mesh(new T3.TorusGeometry(0.55, 0.05, 6, 16, Math.PI), toon('#c9ccd6'), 0, 0.8, 0); tb.add(arch); tb.add(mesh(box(1.3, 0.05, 0.25), toon('#fff4dc'), 0, 1.0, 0)); tb.position.set(3.4, 0, 2.7); S.add(tb);
+  for (let i = 0; i < 3; i++) { const gear = new T3.Group(); gear.add(mesh(new T3.TorusGeometry(0.28 + i * 0.08, 0.08, 6, 14), toon(['#ffb347', '#c9ccd6', '#b86b3a'][i]), 0, 0, 0, false)); for (let k = 0; k < 8; k++) { const t = mesh(box(0.1, 0.14, 0.08), toon(['#ffb347', '#c9ccd6', '#b86b3a'][i]), Math.cos(k / 8 * 6.28) * (0.38 + i * 0.08), Math.sin(k / 8 * 6.28) * (0.38 + i * 0.08), 0, false); t.rotation.z = k / 8 * 6.28; gear.add(t); } gear.rotation.y = Math.PI / 2; gear.position.set(-4.45, 2.2 + i * 0.55, -1.2 + i * 0.75); gear.userData.spin = (i % 2 ? -1 : 1) * (0.6 - i * 0.12); S.add(gear); }
+}
+function buildLabsRoom() {
+  const S = roomScene, wing = interior.wing || 'comp', WG = LAB_WINGS[wing];
+  labWingLast = wing;
+  shell(S, WG.wall, WG.floor, { pattern: wing === 'eng' ? 'stripes' : 'dots', wainscot: WG.trim });
+  const staff = labStaff(wing);
+  const desks = [[-2.6, -1.6], [0, -1.6], [2.6, -1.6], [-2.6, 1.2], [0, 1.2], [2.6, 1.2]];
+  staff.slice(0, 6).forEach((p, i) => {
+    const [x, z] = desks[i], R = ensureResearch(p);
+    const d = wing === 'sci' ? labBench(p, R) : wing === 'eng' ? workBench(p, R, i < 3) : compDesk(p, R);
+    d.position.set(x, 0, z); d.traverse((o) => (o.userData.tap = { kind: 'desk', pid: p.id })); S.add(d);
+    const here = p.inside && p.task?.kind === 'work';
+    if (here) addPerson(S, p, x + (wing === 'comp' ? 0.6 : -0.4), z - 0.9, 0.2, {});
+    else { const pl = sign(p.name, '#fffaf2', WG.trim, 1.2); pl.position.set(x, 1.1, z + 0.52); pl.traverse((o) => (o.userData.tap = { kind: 'desk', pid: p.id })); S.add(pl); }
+  });
+  projectsBoard(S, staff, wing);
+  if (wing === 'comp') {
+    const rack = new T3.Group(); rack.add(mesh(box(0.9, 2.4, 0.8), toon('#2a2733'), 0, 1.2, 0)); for (let i = 0; i < 8; i++) rack.add(mesh(sph(0.04, 6, 5), toon(i % 3 ? '#8fe0b0' : '#ff9090', { emissive: new T3.Color(i % 3 ? '#20a060' : '#a02020') }), -0.25 + (i % 4) * 0.16, 0.6 + Math.floor(i / 4) * 0.8, 0.41, false)); rack.position.set(-4, 0, -3.3); S.add(rack);
+    const cm = new T3.Group(); cm.add(mesh(box(0.6, 0.8, 0.5), toon('#c9ccd6'), 0, 1.3, 0)); cm.add(mesh(cyl(0.1, 0.08, 0.16, 10), toon('#ffffff'), 0, 0.98, 0.12)); cm.add(mesh(box(1.2, 0.9, 0.7), toon('#8a84a8'), 0, 0.45, 0)); cm.position.set(3.6, 0, -3.3); S.add(cm);
+    const bb = mesh(sph(0.6, 12, 9), toon('#ffb3c7'), 3.5, 0.45, 2.8); bb.scale.y = 0.7; S.add(bb);
+  } else if (wing === 'sci') sciProps(S); else engProps(S);
+  const sg = sign(`${WG.icon} ${WG.name}`, '#0e1a3a', '#9fe3ff', 2.6); sg.position.set(-2.8, 3.9, -3.97); S.add(sg);
+  const n = staff.filter((p) => p.inside && p.task?.kind === 'work').length;
+  $('#rcTitle').textContent = `Glimmer Labs · ${WG.name} floor`;
+  $('#rcSub').textContent = !staff.length ? `Nobody works on this floor yet. Residents who read up on ${WG.about} can get hired.` : n ? `${plural(n, 'person')} at work. Tap someone to talk about their work.` : "Nobody's here right now (office hours are mornings to late afternoon). Tap a bench to check their notebook.";
+  const rb = $('#rcBtns'); if (rb) rb.innerHTML = Object.entries(LAB_WINGS).map(([k, w]) => `<button class="btn" type="button" data-wing="${k}" aria-pressed="${k === wing}">${w.icon} ${w.name}</button>`).join('');
+}
+function labsSpin(dt) { if (interior?.kind !== 'labs') return; roomScene.children.forEach((o) => { if (o.userData?.spin) o.rotation.x += o.userData.spin * dt; }); }
+function labsHtml() {
+  const pub = (W.published || []).slice(-6).reverse();
+  const rows = Object.entries(LAB_WINGS).map(([k, WG]) => {
+    const staff = labStaff(k);
+    return `<p class="hint" style="margin:8px 0 2px"><b>${WG.icon} ${WG.name}</b> · ${esc(WG.about)} <button class="btn" type="button" data-labsview="${k}" style="padding:2px 10px;font-size:12px">${MODE === 'host' ? 'Go inside' : 'Show in the box'}</button></p>${staff.length ? `<div class="chips">${staff.map((p) => { const R = ensureResearch(p); return `<button class="btn" type="button" data-openlab="${p.id}" style="padding:4px 10px;font-size:12px">${esc(p.name)}: ${esc(R.title)} (${Math.round(R.progress)}%${R.stuck ? ', stuck' : ''})</button>`; }).join('')}</div>` : '<p class="hint">Nobody works on this floor yet.</p>'}`;
+  }).join('');
+  const bots = (W.robots || []).length ? `<p class="hint">🤖 Robots out on the island: ${W.robots.map((r) => `${esc(r.name)} (${esc(ROBOT_KINDS[r.kind]?.name.replace(/^an? /, '') || 'robot')}, by ${esc(r.by)})`).join(', ')}.</p>` : '';
+  return `<p class="label">🔬 Glimmer Labs</p>${rows}${bots}
+    ${pub.length ? pub.map((x) => `<p class="note"><span class="chip">day ${x.day}</span> ${DONE_ICON[x.kind] || '🚀'} ${esc(x.by)}: ${esc(x.title)}${x.thanks ? ' (thanks you)' : ''}</p>`).join('') : ''}`;
+}
+
+// ============================================================
+// HEALTH: colds and flu, bumps and breaks, things people live with,
+// mental health, and Glimmer Clinic
+// ============================================================
+const CONDITIONS = {
+  ocd: { name: 'OCD', long: 'obsessive-compulsive disorder (OCD)', mind: true, icon: '🔁', base: 0.2,
+    inner: "Your mind sometimes snags on an unwanted thought and won't let go until something feels \"right\": checking, counting, redoing, or asking for reassurance. The ritual quiets the anxiety for a moment, then the loop can come back. It has nothing to do with being tidy, and your intrusive thoughts are not who you are.",
+    today: "The OCD is loud today: checking things, counting, needing things to feel just right before you can move on. It's tiring, and you'd rather people didn't make a big deal of it.",
+    about: 'Unwanted thoughts that keep coming back (obsessions), and things done to quiet the anxiety (compulsions), like checking, counting or redoing. It is not about being neat. Therapy, especially ERP, helps many people.',
+    memo: 'A loud OCD day. Lots of checking.',
+    lines: ['…one more check. Okay. Okay.', "Did I lock it? I locked it. I'll check once more.", '…seven, eight, nine, ten. Okay.', "That didn't feel right. Again.", "It's fine. It's fine. Moving on."] },
+  schizotypal: { name: 'schizotypal', long: 'schizotypal personality disorder', mind: true, icon: '🌙', base: 0.16,
+    inner: "You experience the world a little differently from most people: small things can feel charged with hidden meaning, you sometimes sense a presence or feel watched, and your thoughts drift in strange, dreamy directions. New people make you anxious, and that doesn't fade just because you've met them a few times. With the few people you really trust, you can open all the way up.",
+    today: "The world feels thin and a little too meaningful today: coincidences feel like signs and you keep feeling watched. You're sticking to quiet places and people you trust, and letting the feeling pass.",
+    about: 'A way of experiencing the world that can include unusual perceptions, ideas that feel magical or meaningful, feeling watched, and social anxiety that stays even with familiar people. Patience, routine, therapy and never being mocked help.',
+    memo: 'Everything felt a little too meaningful today. Kept to quiet places.',
+    lines: ['Everything feels a little too meaningful today.', 'I keep feeling watched. …Deep breath.', 'Not today, crowds.', 'The light looks strange today. Or I do.', "I'll just sit somewhere quiet for a bit."] },
+  anxiety: { name: 'anxiety', long: 'an anxiety disorder', mind: true, icon: '💭', base: 0.18,
+    inner: "You worry a lot, often about things that probably won't happen, and your body feels it: a tight chest, a racing heart. Crowds and new situations take extra energy.",
+    today: "Your anxiety is high today. Your heart keeps racing for no clear reason and crowds feel like a lot.",
+    about: 'Worry that is hard to switch off, often with a racing heart or tight chest. Very common, and very treatable with therapy, practice and support.',
+    memo: 'Anxious all day. Heart would not slow down.',
+    lines: ['Too many people…', 'Did I say something weird earlier?', 'Breathe in. Breathe out.', "My heart won't slow down."] },
+  depression: { name: 'depression', long: 'depression', mind: true, icon: '🌧', base: 0.14,
+    inner: "Some stretches your mood sinks and stays low: things you usually love feel flat, and everything takes more energy. It comes and goes, and it isn't a choice.",
+    today: "It's a heavy day. Getting out of bed took everything, things feel flat, and you have less to say than usual.",
+    about: 'Low mood that sticks around, where even good things can feel flat and everything takes more energy. Not a choice or a weakness. Therapy, connection and care help.',
+    memo: 'A heavy day. Hard to get going.',
+    lines: ['Just tired. The heavy kind.', 'Everything feels flat today.', "I'll be okay. Just not today."] },
+  adhd: { name: 'ADHD', long: 'ADHD', mind: true, icon: '⚡', base: 0.25,
+    inner: 'Your attention goes where it wants: you lose track of time and plans, jump between ideas, and can hyperfocus for hours on something you love.',
+    today: 'Your brain is extra scattered today. You keep starting things and wandering off mid-thought.',
+    about: 'Attention that is hard to steer: trouble with boring tasks, losing track of plans, and deep hyperfocus on interesting things.',
+    memo: 'Scattered day. Started ten things.',
+    lines: ['Wait, what was I doing?', "Ooh, what's that?", 'I had a plan. Where did it go?'] },
+  insomnia: { name: 'insomnia', long: 'insomnia', icon: '🌒', base: 0.22,
+    inner: "You often can't fall asleep or stay asleep, so you're tired a lot.",
+    today: 'You barely slept last night. Everything is a bit foggy.',
+    about: 'Trouble falling or staying asleep. Routines, less screen time at night, and a doctor can help.',
+    memo: 'Barely slept.',
+    lines: ['*yaaawn*', 'I slept maybe two hours.', 'Coffee. Please. Anyone.'] },
+  asthma: { name: 'asthma', long: 'asthma', icon: '💨', base: 0.1,
+    inner: 'Your lungs get tight sometimes, especially in cold air, storms, or when you rush. You keep an inhaler handy.',
+    today: "Your chest feels tight today. You're taking it slow and using your inhaler.",
+    about: 'Airways that tighten up, especially with cold air, exercise or storms. An inhaler and check-ups keep it manageable.',
+    memo: 'Chest was tight today. Used my inhaler.',
+    lines: ['*wheeze* One sec. Inhaler.', 'The cold air gets me.', 'Just need to slow down a little.'] },
+  allergies: { name: 'allergies', long: 'seasonal allergies', icon: '🤧', base: 0.1,
+    inner: 'Pollen and dust make you sneeze and your eyes itch, worst in spring.',
+    today: 'Your allergies are awful today: sneezing, itchy eyes, stuffy nose.',
+    about: 'Sneezing and itchy eyes from pollen and dust, worst in spring. Allergy medicine from the doctor helps.',
+    memo: 'Allergies were terrible.',
+    lines: ['Achoo!', 'Pollen. Why.', '*sniffle* My eyes are so itchy.'] },
+  migraines: { name: 'migraines', long: 'migraines', icon: '🌀', base: 0.09,
+    inner: 'You get migraines sometimes: pounding headaches where light and noise hurt.',
+    today: 'You have a migraine today. Light hurts, noise hurts. You want a dark, quiet room.',
+    about: 'Pounding headaches, often with light and noise hurting. Rest in a dark room and medicine from the doctor help.',
+    memo: 'Migraine. Stayed in the dark.',
+    lines: ['Too bright. Everything is too bright.', 'I need a dark room.', "Please don't talk so loud today."] },
+  jointpain: { name: 'joint pain', long: 'chronic joint pain', icon: '🦵', base: 0.12, body: true,
+    inner: 'Your joints ache a lot, worse on cold mornings.', today: 'Your joints are really bad today.',
+    about: 'Aching joints that come and go, often worse in the cold. Check-ups, gentle movement and warmth help.',
+    memo: 'Joints were really bad today.', lines: ['My joints. Man.', 'Cold mornings are rough.'] },
+  nausea: { name: 'morning nausea', long: 'morning nausea', icon: '🌫', base: 0, body: true,
+    inner: 'You feel sick to your stomach most mornings.', today: '', about: 'Feeling sick most mornings. It usually passes by midday.', memo: '', lines: ['Mornings are the worst.'] },
+};
+const ILLS = {
+  cold: { name: 'a cold', icon: '🤧', days: [2, 3], sev: 1, catchy: 1, look: 'sniffly, with a red nose', feel: 'Your nose is stuffed up and you keep sneezing.', lines: ['*sniff*', 'Achoo!', 'My nose is a faucet.', "Just a cold. I'm fine. *sniff*"] },
+  flu: { name: 'the flu', icon: '🤒', days: [3, 5], sev: 2, catchy: 0.8, look: 'pale and shivery', feel: 'You ache all over and you are freezing and too hot at once.', lines: ['Everything hurts.', 'I need a blanket. And another blanket.', 'So… cold…'] },
+  stomach: { name: 'a stomach bug', icon: '🤢', days: [1, 2], sev: 2, catchy: 0.35, look: 'queasy', feel: 'Your stomach is doing flips. Food sounds terrible.', lines: ['Never eating again.', 'Ugh, my stomach.', "Don't say the word \"soup\"."] },
+  sunburn: { name: 'a sunburn', icon: '🥵', days: [1, 2], sev: 1, catchy: 0, look: 'pink and toasty', feel: 'Your skin stings.', lines: ["Ow. Don't pat my back.", 'I forgot sunscreen. Again.'] },
+  pneumonia: { name: 'pneumonia', icon: '😷', days: [4, 6], sev: 3, catchy: 0, look: 'really unwell', feel: 'Breathing hurts and you are exhausted. You are really sick.', lines: ['*cough cough*', "Can't… breathe right."] },
+};
+const INJURIES = {
+  scrape: { name: 'a scraped knee', icon: '🩹', rank: 1, days: [1, 2], lines: ['Ow, my knee.', "It's just a scrape. It stings though."] },
+  bump: { name: 'a bump on the head', icon: '🤕', rank: 1, days: [1, 2], lines: ["Ow. There's a lump.", 'My head is ringing a little.'] },
+  burn: { name: 'a burned hand', icon: '🔥', rank: 2, days: [1, 3], lines: ['Hot pan. Bad idea.', 'Ice. I need ice.'] },
+  sprain: { name: 'a sprained ankle', icon: '🦶', rank: 3, days: [2, 4], slow: 0.6, lines: ['Hop, hop, ow.', 'Taking it slow today.'] },
+  broken: { name: 'a broken arm', icon: '🦴', rank: 4, days: [5, 8], slow: 0.92, needsDoc: true, lines: ['Sign my cast?', "It itches under here and I can't scratch it."] },
+};
+const LOW_LINES = ["I'm okay. Mostly.", 'Just a rough few days.', "I don't really feel like talking.", '…'];
+const NPC = {
+  doc: { id: 'npc-doc', name: 'Dr. Juniper', npc: true, body: { hue: 28, sat: 45, light: 78, size: 1.05, ears: 'round', eyeGap: 0.3 }, outfit: { shirt: 'cream', hat: null }, grow: 1, level: 30, room: 5, feelings: {} },
+  sol: { id: 'npc-sol', name: 'Sol', npc: true, body: { hue: 250, sat: 35, light: 82, size: 1.0, ears: 'none', eyeGap: 0.34 }, outfit: { shirt: 'lilac', hat: null }, grow: 1, level: 30, room: 7, feelings: {} },
+};
+const STRESS_TAGS = { fight: 1.2, gotMean: 1, stoodUp: 1, breakup: 2, heartbreak: 2, lostCase: 1.2, suedBy: 1, meetingShamed: 1.5, refusedMine: 0.6, wishLost: 0.8, jealous: 0.6, jealousLove: 0.8, laughedAt: 1, textMean: 0.8, subtweeted: 0.7, hungry: 0.6, stuck: 0.5, strike: 0.5, unfair: 0.6, sick: 0.5, hurt: 0.7 };
+const COMFORT_TAGS = { hug: 0.6, cuddle: 0.8, gotKind: 0.5, date: 0.6, wasDefended: 0.8, creatorGift: 0.5, won: 0.6, wonCase: 0.8, married: 1.5, engaged: 1, love: 0.8, newFriend: 0.8, gotApology: 0.8, gotBday: 0.8, wishGranted: 1, hired: 1, research: 1, handhold: 0.6, therapy: 1, careKind: 1 };
+const KIND_RE = /love|proud|here for you|okay|ok\b|care|glad|rest|take (your )?time|no rush|not alone|you matter|brave|strong|gentle|hug|safe|believe|valid|sorry|better|with you|listen|breathe|kind|thank/i;
+
+function andList(a) { return a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+function rollCondition() { const L = [['anxiety', 3], ['allergies', 3], ['adhd', 2], ['asthma', 2], ['migraines', 2], ['depression', 2], ['insomnia', 2], ['ocd', 1]]; let t = rand() * L.reduce((s, x) => s + x[1], 0); for (const [k, w] of L) { t -= w; if (t <= 0) return k; } return 'anxiety'; }
+function conditionsFromText(s) {
+  const out = [], T = String(s || '');
+  const M = [[/joint|knee|arthrit/i, 'jointpain'], [/sick most|nause|morning sick|sick.*morning/i, 'nausea'], [/asthma|wheez/i, 'asthma'], [/allerg|hay ?fever|pollen/i, 'allergies'], [/migraine|headache/i, 'migraines'], [/anxi|panic/i, 'anxiety'], [/depress/i, 'depression'], [/adhd|add\b/i, 'adhd'], [/insomnia|can'?t sleep/i, 'insomnia'], [/\bocd\b|obsessive/i, 'ocd'], [/schizotyp/i, 'schizotypal']];
+  for (const [re, k] of M) if (re.test(T) && !out.includes(k)) out.push(k);
+  return out;
+}
+function ensureHealth(p) {
+  if (p.health) return p.health;
+  const H = p.health = { cond: [], managed: {}, ill: null, injury: null, flare: null, low: null, stress: 0, visits: 0, sessions: 0, docDay: -1, therapyDay: -1, lastTherapy: -9, soupDay: -1, chat: [] };
+  if (typeof isMili === 'function' && isMili(p)) H.cond = ['ocd', 'schizotypal'];
+  else if (p.body?.ailments?.length || p.custom || p.style || p.lovesMili) H.cond = conditionsFromText((p.body?.ailments || []).join('. '));
+  else if (p.parents?.length) { const par = W.people.filter((q) => p.parents.includes(q.name) && q.health?.cond.length); if (par.length && rand() < 0.3) H.cond = [pick(pick(par).health.cond)]; else if (rand() < 0.2) H.cond = [rollCondition()]; }
+  else if (!p.visitor && rand() < 0.3) H.cond = [rollCondition()];
+  return H;
+}
+const hasHospital = () => (W.placed || []).some((pl) => pl.type === 'clinic');
+const clinicOpen = () => W.t > 0.03 && W.t < 0.52;
+function clinicOnDuty(job) { return W.people.filter((q) => q.job === job && q.inside && q.task?.kind === 'work' && q.task.phase === 'do' && q.at === 'clinic'); }
+function clinicSpot() { return jitter(TOWN.clinic.spot, 0.8); }
+function flareChance(p, c, H) {
+  const C = CONDITIONS[c], s = seasonOf().id, w = W.weather, st = H.stress || 0;
+  let ch = C.base ?? 0.15;
+  if (c === 'asthma') ch *= w === 'storm' ? 3 : s === 'winter' || w === 'snow' ? 2 : w === 'rain' ? 1.3 : 1;
+  if (c === 'allergies') ch *= s === 'spring' ? 4 : s === 'summer' ? 1.5 : s === 'winter' ? 0.15 : 0.7;
+  if (c === 'migraines') ch *= (w === 'storm' ? 2 : 1) * (1 + 0.25 * st);
+  if (c === 'jointpain') ch *= (s === 'winter' ? 1.7 : 1) * (w === 'rain' || w === 'storm' ? 1.5 : 1);
+  if (c === 'insomnia') ch *= 1 + 0.2 * st;
+  if (C.mind) ch *= 1 + 0.3 * st;
+  if (c === 'depression') ch *= (s === 'winter' ? 1.4 : 1) * (H.low ? 2 : 1);
+  return Math.min(0.85, ch * Math.max(0.35, 1 - 0.09 * (H.managed[c] || 0)));
+}
+function catchIll(p, id, how = 'caught') {
+  const H = ensureHealth(p), I = ILLS[id]; if (!I || H.ill || (H.immune || -9) > W.day - 4 && id !== 'pneumonia') return false;
+  H.ill = { id, days: I.days[0] + Math.floor(rand() * (I.days[1] - I.days[0] + 1)), since: W.day, treated: false };
+  remember(p, `${how === 'caught' ? 'Caught' : cap(how)} ${I.name}.`, 2, 'sick');
+  diary(`${I.icon} <b>${esc(p.name)}</b> ${how} ${I.name}.`);
+  emote(p, I.icon, 4); if (!p.inside) bubble(p, pick(I.lines), 2.6);
+  if (typeof postChirp === 'function' && id !== 'sunburn' && rand() < 0.3) postChirp(p, pick([`home sick with ${I.name}. send soup`, `${I.name} update: still alive. barely`, `if you see me sneeze, no you didn't`]));
+  return true;
+}
+function injure(p, id, how) {
+  const H = ensureHealth(p), J = INJURIES[id]; if (!J) return false;
+  if (H.injury && INJURIES[H.injury.id].rank >= J.rank) return false;
+  H.injury = { id, days: J.days[0] + Math.floor(rand() * (J.days[1] - J.days[0] + 1)), since: W.day, set: false, how };
+  remember(p, `Got ${J.name} ${how}.`, 2, 'hurt');
+  diary(`${J.icon} <b>${esc(p.name)}</b> got ${J.name} ${how}.`);
+  emote(p, J.icon, 4); bubble(p, pick(J.lines), 2.6);
+  if (J.rank >= 3) H.docNext = true;
+  if (typeof postChirp === 'function' && J.rank >= 3 && rand() < 0.5) postChirp(p, J.rank >= 4 ? 'broke my arm. come sign my cast' : 'sprained my ankle. i am a crutch person now');
+  return true;
+}
+function fightInjury(a, b) {
+  const r = rand();
+  if (r < 0.04) injure(b, 'broken', `in a scuffle with ${a.name}`);
+  else if (r < 0.12) injure(b, 'sprain', `in a scuffle with ${a.name}`);
+  else if (r < 0.34) injure(b, rand() < 0.5 ? 'bump' : 'scrape', `in a scuffle with ${a.name}`);
+  if (rand() < 0.1) injure(a, 'scrape', `in a scuffle with ${b.name}`);
+}
+function workInjury(p) {
+  const j = p.job, r = rand();
+  if (j === 'builder') { if (r < 0.006) injure(p, 'broken', 'falling off a ladder at the construction site'); else if (r < 0.02) injure(p, 'sprain', 'at the construction site'); else if (r < 0.04) injure(p, 'bump', 'at the construction site'); }
+  else if (j === 'bakery' || j === 'cafe' || j === 'mart') { if (r < 0.012) injure(p, 'burn', 'on a hot tray at work'); }
+  else if (j === 'chem') { if (r < 0.015) injure(p, 'burn', 'when an experiment fizzed over'); }
+  else if (j === 'robo') { if (r < 0.01) injure(p, 'bump', 'when a robot arm swung the wrong way'); }
+  else if (j === 'pier' || j === 'garden' || j === 'janitor') { if (r < 0.01) injure(p, 'scrape', 'at work'); }
+  if (p.job && p.health?.flare && !CONDITIONS[p.health.flare.id].mind && rand() < 0.3) remember(p, `Worked through ${CONDITIONS[p.health.flare.id].name}. Hard day.`, 1, 'work');
+}
+function healthWorkBonus(p) {
+  const H = p.health; if (!H) return 0;
+  let b = 0;
+  if (H.flare?.id === 'adhd' && rand() < 0.5) b += 5;
+  if (H.flare?.id === 'ocd') b += 2;
+  if (H.flare?.id === 'depression' || H.low) b -= 3;
+  if (H.flare?.id === 'insomnia' || H.flare?.id === 'migraines') b -= 3;
+  if (H.ill) b -= 2;
+  return b;
+}
+function healthSpeed(p) {
+  const H = p.health; if (!H) return 1;
+  let s = 1;
+  if (H.ill) s *= ILLS[H.ill.id].sev >= 2 ? 0.7 : 0.9;
+  if (H.injury) s *= INJURIES[H.injury.id].slow || 1;
+  if (H.flare && !H.eased) s *= { jointpain: 0.75, migraines: 0.85, depression: 0.8, insomnia: 0.85, asthma: 0.85 }[H.flare.id] || 1;
+  if (H.low) s *= 0.88;
+  return s;
+}
+function wantsQuiet(a, b) {
+  for (const [x, y] of [[a, b], [b, a]]) {
+    const H = x.health; if (!H) continue; const f = fscore(x, y);
+    if (H.flare && !H.eased && ['schizotypal', 'anxiety'].includes(H.flare.id) && f < 4) return true;
+    if ((H.low || H.flare?.id === 'depression' || H.flare?.id === 'migraines') && f < 5) return true;
+    if (H.ill && ILLS[H.ill.id].sev >= 2 && f < 6) return true;
+  }
+  return false;
+}
+function quietSpot() { const r = rand(); if (r < 0.35) return ['garden', jitter(TOWN.garden.spot, 5)]; if (r < 0.65) { const a = rand() * 6.28, rr = rand() * 6; return ['beach', [BEACH[0] + Math.cos(a) * rr, BEACH[1] + Math.sin(a) * rr]]; } return ['park', jitter(TOWN.park.spot, 6)]; }
+
+// the day's rhythm
+function healthNight() {
+  for (const p of W.people) {
+    if (p.task?.kind === 'away') continue;
+    const H = ensureHealth(p); let st = 0, worst = null, wv = 0;
+    for (const m of p.today) { const v = STRESS_TAGS[m.tag] || 0; st += v - (COMFORT_TAGS[m.tag] || 0); if (v > wv) { wv = v; worst = m.text; } }
+    H.stress = clamp((H.stress || 0) * 0.55 + st, 0, 8);
+    H.rituals = 0;
+    if (!H.low && H.stress >= 2.5 && rand() < 0.22 + (H.cond.includes('depression') ? 0.2 : 0)) {
+      H.low = { days: 2 + Math.floor(rand() * 3), why: worst ? String(worst).replace(/\.$/, '').slice(0, 90) : 'a hard week', since: W.day };
+      remember(p, 'I have been feeling really low lately.', 2, 'low');
+    }
+  }
+}
+function healthMorning() {
+  const hosp = hasHospital();
+  for (const p of W.people) {
+    if (p.task?.kind === 'away') continue;
+    const H = ensureHealth(p);
+    H.flare = null; H.eased = false; H.callIn = null;
+    if (H.ill) {
+      const I = ILLS[H.ill.id];
+      H.ill.days -= 1 + (H.ill.treated ? 0.5 : 0) + (hosp && H.ill.treated ? 0.5 : 0) + (H.soupDay === W.day - 1 ? 0.5 : 0);
+      if (H.ill.id === 'pneumonia' && !H.ill.treated) H.ill.days += 0.6;
+      if (H.ill.days <= 0) { remember(p, `I'm finally over ${I.name}.`, 2, 'recovered'); diary(`🌤 <b>${esc(p.name)}</b> is over ${I.name}.`); H.ill = null; H.immune = W.day; addJoy(p, 10); }
+      else if (H.ill.id === 'flu' && !H.ill.treated && W.day - H.ill.since >= 2 && rand() < 0.3) { H.ill = { id: 'pneumonia', days: 5, since: W.day, treated: false }; remember(p, 'My flu got worse. It turned into pneumonia.', 3, 'sick'); diary(`😷 <b>${esc(p.name)}</b>'s flu turned into pneumonia. They're really sick and stuck in bed.`); }
+    }
+    if (H.injury) {
+      const J = INJURIES[H.injury.id];
+      if (!J.needsDoc || H.injury.set) H.injury.days -= 1 + (hosp ? 0.5 : 0);
+      if (H.injury.days <= 0) { remember(p, `${cap(J.name.replace(/^an? /, 'My '))} healed.`, 2, 'healed'); diary(`${J.icon} <b>${esc(p.name)}</b>'s ${J.name.replace(/^an? /, '')} healed.`); H.injury = null; addJoy(p, 8); }
+    }
+    if (H.low) { H.low.days -= 1; if (H.low.days <= 0) { H.low = null; remember(p, 'The heavy feeling finally lifted a little.', 2, 'lifted'); } }
+    if (!H.ill && !p.visitor) {
+      const s = seasonOf().id, risk = (s === 'winter' ? 0.045 : s === 'autumn' ? 0.03 : 0.016) * (W.weather === 'storm' || W.weather === 'snow' ? 1.4 : 1) * (p.grow < 1 ? 1.3 : 1);
+      if (rand() < risk) catchIll(p, rand() < 0.22 ? 'flu' : rand() < 0.3 ? 'stomach' : 'cold', 'woke up with');
+    }
+    const fl = H.cond.filter((c) => (CONDITIONS[c].base ?? 0.15) > 0).sort(() => rand() - 0.5);
+    for (const c of fl) if (rand() < flareChance(p, c, H)) { H.flare = { id: c, day: W.day }; break; }
+    if (H.flare && CONDITIONS[H.flare.id].memo) remember(p, CONDITIONS[H.flare.id].memo, 1, 'flare');
+    const I = H.ill && ILLS[H.ill.id];
+    if (p.job && ((I && I.sev >= 2) || (H.injury?.id === 'broken' && collarOf(p) !== 'white') || H.flare?.id === 'migraines' || (H.flare?.id === 'depression' && rand() < 0.4) || (H.low && rand() < 0.2))) H.callIn = W.day;
+  }
+  for (const p of W.people) { const H = p.health; if (H?.ill && ILLS[H.ill.id].sev >= 3 && !H.ill.treated) houseCall(p); }
+  const sick = W.people.filter((p) => p.health?.ill && ILLS[p.health.ill.id].sev >= 2).length;
+  if (sick >= 3) diary(`🤒 Something is going around. ${sick} people are sick today. The clinic is busy.`);
+}
+function houseCall(p) {
+  const H = p.health, doc = W.people.find((q) => q.job === 'doctor' && q !== p && !q.health?.ill);
+  H.ill.treated = true;
+  diary(`🩺 ${doc ? `<b>${esc(doc.name)}</b>` : 'Dr. Juniper'} made a house call to <b>${esc(p.name)}</b>${hasHospital() ? ' and moved them to the hospital wing' : ''}.`);
+  remember(p, `${doc ? doc.name : 'Dr. Juniper'} came to my room because I was too sick to get up.`, 2, 'doctor', doc?.name || null);
+  if (doc) { remember(doc, 'Made a house call to a patient who was too sick to come in.', 2, 'houseCall'); addJoy(doc, 6); }
+}
+function healthPlan(p) {
+  if (p.visitor || p.task?.kind === 'away') return false;
+  const H = ensureHealth(p), t = W.t, I = H.ill && ILLS[H.ill.id], J = H.injury && INJURIES[H.injury.id];
+  const ev = W.event && W.event.day === W.day ? W.event : null;
+  if (H.callIn === W.day && p.job && !p.workedToday && t < 0.24) {
+    p.workedToday = true; H.called = W.day;
+    remember(p, `Stayed home from work today (${I ? I.name : J ? J.name : H.low ? 'a rough patch' : CONDITIONS[H.flare?.id]?.name || 'not feeling well'}).`, 1, 'callin');
+    if (!p.inside) bubble(p, pick(["I'm not going in today.", "Calling in sick.", 'Work can wait. I can\'t today.']), 2.4);
+  }
+  const bedridden = (I && I.sev >= 3) || (I && I.sev >= 2 && t < 0.3) || (H.flare?.id === 'migraines' && !H.eased && t < 0.34) || (H.flare?.id === 'depression' && !H.eased && t < 0.2) || (H.low && t < 0.1);
+  if (ev && ev.going.includes(p.id) && !ev.couple?.includes(p.id) && (bedridden || (H.flare && !H.eased && ['anxiety', 'schizotypal', 'depression'].includes(H.flare.id) && rand() < 0.5)) && H.skipped !== W.day) {
+    H.skipped = W.day; ev.going = ev.going.filter((id) => id !== p.id);
+    remember(p, `Skipped ${EVENTS[ev.id]?.name || 'the event'}. It was too much today.`, 1, 'skipped');
+  }
+  if (bedridden && p.hunger < 0.7) { setTask(p, 'rest', homeKey(p)); return true; }
+  if (p.job && !p.workedToday && t < 0.24 && p.grow >= 1) return false;
+  const evNow = ev && ev.going.includes(p.id) && t >= EVENTS[ev.id].t0 - 0.03 && t < EVENTS[ev.id].t1;
+  if (clinicOpen() && H.docDay !== W.day && (H.docNext || (I && !H.ill.treated && (I.sev >= 2 || rand() < 0.25)) || (J && !H.injury.set && (J.needsDoc || J.rank >= 3 || rand() < 0.15)))) { H.docNext = false; setTask(p, 'doctor', 'clinic', clinicSpot()); return true; }
+  const mind = H.cond.some((c) => CONDITIONS[c].mind);
+  if (clinicOpen() && H.therapyDay !== W.day && (H.therapyNext || ((mind || H.low) && W.day - (H.lastTherapy ?? -9) >= 4 && ((H.flare && CONDITIONS[H.flare.id].mind) || H.low || rand() < 0.06)))) { H.therapyNext = false; setTask(p, 'therapy', 'clinic', clinicSpot()); return true; }
+  if (evNow) return false;
+  if (H.flare?.id === 'ocd' && !H.eased && (H.rituals || 0) < 2 && rand() < 0.12 && p.at !== homeKey(p) && t < 0.55) { H.rituals = (H.rituals || 0) + 1; setTask(p, 'ritual', homeKey(p)); return true; }
+  if (H.flare && !H.eased && ['schizotypal', 'anxiety'].includes(H.flare.id) && rand() < 0.35) { const [pl, sp] = quietSpot(); setTask(p, 'stroll', pl, sp); return true; }
+  if (H.low && rand() < 0.3) { const [pl, sp] = quietSpot(); setTask(p, 'stroll', pl, sp); return true; }
+  return false;
+}
+function healthStart(p, k) {
+  const H = ensureHealth(p);
+  if (k === 'rest') { p.inside = true; p.busyUntil = now + 16 * ts(); if (interior?.kind === 'room' && interior.id === p.id) interior.dirty = true; return true; }
+  if (k === 'doctor' || k === 'therapy') { p.inside = true; p.busyUntil = now + (k === 'doctor' ? 6 : 7) * ts(); if (interior?.kind === 'clinic') interior.dirty = true; return true; }
+  if (k === 'ritual') { p.busyUntil = now + 3 * ts(); const s = TOWN[homeKey(p)].spot; p.face = Math.atan2(s[0] - p.x, s[1] - p.z) + Math.PI; emote(p, '🔁', 3); bubble(p, pick(['Did I lock it? …Yes. Okay.', 'Checking once more. Okay. Once more.', "…Okay. It's locked. It was locked.", 'One, two, three, four. Okay.']), 2.8); return true; }
+  return false;
+}
+function healthFinish(p, k) {
+  if (k === 'rest') {
+    if (W.t >= 0.58) { p.task = { kind: 'home', phase: 'do' }; p.busyUntil = Infinity; return false; }
+    p.inside = false; if (!p.today.some((m) => m.tag === 'rested')) remember(p, 'Stayed in bed most of the day.', 1, 'rested');
+    if (interior?.kind === 'room' && interior.id === p.id) interior.dirty = true; return true;
+  }
+  if (k === 'doctor') { p.inside = false; doctorVisitDone(p); if (interior?.kind === 'clinic') interior.dirty = true; return true; }
+  if (k === 'therapy') { p.inside = false; therapyDone(p); if (interior?.kind === 'clinic') interior.dirty = true; return true; }
+  if (k === 'ritual') { bubble(p, pick(['Okay. Okay. It\'s fine.', 'Right. Moving on.', '…Better.']), 2.2); return true; }
+  return true;
+}
+function doctorVisitDone(p) {
+  const H = ensureHealth(p), doc = clinicOnDuty('doctor').find((q) => q !== p), good = doc ? 1 + (readCount(doc, ['health']) >= 2 ? 0.5 : 0) : 0.6;
+  H.docDay = W.day; H.visits = (H.visits || 0) + 1;
+  const bits = [], was = [];
+  if (p.coins >= 6) { p.coins -= 2; if (doc) earn(doc, 1); }
+  if (H.ill) { const I = ILLS[H.ill.id]; was.push(I.name); H.ill.treated = true; H.ill.days = Math.max(0.5, H.ill.days - good); bits.push(pick(['The doctor said rest and fluids.', 'Got some medicine.', 'The doctor said I will be fine in a few days.'])); }
+  if (H.injury) { const J = INJURIES[H.injury.id]; was.push(J.name); H.injury.set = true; if (J.needsDoc) bits.push('The doctor put my arm in a cast.'); else { H.injury.days = Math.max(0.5, H.injury.days - good * 0.8); bits.push(J.rank >= 3 ? 'The doctor wrapped it up and gave me a crutch.' : 'The doctor patched me up.'); } }
+  for (const c of H.cond) if (!CONDITIONS[c].mind) H.managed[c] = Math.min(6, (H.managed[c] || 0) + 1);
+  if (!was.length) bits.push('Just a check-up. All good.');
+  remember(p, `Went to the doctor${doc ? `, ${doc.name}` : ''}. ${bits.join(' ')}`, was.length ? 2 : 1, 'doctor', doc?.name || null);
+  bubble(p, pick(was.length ? ['The doctor was so nice.', 'Okay. I have a plan now.', 'Feeling a little better already.'] : ['Clean bill of health!', 'Check-up done.']), 2.6);
+  if (was.length) diary(`🩺 <b>${esc(p.name)}</b> saw ${doc ? `<b>${esc(doc.name)}</b>` : 'Dr. Juniper'} at Glimmer Clinic about ${andList(was)}.`);
+  if (doc) { remember(doc, 'Saw a patient today. That is all I can say.', 1, 'patient'); addJoy(doc, 4); doc.health && (doc.health.patients = (doc.health.patients || 0) + 1); }
+}
+function therapyDone(p) {
+  const H = ensureHealth(p), th = clinicOnDuty('therapist').find((q) => q !== p);
+  H.therapyDay = W.day; H.lastTherapy = W.day; H.sessions = (H.sessions || 0) + 1;
+  for (const c of H.cond) if (CONDITIONS[c].mind) H.managed[c] = Math.min(6, (H.managed[c] || 0) + 1);
+  if (H.low) { H.low.days -= 1.5; if (H.low.days <= 0) { H.low = null; remember(p, 'Therapy helped me climb out of a low patch.', 2, 'therapy'); } }
+  if (H.flare && CONDITIONS[H.flare.id].mind) H.eased = true;
+  H.stress = Math.max(0, (H.stress || 0) - 1.5);
+  addJoy(p, 8);
+  remember(p, `Went to therapy${th ? ` with ${th.name}` : ' with Sol'}. ${pick(['It helped a little.', 'We practiced some tools for the hard days.', 'Talked it through. I feel lighter.', 'Hard session. Good, though.'])}`, 1, 'therapy');
+  bubble(p, pick(['That helped.', 'Okay. I can do today.', 'Deep breaths. Got it.', '…I feel a little lighter.']), 2.4);
+  if (th) { remember(th, 'Had a session with a client today. It stays in the room.', 1, 'client'); addJoy(th, 4); }
+}
+let healthT = 0;
+function healthTick(dt) {
+  healthT -= dt; if (healthT > 0) return; healthT = 3;
+  const out = W.people.filter((p) => !p.inside && p.health && p.task?.kind !== 'away');
+  for (const p of out) {
+    const I = p.health.ill && ILLS[p.health.ill.id]; if (!I || !I.catchy) continue;
+    for (const q of out) if (q !== p && !q.health.ill && Math.hypot(q.x - p.x, q.z - p.z) < 1.8 && rand() < 0.02 * I.catchy) catchIll(q, p.health.ill.id, 'caught');
+  }
+  for (const p of out) {
+    const H = p.health; if (p.state !== 'free' || (p.bubble && p.bubble.until > now)) continue;
+    if (H.ill && rand() < 0.05) { const I = ILLS[H.ill.id]; bubble(p, pick(I.lines), 2.2); emote(p, I.icon, 2.5); continue; }
+    if (H.injury && rand() < 0.025) { const J = INJURIES[H.injury.id]; bubble(p, pick(J.lines), 2.2); continue; }
+    if (H.flare && !H.eased && rand() < 0.035) { const C = CONDITIONS[H.flare.id]; bubble(p, pick(C.lines), 2.4); continue; }
+    if (H.low && rand() < 0.02) { bubble(p, pick(LOW_LINES), 2.2); emote(p, '🌧', 2.5); continue; }
+    if (H.flare?.id === 'adhd' && !H.eased && p.path.length > 1 && ['stroll', 'visit', 'shop', 'eat'].includes(p.task?.kind) && rand() < 0.03) { p.task = null; p.path = []; bubble(p, pick(['Wait, what was I doing?', "Ooh, what's over there?", 'I forgot where I was going.']), 2.4); }
+  }
+  if (rand() < 0.003) { const p = pick(out.filter((q) => q.path.length && q.state === 'free')); if (p) { const icy = seasonOf().id === 'winter' || W.weather === 'rain' || W.weather === 'snow'; injure(p, icy && rand() < 0.3 ? 'sprain' : 'scrape', icy ? 'slipping on the wet path' : 'tripping over nothing'); } }
+  if (seasonOf().id === 'summer' && W.weather === 'clear' && rand() < 0.01) { const p = pick(out.filter((q) => q.at === 'beach' && !q.health.ill)); if (p) catchIll(p, 'sunburn', 'got'); }
+  // friends notice and help
+  if (rand() < 0.08) {
+    const sad = out.filter((p) => (p.health.low || p.health.ill) && p.state === 'free');
+    for (const p of sad) { const f = out.find((q) => q !== p && q.state === 'free' && fscore(q, p) >= 5 && Math.hypot(q.x - p.x, q.z - p.z) < 6); if (!f) continue;
+      if (typeof physicalScene === 'function' && p.health.low && rand() < 0.6) { physicalScene(f, p, 'hug'); setTimeout(() => bubble(f, pick(["I'm here, okay?", 'You don\'t have to talk. I\'ll just stay.', 'Rough week, huh. C\'mere.']), 2.6), 400); if (p.health.low) { p.health.low.days -= 0.5; if (p.health.low.days <= 0) p.health.low = null; } remember(p, `${f.name} noticed I was down and gave me a hug.`, 2, 'hug', f.name); remember(f, `${p.name} seemed down, so I checked on them.`, 1, 'gaveKind', p.name); }
+      else if (p.health.ill) { bubble(f, pick(['Feel better soon!', 'Want me to bring you tea?', 'Go rest! Shoo!']), 2.4); feel(p, f, 0.3, true); }
+      break; }
+  }
+}
+
+// what they know and say
+function healthContext(me, them) {
+  const H = me.health; if (!H) return '';
+  const L = [];
+  const conds = H.cond.filter((c) => !(CONDITIONS[c].body && me.body.ailments?.length));
+  if (conds.length) L.push(`You live with ${andList(conds.map((c) => CONDITIONS[c].long))}. What that's like for you: ${conds.map((c) => CONDITIONS[c].inner).join(' ')}${H.sessions ? ` You go to therapy sometimes and it helps (${plural(H.sessions, 'session')} so far).` : ''} It is part of you, not all of you: it shapes some moments, and most of the time you're just living your life. Don't announce it or explain it unless it truly fits, and only open up about it with people you trust.`);
+  if (H.flare && CONDITIONS[H.flare.id].today) L.push(`TODAY: ${CONDITIONS[H.flare.id].today}${H.eased ? ' Therapy earlier helped take the edge off.' : ''}`);
+  if (H.ill) L.push(`You're sick with ${ILLS[H.ill.id].name} right now. ${ILLS[H.ill.id].feel}`);
+  if (H.injury) L.push(`You have ${INJURIES[H.injury.id].name}${H.injury.id === 'broken' && H.injury.set ? ' (in a cast)' : ''}, from ${H.injury.how || 'an accident'}. It's sore.`);
+  if (H.low) L.push(`You've been in a rough patch for a few days (it started with: ${H.low.why}). You feel heavier and quieter than usual.`);
+  if (me.job === 'doctor' || me.job === 'therapist') L.push(`As a ${JOBS[me.job].short}, you never, ever talk about your ${me.job === 'doctor' ? 'patients' : 'clients'} or who comes to the clinic.`);
+  if (them && them !== me && them.health) {
+    const T = them.health, f = fscore(me, them), seen = [];
+    if (T.ill) seen.push(`${them.name} is obviously sick (${ILLS[T.ill.id].look})`);
+    if (T.injury) seen.push(`${them.name} has ${INJURIES[T.injury.id].name}`);
+    const tc = T.cond.filter((c) => CONDITIONS[c].mind);
+    if (tc.length && f >= 6) seen.push(`${them.name} has trusted you with something personal: living with ${andList(tc.map((c) => CONDITIONS[c].long))}`);
+    if (T.low && f >= 4) seen.push(`${them.name} has seemed down lately`);
+    if (seen.length) L.push(seen.join('. ') + '.');
+  }
+  if (!L.length) return '';
+  return `\nHEALTH: ${L.join(' ')} Nobody on this island mocks anyone's health or mental health; even rivals don't cross that line.`;
+}
+function healthProblem(p) { const H = p.health; if (!H) return null; if (H.ill) return { kind: 'sick' }; if (H.injury) return { kind: 'hurt' }; if (H.low) return { kind: 'low' }; return null; }
+function healthGreet(p, pr) {
+  const H = p.health;
+  if (pr.kind === 'sick') { const I = ILLS[H.ill.id]; return I.sev >= 3 ? "*cough* I'm really sick… I can barely get up." : pick([`*sniff* I've got ${I.name}. Everything feels heavy.`, `I'm sick. ${cap(I.name)}. Don't get too close!`]); }
+  if (pr.kind === 'hurt') { const J = INJURIES[H.injury.id]; return pick([`I got ${J.name}. ${H.injury.how ? `It happened ${H.injury.how}.` : ''}`, `Ow. ${cap(J.name)}. I'll be okay.`]); }
+  return pick(["I've been having a rough few days.", "Hi… sorry, I'm not much company lately.", "I'm okay. Mostly. It's been a heavy week."]);
+}
+function healthChip(p) { const H = p.health; if (H.ill) return `${ILLS[H.ill.id].icon} ${esc(p.name)}: ${esc(ILLS[H.ill.id].name.replace(/^an? |^the /, ''))}`; if (H.injury) return `${INJURIES[H.injury.id].icon} ${esc(p.name)}: ${esc(INJURIES[H.injury.id].name.replace(/^an? /, ''))}`; return `🌧 ${esc(p.name)}: rough patch`; }
+function healthSummary(p) {
+  const H = ensureHealth(p), L = [];
+  if (H.ill) L.push(`${ILLS[H.ill.id].icon} Has ${ILLS[H.ill.id].name}${H.ill.treated ? ' (seen a doctor)' : ''}`);
+  if (H.injury) L.push(`${INJURIES[H.injury.id].icon} Has ${INJURIES[H.injury.id].name}`);
+  if (H.low) L.push('🌧 Going through a rough patch');
+  if (H.cond.length) L.push(`Lives with ${andList(H.cond.map((c) => CONDITIONS[c].name))}`);
+  return L.length ? L.join(' · ') : '💚 Healthy';
+}
+function healthDetailHtml(p) {
+  const H = ensureHealth(p), now_ = H.ill || H.injury || H.low;
+  return `<p class="label">Health</p><p class="hint">${healthSummary(p)}. <button class="btn" type="button" data-care="${p.id}">${now_ ? 'Take care of them' : 'Check on them'}</button></p>`;
+}
+function healthHtml() {
+  const docs = W.people.filter((p) => p.job === 'doctor'), ths = W.people.filter((p) => p.job === 'therapist');
+  const sick = W.people.filter((p) => p.health && (p.health.ill || p.health.injury || p.health.low));
+  return `<p class="label">🩺 Glimmer Clinic</p><div class="btns"><button class="btn" type="button" data-clinicview>${MODE === 'host' ? 'Go inside' : 'Show inside in the box'}</button></div>
+    <p class="hint">${docs.length ? `Doctor${docs.length > 1 ? 's' : ''}: ${docs.map((p) => esc(p.name)).join(', ')}.` : 'No doctor lives here yet, so Dr. Juniper comes over on the morning ferry. (Residents who read about health and science can train up.)'} ${ths.length ? `Therapist${ths.length > 1 ? 's' : ''}: ${ths.map((p) => esc(p.name)).join(', ')}.` : 'Sol, a counselor from the mainland, holds sessions until someone here trains up (psychology and philosophy books).'}${hasHospital() ? ' The hospital wing helps everyone heal faster.' : ''}</p>
+    ${sick.length ? `<div class="chips">${sick.map((p) => `<button class="btn" type="button" data-care="${p.id}" style="padding:4px 10px;font-size:12px">${healthChip(p)}</button>`).join('')}</div>` : '<p class="hint">Everyone is healthy today. 💚</p>'}`;
+}
+
+// looks: casts, bandages, crutches, red noses
+function healthLook(p, m) {
+  const H = p.health, inj = H?.injury?.id, ill = H?.ill;
+  const want = (key, on, make) => { if (on && !m[key]) m[key] = make(); if (m[key]) m[key].visible = !!on; };
+  const white = toon('#ffffff');
+  want('hCast', inj === 'broken', () => { const c = mesh(new T3.CapsuleGeometry(0.135, 0.2, 4, 8), white, 0, -0.06, 0, false); m.arms[0].add(c); return c; });
+  want('hBand', inj === 'bump', () => { const b = mesh(new T3.TorusGeometry(0.585, 0.055, 6, 22), white, 0, 0.22, 0, false); b.rotation.x = Math.PI / 2; b.rotation.y = 0.15; m.head.add(b); return b; });
+  want('hKnee', inj === 'scrape', () => { const k = mesh(box(0.27, 0.09, 0.27), white, 0, 0.02, 0, false); m.legs[0].add(k); return k; });
+  want('hMitt', inj === 'burn', () => { const k = mesh(sph(0.13, 8, 6), white, 0, -0.2, 0, false); m.arms[1].add(k); return k; });
+  want('hCrutch', inj === 'sprain', () => { const g = new T3.Group(); g.add(mesh(cyl(0.035, 0.035, 1.1, 6), toon('#c9ccd6'), 0, 0.55, 0, false)); g.add(mesh(box(0.22, 0.06, 0.1), toon('#5a5470'), 0, 1.1, 0, false)); g.position.set(0.62, 0, 0.05); g.rotation.z = -0.12; m.fig.add(g); return g; });
+  want('hNose', ill && ILLS[ill.id].sev <= 2 && ill.id !== 'sunburn', () => { const n = mesh(sph(0.075, 8, 6), toon('#ff8f8f'), 0, -0.03, 0.61, false); m.head.add(n); return n; });
+  want('hMask', ill && ILLS[ill.id].sev >= 3, () => { const k = mesh(box(0.5, 0.26, 0.1), toon('#bfe8ff'), 0, -0.15, 0.56, false); m.head.add(k); return k; });
+}
+
+// Glimmer Clinic, downtown
+function buildClinic() {
+  const g = new T3.Group(), white = toon('#fbfdfc'), mint = toon('#6fb8a8'), glass = toon('#bfe8ff'), red = toon('#ff6f5e');
+  g.add(mesh(box(7.4, 5, 7), white, 0, 2.5, 0));
+  g.add(mesh(box(7.8, 0.45, 7.4), mint, 0, 5.2, 0));
+  g.add(mesh(box(7.6, 0.35, 7.2), mint, 0, 0.17, 0));
+  g.add(mesh(box(2.2, 2.8, 0.12), glass, 0, 1.4, 3.52)); g.add(mesh(box(0.08, 2.8, 0.16), mint, 0, 1.4, 3.56));
+  for (const s of [-1, 1]) { g.add(mesh(box(1.7, 1.4, 0.1), glass, s * 2.55, 2.5, 3.52)); g.add(mesh(box(1.9, 0.12, 0.3), mint, s * 2.55, 1.74, 3.6)); }
+  g.add(mesh(box(3.2, 0.14, 1.5), mint, 0, 3.15, 4.2)); for (const s of [-1.45, 1.45]) g.add(mesh(cyl(0.06, 0.06, 3.1, 6), mint, s, 1.55, 4.85));
+  const sg = sign('Glimmer Clinic', '#fbfdfc', '#3d8a78', 5); sg.position.set(0, 4.1, 3.57); g.add(sg);
+  g.add(mesh(box(2.1, 2.1, 0.2), white, 0, 6.5, 1.2)); for (const zz of [1.35, 1.05]) { g.add(mesh(box(1.5, 0.48, 0.1), red, 0, 6.5, zz, false)); g.add(mesh(box(0.48, 1.5, 0.1), red, 0, 6.5, zz, false)); }
+  for (const s of [-1, 1]) { const pot = new T3.Group(); pot.add(mesh(cyl(0.35, 0.28, 0.6, 10), toon('#e8d8c8'), 0, 0.3, 0)); pot.add(mesh(sph(0.45, 10, 8), toon('#8fd48a'), 0, 0.9, 0)); pot.position.set(s * 2.3, 0, 4.4); g.add(pot); }
+  const bench = new T3.Group(); bench.add(mesh(box(1.8, 0.14, 0.6), toon('#c49a6c'), 0, 0.5, 0)); for (const s of [-0.75, 0.75]) bench.add(mesh(box(0.1, 0.5, 0.5), toon('#5a5470'), s, 0.25, 0)); bench.position.set(3.3, 0, 4.9); g.add(bench);
+  g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'clinic' }; tappables.push(o); } });
+  placeDT(g, 'clinic');
+}
+function clinicKey() { return ['c', clinicOpen(), W.people.filter((p) => p.inside && p.at === 'clinic').map((p) => `${p.id}:${p.task?.kind}`).join(','), cfg.boxMode].join('|'); }
+function buildClinicRoom() {
+  const S = roomScene, open = clinicOpen();
+  shell(S, '#eaf6f2', '#c8d6d2', { pattern: 'dots', wainscot: '#6fb8a8' });
+  const white = toon('#ffffff'), mint = toon('#6fb8a8');
+  const bed = new T3.Group(); bed.add(mesh(box(1.2, 0.72, 2.5), toon('#9fd3c4'), 0, 0.36, 0)); bed.add(mesh(box(1.22, 0.1, 2.52), white, 0, 0.77, 0)); bed.add(mesh(box(0.85, 0.16, 0.5), white, 0, 0.9, -0.95)); bed.add(mesh(box(0.5, 0.02, 2.3), toon('#f4efe6'), 0, 0.83, 0.05)); bed.position.set(-3.2, 0, -2.2); S.add(bed);
+  const rail = mesh(box(0.05, 0.05, 2.8), toon('#c9ccd6'), -2.35, 2.9, -2.2, false); S.add(rail); const cur = mesh(box(0.04, 2.1, 1.2), toon('#bfe8d8'), -2.35, 1.85, -3.05); S.add(cur);
+  const cab = new T3.Group(); cab.add(mesh(box(1.1, 1.2, 0.35), white, 0, 0, 0)); cab.add(mesh(box(0.5, 0.14, 0.02), toon('#ff6f5e'), 0, 0.1, 0.18, false)); cab.add(mesh(box(0.14, 0.5, 0.02), toon('#ff6f5e'), 0, 0.1, 0.18, false)); cab.position.set(-1.2, 2.5, -3.8); S.add(cab);
+  const eye = canvasPlane(256, 384, (g) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 384); g.fillStyle = '#2a2733'; const rows = ['E', 'F P', 'T O Z', 'L P E D', 'P E C F D', 'E D F C Z P']; rows.forEach((r, i) => { g.font = `bold ${90 - i * 14}px sans-serif`; g.textAlign = 'center'; g.fillText(r, 128, 90 + i * 52); }); }, 0.9, 1.35);
+  eye.position.set(0.1, 2.5, -3.97); S.add(eye);
+  const rug = mesh(cyl(1.5, 1.5, 0.03, 24), toon('#d8c8f0'), 2.6, 0.02, -2.2, false); S.add(rug);
+  const arm = new T3.Group(); arm.add(mesh(box(1, 0.5, 1), toon('#9a8ab8'), 0, 0.25, 0)); arm.add(mesh(box(1, 0.9, 0.25), toon('#9a8ab8'), 0, 0.7, -0.4)); for (const s of [-0.45, 0.45]) arm.add(mesh(box(0.15, 0.4, 1), toon('#9a8ab8'), s, 0.6, 0)); arm.position.set(3.6, 0, -3.1); arm.rotation.y = -0.7; S.add(arm);
+  const couch = new T3.Group(); couch.add(mesh(box(1.8, 0.5, 0.9), toon('#ffb3c7'), 0, 0.25, 0)); couch.add(mesh(box(1.8, 0.8, 0.25), toon('#ffb3c7'), 0, 0.65, -0.35)); couch.add(mesh(sph(0.22, 8, 6), toon('#fff4dc'), -0.6, 0.62, -0.1)); couch.position.set(1.5, 0, -1.3); couch.rotation.y = 2.4; S.add(couch);
+  const lamp = new T3.Group(); lamp.add(mesh(cyl(0.03, 0.03, 1.6, 6), toon('#5a5470'), 0, 0.8, 0)); lamp.add(mesh(cyl(0.2, 0.3, 0.3, 10), toon('#fff4c4', { emissive: new T3.Color('#6a5a20') }), 0, 1.7, 0)); lamp.position.set(4.2, 0, -0.5); S.add(lamp);
+  const pl = new T3.Group(); pl.add(mesh(cyl(0.3, 0.24, 0.5, 10), toon('#e8d8c8'), 0, 0.25, 0)); pl.add(mesh(sph(0.5, 10, 8), toon('#8fd48a'), 0, 0.9, 0)); pl.position.set(4, 0, -3.5); S.add(pl);
+  const poster = canvasPlane(384, 256, (g) => { g.fillStyle = '#fff8f2'; g.fillRect(0, 0, 384, 256); g.fillStyle = '#ff9fbf'; g.beginPath(); g.arc(160, 110, 40, 0, 7); g.arc(224, 110, 40, 0, 7); g.fill(); g.beginPath(); g.moveTo(122, 124); g.lineTo(192, 200); g.lineTo(262, 124); g.fill(); g.fillStyle = '#6d6488'; g.font = '24px "Mochiy Pop One", sans-serif'; g.textAlign = 'center'; g.fillText('Be gentle with your mind', 192, 240); }, 1.8, 1.2);
+  poster.position.set(2.6, 2.9, -3.98); S.add(poster);
+  const tank = new T3.Group(); tank.add(mesh(box(1.2, 0.8, 0.6), toon('#c49a6c'), 0, 0.4, 0)); tank.add(mesh(box(1.2, 0.7, 0.6), toon('#8fd8ff', { transparent: true, opacity: 0.55, emissive: new T3.Color('#1a4a66') }), 0, 1.15, 0, false)); tank.add(mesh(sph(0.08, 8, 6), toon('#ffb347'), 0.2, 1.2, 0)); tank.add(mesh(sph(0.07, 8, 6), toon('#ff9fbf'), -0.3, 1.05, 0.1)); tank.position.set(3.7, 0, 2.8); S.add(tank);
+  const chairs = [[-3.9, 0.3], [-3.9, 1.3], [-3.9, 2.3], [-3.9, 3.3]];
+  for (const [x, z] of chairs) { const c = new T3.Group(); c.add(mesh(box(0.8, 0.12, 0.7), mint, 0, 0.5, 0)); c.add(mesh(box(0.8, 0.7, 0.1), mint, 0, 0.85, 0.32)); for (const s of [-0.32, 0.32]) c.add(mesh(box(0.08, 0.5, 0.6), toon('#c9ccd6'), s, 0.25, 0)); c.position.set(x, 0, z); c.rotation.y = -Math.PI / 2; S.add(c); }
+  const desk = new T3.Group(); desk.add(mesh(box(1.8, 1.0, 0.7), white, 0, 0.5, 0)); desk.add(mesh(box(1.9, 0.06, 0.8), mint, 0, 1.02, 0)); desk.add(mesh(sph(0.12, 8, 6), toon('#ffd36b'), 0.5, 1.1, 0)); desk.add(mesh(cyl(0.08, 0.06, 0.2, 8), toon('#ffffff'), -0.5, 1.15, 0)); desk.add(mesh(sph(0.12, 8, 6), toon('#ff9fbf'), -0.5, 1.3, 0)); desk.position.set(1.2, 0, 2.4); S.add(desk);
+  const sg = sign('🩺 Glimmer Clinic', '#fbfdfc', '#3d8a78', 2.6); sg.position.set(-2.4, 3.9, -3.97); S.add(sg);
+  const inside = W.people.filter((p) => p.inside && p.at === 'clinic');
+  const patients = inside.filter((p) => p.task?.kind === 'doctor'), clients = inside.filter((p) => p.task?.kind === 'therapy');
+  const doc = inside.find((p) => p.job === 'doctor' && p.task?.kind === 'work') || (open ? NPC.doc : null);
+  const th = inside.find((p) => p.job === 'therapist' && p.task?.kind === 'work') || (open && clients.length ? NPC.sol : null);
+  if (doc) addPerson(S, doc, -2.0, -2.3, 0.35, {});
+  if (th) addPerson(S, th, 3.6, -3.05, -0.7, { y: 0.28 });
+  if (patients[0]) addPerson(S, patients[0], -3.2, -1.0, 0, { lying: true, y: 0.9 });
+  if (clients[0]) addPerson(S, clients[0], 1.5, -1.3, 2.4, { y: 0.28 });
+  [...patients.slice(1), ...clients.slice(1)].slice(0, 4).forEach((p, i) => addPerson(S, p, chairs[i][0] + 0.05, chairs[i][1], Math.PI / 2, { y: 0.28 }));
+  const extra = inside.filter((p) => p.task?.kind === 'work' && p !== doc && p !== th);
+  extra.slice(0, 2).forEach((p, i) => addPerson(S, p, 0.3 + i, 1.5, Math.PI, {}));
+  $('#rcTitle').textContent = 'Glimmer Clinic';
+  const waiting = Math.max(0, patients.length - 1) + Math.max(0, clients.length - 1);
+  $('#rcSub').textContent = !open ? 'Closed for the night. Anyone really sick gets a house call.' : `${doc ? `${doc.name} is seeing patients` : 'The clinic is open'}${patients[0] ? `; ${patients[0].name} is on the exam table` : ''}${clients[0] ? `; ${clients[0].name} is in a session` : ''}.${waiting ? ` ${waiting} waiting.` : ''} Tap someone to check on them.`;
+}
+function clinicTap(pid) {
+  if (pid === 'npc-doc') { toast('Dr. Juniper: "I come over on the morning ferry until the island trains a doctor of its own. Rest and fluids, everyone!"'); return; }
+  if (pid === 'npc-sol') { toast('Sol: "I hold sessions here until someone on the island becomes a therapist. What\'s said in this corner stays here."'); return; }
+  openCare(pid);
+}
+
+// the care panel
+let careOpen = null;
+function careChat(p, who, text) { const H = ensureHealth(p); H.chat = H.chat || []; H.chat.push({ who, text: String(text).slice(0, 400), day: W.day }); if (H.chat.length > 12) H.chat.shift(); }
+function openCare(pid) { if (String(pid).startsWith('npc-')) { clinicTap(pid); return; } careOpen = pid; renderCare(); $('#careBox').hidden = false; if (MODE === 'host') sheet.hidden = true; }
+function renderCare() {
+  const p = careOpen && person(careOpen); if (!p) { $('#careBox').hidden = true; return; }
+  const H = ensureHealth(p), I = H.ill && ILLS[H.ill.id], J = H.injury && INJURIES[H.injury.id];
+  const rows = [];
+  if (I) rows.push(`${I.icon} <b>${esc(cap(I.name))}</b> · about ${plural(Math.max(1, Math.ceil(H.ill.days)), 'day')} to go${H.ill.treated ? ', seen by a doctor' : ', not seen by a doctor yet'}`);
+  if (J) rows.push(`${J.icon} <b>${esc(cap(J.name))}</b>${J.needsDoc && !H.injury.set ? ' · needs a doctor to set it' : ` · about ${plural(Math.max(1, Math.ceil(H.injury.days)), 'day')} to heal`}`);
+  if (H.low) rows.push(`🌧 <b>A rough patch</b> · it started with: ${esc(H.low.why)}`);
+  if (H.flare) rows.push(`${CONDITIONS[H.flare.id].icon} <b>A hard ${esc(CONDITIONS[H.flare.id].name)} day</b>${H.eased ? ' · a bit easier after therapy' : ''}`);
+  const mind = H.cond.some((c) => CONDITIONS[c].mind);
+  const C = W.creator;
+  const acts = `<div class="btns" style="margin-top:6px"><button class="btn gold" type="button" data-careask>How are you feeling?</button><button class="btn" type="button" data-caresoup ${H.soupDay === W.day || C.coins < 3 ? 'disabled' : ''}>Bring soup 🍲 3 ✦</button>${I || J ? `<button class="btn" type="button" data-caredoc ${H.docNext || H.docDay === W.day ? 'disabled' : ''}>Send to the doctor</button>` : ''}${mind || H.low ? `<button class="btn" type="button" data-caretherapy ${H.therapyNext || H.therapyDay === W.day ? 'disabled' : ''}>Suggest therapy</button>` : ''}</div>`;
+  $('#careBody').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><b style="font:16px var(--display)">🩺 ${esc(p.name)}</b><span class="hint">${esc(doing(p))} <button class="btn" type="button" data-careclose style="padding:2px 10px;font-size:12px">✕</button></span></div>
+    <p class="label">Right now</p>${rows.length ? rows.map((r) => `<p class="note">${r}</p>`).join('') : '<p class="hint">💚 Feeling okay today.</p>'}
+    ${acts}
+    <div class="chat" style="margin-top:8px">${(H.chat || []).slice(-6).map((m) => `<div class="msg ${m.who === 'you' ? 'r' : 'l'}"><span class="msg-n">${m.who === 'you' ? 'You' : esc(p.name)}</span><span class="msg-t">${esc(m.text)}</span></div>`).join('')}</div>
+    <form data-careform style="margin-top:8px"><textarea id="careText" rows="2" maxlength="400" placeholder="Say something kind…" style="width:100%;font:14px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></textarea>
+    <div class="btns"><button class="btn gold" type="submit">Say it</button><button class="btn" type="button" data-careclose>Close</button></div></form>
+    <p class="label">Lives with</p>${H.cond.length ? H.cond.map((c) => { const K = CONDITIONS[c], m = H.managed[c] || 0; return `<p class="note"><b>${K.icon} ${esc(cap(K.long))}</b>${m ? ` <span class="chip good">${m >= 4 ? 'managing well' : 'getting support'}</span>` : ''}<br><span class="hint" style="font-size:12px">${esc(K.about)}</span></p>`; }).join('') : '<p class="hint">Nothing ongoing.</p>'}
+    ${H.sessions || H.visits ? `<p class="hint">${H.visits ? `${plural(H.visits, 'doctor visit')}` : ''}${H.visits && H.sessions ? ' · ' : ''}${H.sessions ? `${plural(H.sessions, 'therapy session')}` : ''}</p>` : ''}
+    <details ${careDetailsOpen ? 'open' : ''}><summary class="hint" style="cursor:pointer">Edit what ${esc(p.name)} lives with</summary><div class="chips" style="margin-top:6px">${Object.entries(CONDITIONS).map(([k, K]) => `<button class="btn" type="button" data-carecond="${k}" aria-pressed="${H.cond.includes(k)}" style="padding:3px 10px;font-size:12px">${K.icon} ${esc(K.name)}</button>`).join('')}</div></details>`;
+  const ch = $('#careBody .chat'); if (ch) ch.scrollTop = 1e6;
+}
+let careDetailsOpen = false;
+async function careAct(pid, act, text, cond) {
+  const p = person(pid); if (!p) return '';
+  const H = ensureHealth(p);
+  if (act === 'cond') { if (!CONDITIONS[cond]) return ''; H.cond = H.cond.includes(cond) ? H.cond.filter((c) => c !== cond) : [...H.cond, cond]; markDirty(); return ''; }
+  if (act === 'soup') {
+    if (H.soupDay === W.day) return `${p.name} already had soup today.`;
+    if (W.creator.coins < 3) return 'Soup costs 3 coins.';
+    W.creator.coins -= 3; H.soupDay = W.day; p.hunger = clamp(p.hunger - 0.35, 0, 1); addJoy(p, 10); creatorShift(p, 0.25);
+    const line = H.ill ? pick(["Soup… for me? *sniff* You're the best.", 'Warm. So warm. Thank you.', 'I can taste it! Mostly!']) : H.low ? pick(['…You brought me soup? That actually helps.', 'Thank you. Really.']) : pick(["Soup? I'm not even sick! …I'll eat it though.", 'Oh! Thank you!']);
+    careChat(p, 'them', line); remember(p, 'The Creator brought me a bowl of soup.', 2, 'creatorGift', null, { what: 'a bowl of soup' });
+    markDirty(); return `🍲 ${p.name}: "${line}"`;
+  }
+  if (act === 'doc' || act === 'therapy') {
+    if (act === 'doc') H.docNext = true; else H.therapyNext = true;
+    if (p.state === 'free' && !p.inside && ['stroll', 'visit', 'cafe', 'pray', 'surf', 'read'].includes(p.task?.kind)) { p.task = null; p.path = []; }
+    const line = act === 'doc' ? pick(["Okay… I'll go get checked.", "You're right. I'll go see the doctor.", 'Fine, fine. Doctor. Going.']) : H.cond.some((c) => CONDITIONS[c].mind) ? pick(["Yeah. I think I'm due for a session.", "…Okay. That's probably a good idea.", 'Thanks for noticing.']) : pick(["Therapy? …Maybe. Okay. I'll try it.", "I didn't think anyone noticed. Okay."]);
+    careChat(p, 'them', line); creatorShift(p, 0.15); remember(p, act === 'doc' ? 'The Creator told me to see a doctor.' : 'The Creator gently suggested I talk to someone at the clinic.', 1, 'advice'); markDirty();
+    return `${p.name}: "${line}"`;
+  }
+  const said = String(text || '').trim().slice(0, 400);
+  if (act === 'kind' && !said) return '';
+  if (said) careChat(p, 'you', said);
+  const fallback = () => {
+    if (act === 'ask') { if (H.ill) return pick([`Honestly? Not great. ${cap(ILLS[H.ill.id].name)}. ${ILLS[H.ill.id].feel}`, `*sniff* I'll live. Probably.`]); if (H.injury) return `It still hurts a bit. ${cap(INJURIES[H.injury.id].name)}. I'll be okay.`; if (H.low) return "…Not my best week. I'm getting through it."; if (H.flare) return CONDITIONS[H.flare.id].mind ? "It's a harder day in my head. I'm handling it." : `My ${CONDITIONS[H.flare.id].name} is acting up. I'll be alright.`; return pick(["I'm good! Thanks for asking.", 'Pretty good, actually.', 'Fine! Why, do I look sick?']); }
+    return KIND_RE.test(said) ? pick(['…Thank you. I needed that.', 'That means a lot. Really.', 'Okay. Okay, yeah. Thank you.']) : pick(['Oh. Um. Okay.', "I'm not sure what you mean, but thanks.", 'Hm.']);
+  };
+  let reply = null, comfort = act === 'kind' ? (KIND_RE.test(said) ? 2 : 1) : 0;
+  if (aiReady() && aiBusy < 2) {
+    try {
+      const r = await llm(`You are ${p.name}, who lives on ${ISL.name}, a tiny island town. In your own words: ${p.selfNote}
+${p.style ? `HOW YOU TALK: ${styleOf(p)}\n` : ''}BODY: ${bodyFacts(p)}${healthContext(p, null)}
+You ${attitude(p)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')} (the Creator is a mysterious being who made the island).
+Recent chat with the Creator, who came to check on you:
+${(H.chat || []).slice(-6).map((m) => `${m.who === 'you' ? 'Creator' : p.name}: ${m.text}`).join('\n')}
+${act === 'ask' ? 'The Creator asked how you are feeling. Answer honestly, in your own voice, the way you would with someone you trust about as much as you trust the Creator. Share only what feels right to share. Talk like a person, not a pamphlet.' : `The Creator just said: "${said}". Respond in your own voice. If it was kind and it lands, let it; if it's hard to hear, say so; if it was dismissive or hurtful, say that honestly.`}
+Reply with only JSON: {"reply": "1-3 sentences", "comfort": 0-3 (how much this actually helped you feel better; 0 if it hurt or missed)}`, { model: modelOf(p), max: 260, fallbackKey: 'reply' });
+      if (r && r.reply) { reply = String(r.reply).slice(0, 500); if (act === 'kind') comfort = clamp(Math.round(Number(r.comfort) || 0), 0, 3); }
+    } catch (e) {}
+  }
+  if (!reply) reply = fallback();
+  careChat(p, 'them', reply);
+  if (act === 'ask') { creatorShift(p, 0.1); addJoy(p, 3); }
+  if (act === 'kind') {
+    remember(p, `The Creator said to me: "${said.slice(0, 100)}"`, 2, 'creatorTalk');
+    if (comfort >= 2) {
+      addJoy(p, 10); creatorShift(p, 0.3); H.stress = Math.max(0, (H.stress || 0) - 1); remember(p, 'The Creator\'s words helped.', 1, 'careKind');
+      if (H.low) { H.low.days -= 1; if (H.low.days <= 0) { H.low = null; diary(`🌤 The <span class="cr">Creator</span>'s words helped <b>${esc(p.name)}</b> out of a rough patch.`); } }
+      if (H.flare && CONDITIONS[H.flare.id].mind) H.eased = true;
+    } else if (comfort === 0) creatorShift(p, -0.2);
+  }
+  markDirty();
+  return '';
+}
+
+// setting everyone up the first time
+function healthMigration() {
+  W.added = W.added || {};
+  for (const p of W.people) ensureHealth(p);
+  if (W.added.health1) return;
+  W.added.health1 = true;
+  const red = W.people.find((q) => q.lovesMili); if (red) { red.health.cond = conditionsFromText((red.body.ailments || []).join('. ')); }
+  const m = typeof findMili === 'function' && findMili(); if (m) m.health.cond = ['ocd', 'schizotypal'];
+  if (ISLE === 'isle1' || ISLE === 'isle2') {
+    const taken = new Set(), count = (job) => W.people.filter((q) => q.job === job).length;
+    const cand = () => W.people.filter((p) => p.grow >= 1 && !p.visitor && p !== m && !p.lovesMili && !p.style && !p.custom && collarOf(p) !== 'white' && !taken.has(p.id) && (!SHOPS[p.job] || count(p.job) >= 2)).sort((a, b) => count(b.job) - count(a.job) || rand() - 0.5)[0];
+    const hire = (job, books, line) => { const p = cand(); if (!p) return false; taken.add(p.id); p.job = job; p.jobDays = 0; p.jobMood = 0; p.read = [...(p.read || []), ...books.filter((id) => BOOKS[id] && !(p.read || []).some((r) => r.id === id)).map((id) => ({ id, day: W.day, learned: BOOKS[id].facts.slice(0, 2), rating: 4, take: line }))]; dressMesh(p); remember(p, `I started a new job as a ${JOBS[job].short}.`, 3, 'hired'); diary(`💼 <b>${esc(p.name)}</b> started work as a <b>${JOBS[job].short}</b>.`); return true; };
+    hire(pick(['bio', 'chem', 'phys']), ['tinyworlds', 'everyday', 'forces', 'tidepool', 'numbers'], 'This is the stuff that got me into science.');
+    hire(pick(['robo', 'civil']), ['bridges', 'robots', 'numbers'], 'I read this three times.');
+    hire('doctor', ['body', 'firstaid', 'tinyworlds'], 'This is why I wanted to be a doctor.');
+    if (W.people.length >= 11) hire('therapist', ['feel', 'friends', 'minds'], 'Everyone deserves someone who listens.');
+    const readers = W.people.filter((p) => p.grow >= 1 && collarOf(p) !== 'white' && !taken.has(p.id) && p !== m && !p.lovesMili).sort(() => rand() - 0.5);
+    const paths = [['firstaid', 'body'], ['feel', 'minds'], ['tinyworlds', 'everyday'], ['bridges', 'robots']];
+    readers.slice(0, 3).forEach((p, i) => { p.toRead = [...paths[i % paths.length], ...(p.toRead || [])].slice(0, 4); });
+  }
+  const [cx, cz] = polarDT(DT_BLD.clinic.a, DT_BLD.clinic.r);
+  const moved = (W.placed || []).filter((pl) => Math.hypot(pl.x - cx, pl.z - cz) < 7.5);
+  if (moved.length) { for (const pl of moved) W.creator.coins = Math.min(9999, W.creator.coins + (BUILDS[pl.type]?.price || 5)); W.placed = W.placed.filter((pl) => !moved.includes(pl)); buildPlaced(); }
+  if (typeof logUpdate === 'function') logUpdate('build', 'Built Glimmer Clinic downtown and opened two new floors at Glimmer Labs (Science and Engineering). Residents can catch colds and get hurt now, and some live with ongoing conditions, including mental health ones.', 'Clinic + new lab floors');
+  diary(`🩺 <b>Glimmer Clinic</b> opened downtown, with a doctor's office and a quiet corner for therapy. Glimmer Labs opened two new floors: 🧪 Science and ⚙️ Engineering.${moved.length ? ' A few things you built were in the way, so they were refunded.' : ''}`);
 }
 
 function closeFishing() { fishing = null; $('#fishBox').hidden = true; }
@@ -5738,6 +6724,7 @@ async function physicalScene(a, b, kind) {
       diary(`💢 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got into a scuffle.`);
       if (rand() < 0.45) setTimeout(() => fileCase('fight', b, a), 5000);
       bystanders(a, b);
+      setTimeout(() => fightInjury(a, b), dur * 1000);
     }
     await sleep(dur * 1000);
     if (kind === 'fight') { b.x += dx * 0.9; b.z += dz * 0.9; keepOnLand(b); }
@@ -6113,6 +7100,7 @@ function clockAt(t) { const hr = (6 + t * 24) % 24, hh = Math.floor(hr), mm = Ma
 
 // poses drawn every frame
 function poseFigure(p, m) {
+  healthLook(p, m);
   const po = p.pose && p.pose.until > now ? p.pose : null;
   m.arms.forEach((a, i) => { a.position.y = 0.8; a.rotation.z = (i ? 1 : -1) * 0.35; });
   m.fig.rotation.z = 0;
@@ -6201,6 +7189,7 @@ function greet(p) {
   if (pr?.kind === 'hungry') return "My tummy won't stop rumbling… Do you have anything to eat?";
   if (pr?.kind === 'wish') return `I keep wishing for ${wishText(p.cr.wish)}… Do you think it'll ever happen?`;
   if (pr?.kind === 'fight') return `${person(pr.who)?.name || 'Someone'} and I had a falling out. What should I do?`;
+  if (pr && ['sick', 'hurt', 'low'].includes(pr.kind)) return healthGreet(p, pr);
   if (pr?.kind === 'lonely') return "I don't really have any friends here yet…";
   if (s >= 6) return pick(['Creator! You came to see me!', 'Hi, Creator! I was hoping you would visit.']);
   if (s >= 2) return pick(["Oh! Hi, Creator. What's up?", 'Hey, Creator!']);
@@ -6264,6 +7253,7 @@ function renderDlg(retype) {
     const probBtns = !pr ? '' : pr.kind === 'gift' ? `<button class="btn gold" data-d="present">Accept their present</button>`
       : pr.kind === 'hungry' ? `<button class="btn gold" data-d="food">Treat them to food</button>`
       : pr.kind === 'wish' ? `<button class="btn gold" data-d="gift">Give them something</button><button class="btn" data-d="adv" data-c="wait">I'll look for it</button>`
+      : ['sick', 'hurt', 'low'].includes(pr.kind) ? `<button class="btn gold" data-d="care">Take care of them</button>`
       : pr.kind === 'fight' ? `<button class="btn gold" data-d="adv" data-c="sorry">Go apologize</button><button class="btn" data-d="adv" data-c="letgo">Let it go</button><button class="btn" data-d="adv" data-c="stand">Stand your ground</button>`
       : `<button class="btn gold" data-d="adv" data-c="friend">Go say hi to someone</button>`;
     html = `${joy}<div class="dlg-choices">${probBtns}
@@ -6302,6 +7292,7 @@ dlgEl.addEventListener('click', (e) => {
   if (['talk', 'gift', 'food', 'coins', 'menu'].includes(d)) { dlg.mode = d; renderDlg(d === 'menu' ? false : false); return; }
   if (d === 'dream') { dlg.mode = 'dream'; dlg.text = '💭 …'; renderDlg(true); const id = p.id; peekDream(p).then((txt) => { if (dlg && dlg.pid === id) { dlg.text = '💭 ' + txt; dlg.mode = 'dream'; renderDlg(true); } }); return; }
   if (d === 'present') { const it = claimPresent(p); addJoy(p, 0); markDirty(); dlgSay(it ? `Here! I made ${a_an(itemName(it))} just for you. I hope you like it!` : 'Hmm?'); if (it) toast(`${cap(itemName(it))} added to Your gifts.`); return; }
+  if (d === 'care') { const id = p.id; releaseDlg(); openCare(id); return; }
   if (d === 'adv') { dlgSay(quoteOf(applyCmd({ t: 'advice', to: p.id, choice: b.dataset.c })) || 'Okay.'); return; }
   if (d === 'give') { dlgSay(quoteOf(applyCmd({ t: 'gift', uid: b.dataset.u, to: p.id }))); return; }
   if (d === 'feed') { dlgSay(quoteOf(applyCmd({ t: 'feed', to: p.id, id: b.dataset.f }))); return; }
@@ -6446,7 +7437,7 @@ function doing(p) {
   const k = p.task?.kind;
   if (k === 'away' && p.away) return `visiting ${ISLES[p.away.to].name}`;
   if (p.inside && k === 'home') return W.t >= 0.63 || W.t < 0.008 ? 'asleep' : 'at home';
-  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service' }[k] || 'wandering';
+  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service', rest: 'resting in bed', doctor: 'at the clinic', therapy: 'at the clinic', ritual: 'double-checking something at home' }[k] || 'wandering';
 }
 function showTab(t) {
   activeTab = t;
@@ -6513,6 +7504,8 @@ function renderDetail(id) {
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>
     ${bookshelfHtml(p)}
+    ${LAB_JOBS.includes(p.job) && ensureResearch(p) ? `<p class="hint">🔬 Working on ${esc(p.research.title)} (${Math.round(p.research.progress)}%${p.research.stuck ? ', stuck' : ''}). <button class="btn" type="button" data-openlab="${p.id}">Visit their desk</button></p>` : ''}
+    ${healthDetailHtml(p)}
     ${isMili(p) ? `<p class="hint">✧ A piece of you, living down here. Her cat is called ${esc(catName())}. <button class="btn" type="button" data-renamecat>Rename the cat</button></p>` : ''}
     ${(() => { const T = (W.texts || []).filter((m) => m.from === p.id || m.to === p.id).slice(-4).reverse(); return T.length ? `<p class="label">Their phone</p>${T.map((m) => `<p class="hint">${m.from === p.id ? `To ${esc(m.to === 'town' ? 'the group chat' : person(m.to)?.name || '?')}` : `From ${esc(m.fromName)}`}: "${esc(m.text)}"</p>`).join('')}` : ''; })()}
     <div class="creator">
@@ -6615,6 +7608,8 @@ function renderBoard() {
     <p class="label">${seasonOf().icon} ${seasonOf().name}, day ${seasonDay()} of 7</p>
     ${(() => { const up = W.people.filter((p) => p.bday).map((p) => [p, (p.bday - yearDay() + YEAR) % YEAR]).filter(([, d]) => d <= 7).sort((a, b) => a[1] - b[1]); return up.length ? `<div class="chips">${up.map(([p, d]) => `<span class="chip ${d === 0 ? 'gold' : ''}">🎂 ${esc(p.name)} ${d === 0 ? 'today!' : d === 1 ? 'tomorrow' : `in ${d} days`}</span>`).join('')}</div>` : '<p class="hint">No birthdays this week.</p>'; })()}
     ${workMoneyHtml()}
+    ${labsHtml()}
+    ${healthHtml()}
     <p class="label">📚 What everyone is reading</p>${(() => { const L = W.people.filter((p) => (p.toRead || []).length && BOOKS[p.toRead[0]]).map((p) => `<span class="chip">${esc(p.name)}: <i>${esc(BOOKS[p.toRead[0]].title)}</i></span>`); return L.length ? `<div class="chips">${L.join('')}</div>` : '<p class="hint">Nobody is reading anything right now. The bookstore sells books by subject.</p>'; })()}
     <p class="label">Couples</p>
     ${(() => { const seen = new Set(), L = []; for (const p of W.people) { const q = p.partner && person(p.partner); if (!q || seen.has(p.id)) continue; seen.add(p.id); seen.add(q.id); L.push(`<span class="chip good">${p.married ? '💍' : '💕'} ${esc(p.name)} & ${esc(q.name)}</span>`); } const wd = W.wedding && person(W.wedding.a) && person(W.wedding.b) ? `<p>💒 ${esc(person(W.wedding.a).name)} and ${esc(person(W.wedding.b).name)} are getting married ${W.wedding.day === W.day + 1 ? 'tomorrow' : `on day ${W.wedding.day}`} at ${EVENTS.wedding.at}.</p>` : ''; return wd + (L.length ? `<div class="chips">${L.join('')}</div>` : '<p class="hint">Nobody is dating yet. Give it time.</p>'); })()}
@@ -6683,6 +7678,10 @@ sheet.addEventListener('click', (e) => {
   if (d.sendlink) { const sel = document.querySelector(`[data-sendto="${d.sendlink}"]`); if (sel) send({ t: 'sendlink', item: d.sendlink, to: sel.value }); return; }
   if (d.subj !== undefined) { bookSubj = d.subj || null; refreshPanel(true); return; }
   if (d.buybook) { send({ t: 'buybook', id: d.buybook }); return; }
+  if (d.openlab) { openLab(d.openlab); return; }
+  if (d.care) { openCare(d.care); return; }
+  if (d.clinicview !== undefined) { send({ t: 'clinicview' }); if (MODE === 'host') sheet.hidden = true; return; }
+  if (d.labsview !== undefined) { send({ t: 'labsview', wing: d.labsview || undefined }); if (MODE === 'host') sheet.hidden = true; return; }
   if (d.rule) { send({ t: 'rule', id: d.rule, choice: d.choice }); return; }
   if (d.hallview !== undefined) { send({ t: 'hallview' }); if (MODE === 'host') sheet.hidden = true; return; }
   if (d.debateform !== undefined) { debateForm = !debateForm; refreshPanel(true); return; }
@@ -6788,6 +7787,8 @@ function wireTownInput() {
       const h = ray.intersectObjects(roomScene.children, true).find((i) => i.object.userData.tap);
       if (!h) { releaseDlg(); return; }
       const tp = h.object.userData.tap;
+      if (interior.kind === 'labs' && (tp.kind === 'person' || tp.kind === 'desk')) { openLab(tp.pid); return; }
+      if (interior.kind === 'clinic' && tp.kind === 'person') { clinicTap(tp.pid); return; }
       if (tp.kind === 'person') { const q = person(tp.pid); const asleep = q && q.inside && q.task?.kind === 'home' && (W.t >= 0.6 || W.t < 0.02); openInteract(tp.pid, asleep ? { text: 'Mmm… zzz… Huh? Creator? It\'s the middle of the night…' } : {}); }
       else if (tp.kind === 'buy') openBuy(tp.shop, tp.uid, tp.food);
       else if (tp.kind === 'shelf') { shopTab = 'books'; bookSubj = tp.subj; activeTab = 'shops'; openSheet(); }
@@ -6814,7 +7815,9 @@ function wireTownInput() {
     else if (tp.kind === 'mail') { activeTab = 'mail'; mailOpen = null; openSheet(); }
     else if (tp.kind === 'fish') openFishing();
     else if (tp.kind === 'hall') openInterior({ kind: 'hall' });
-    else if (tp.kind === 'labs') { activeTab = 'board'; openSheet(); toast('Glimmer Labs: office jobs for people who have read the right books.'); }
+    else if (tp.kind === 'labs') openInterior({ kind: 'labs', wing: labWingLast });
+    else if (tp.kind === 'clinic') openInterior({ kind: 'clinic' });
+    else if (tp.kind === 'robot') robotTap(tp.id);
     else if (tp.kind === 'tgarden') { const r = applyCmd({ t: 'gather', bed: 'tgarden', x: TOWN.garden.spot[0], z: TOWN.garden.spot[1] }); if (r) toast(r); }
     else if (tp.kind === 'placed') { const pl = (W.placed || []).find((q) => q.id === tp.id); if (pl && ['flowers', 'planter', 'arch', 'tree'].includes(pl.type)) { const r = applyCmd({ t: 'gather', bed: pl.id, wood: pl.type === 'tree', x: pl.x, z: pl.z }); if (r) toast(r); } }
     else if (['orchard', 'boulder', 'crystal', 'scrap'].includes(tp.kind)) { const r = applyCmd({ t: 'landtap', kind: tp.kind, id: tp.id, x: tp.x, z: tp.z }); if (r) toast(r); }
@@ -6924,7 +7927,7 @@ async function boot() {
   W = (await loadWorld()) || newWorld();
   applyMods();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); awayOnBoot(); buildLand(); buildPlaced(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
@@ -6944,7 +7947,7 @@ async function boot() {
     step(dt);
     if (interior) roomControls.update();
     else { controls.autoRotate = cfg.spin && now - lastTouch > 10 && !keysDown.size; const tx = controls.target.x, tz = controls.target.z; controls.update(); if (Math.abs(controls.target.x - tx) + Math.abs(controls.target.z - tz) > 1e-4) { userPanned(); clampView(); } }
-    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); courtTick(); seasonFrame(dt); catFrame(dt); claudeTick(dt); shineFrame(dt); nodeFrame(dt);
+    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); weddingFrame(dt); fishingFrame(dt); courtTick(); seasonFrame(dt); catFrame(dt); claudeTick(dt); shineFrame(dt); nodeFrame(dt); robotsFrame(dt); labsSpin(dt);
     renderer.render(interior ? roomScene : scene, interior ? roomCam : camera);
     if (wantPhoto) { wantPhoto = false; try { takePhoto(); } catch (e) { console.error(e); toast('The camera jammed. Try again?'); } }
     if (now - lastHud > 0.5) { hud(); lastHud = now; }
@@ -6954,7 +7957,7 @@ async function boot() {
   }
   requestAnimationFrame(frame);
 }
-if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, agentAccept: (r) => acceptMods(r), agent: (q) => runAgent(q), fetchOutside: () => fetchOutside(true), surf: (i) => surfDone(person(i)), discover: (i) => discoverOutside(person(i)), chirp: () => { nextChirp = 0; }, finishBook: (i, b) => finishBook(person(i), b), classAM: () => classMorning(), readCtx: (i) => readingContext(person(i)) + classContext(person(i), W.people[0]), file: (k, a, b, x) => fileCase(k, person(a), person(b), x || {}), cases: () => W.cases, court: () => courtTick(), courtAM: () => courtMorning(), cupdate: (live) => claudeUpdate(live), away: () => { lastTouch = -9999; }, back: () => userReturned(true), convo: () => { nextConvoAt = 0; }, resetView: () => resetView(), watchdog: () => claudeWatchdog(true), text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
+if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, ev: (s) => eval(s), health: (pid) => person(pid)?.health, sick: (pid, id) => catchIll(person(pid), id || 'cold', 'caught'), hurt: (pid, id) => injure(person(pid), id || 'scrape', 'while testing'), careAct: (pid, act, text) => careAct(pid, act, text), finish: (pid) => { const p = person(pid); ensureResearch(p); p.research.progress = 100; finishResearch(p); }, hm: () => healthMorning(), lab: (pid, act, text) => labAct(pid, act, text), work: (pid) => researchWork(person(pid)), agentAccept: (r) => acceptMods(r), agent: (q) => runAgent(q), fetchOutside: () => fetchOutside(true), surf: (i) => surfDone(person(i)), discover: (i) => discoverOutside(person(i)), chirp: () => { nextChirp = 0; }, finishBook: (i, b) => finishBook(person(i), b), classAM: () => classMorning(), readCtx: (i) => readingContext(person(i)) + classContext(person(i), W.people[0]), file: (k, a, b, x) => fileCase(k, person(a), person(b), x || {}), cases: () => W.cases, court: () => courtTick(), courtAM: () => courtMorning(), cupdate: (live) => claudeUpdate(live), away: () => { lastTouch = -9999; }, back: () => userReturned(true), convo: () => { nextConvoAt = 0; }, resetView: () => resetView(), watchdog: () => claudeWatchdog(true), text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
 boot();
 })();
 </script>
