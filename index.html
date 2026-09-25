@@ -374,6 +374,7 @@ const HATS = {
   phones: { name: 'headphones', price: 4 },
 };
 const FOODS = [
+  { id: 'apple', shop: 'plot', name: 'apples', price: 2, fill: 0.25, fl: { sweet: 0.7, salty: 0.1, spicy: 0 } },
   { id: 'strawberry', shop: 'plot', name: 'strawberries', price: 2, fill: 0.2, fl: { sweet: 0.85, salty: 0, spicy: 0 } },
   { id: 'carrot', shop: 'plot', name: 'carrots', price: 1, fill: 0.2, fl: { sweet: 0.4, salty: 0.2, spicy: 0 } },
   { id: 'tomato', shop: 'plot', name: 'tomatoes', price: 2, fill: 0.2, fl: { sweet: 0.3, salty: 0.4, spicy: 0 } },
@@ -1133,14 +1134,19 @@ function routeAround1(from, to, FOUNTAIN_R) {
   const ang = Math.atan2(mid[1], mid[0]), sgn = Math.sign((ax * dz - az * dx)) || 1;
   return [[Math.cos(ang + 0.55 * sgn) * R, Math.sin(ang + 0.55 * sgn) * R], mid, [Math.cos(ang - 0.55 * sgn) * R, Math.sin(ang - 0.55 * sgn) * R]].filter((q, i, arr) => i === 1 || true);
 }
+function bridgedAt(x, z) { for (const k of W.lobes || []) { const L = LOBES[k]; if (!L.bridge) continue; const [cx, cz] = lobeCenter(k); if (Math.hypot(x - cx, z - cz) < lobeR(k) + 1) return k; } return null; }
+function bridgeVia(k, out) { const L = LOBES[k], D = L.d || LOBE_D, R = lobeR(k); const pts = [polar(L.a, 12.2), polar(L.a, 29), polar(L.a, D - R + 1)]; return out ? pts.reverse() : pts; }
 function goTo(p, dest, spot) {
   const pts = [];
+  const sp0 = spot || TOWN[dest].spot, fromIsle = bridgedAt(p.x, p.z), toIsle0 = bridgedAt(sp0[0], sp0[1]);
+  if (fromIsle && fromIsle !== toIsle0) pts.push(...bridgeVia(fromIsle, true));
   const cur = TOWN[p.at] || TOWN.plaza, d = TOWN[dest];
   const E = (x) => (!x ? [] : Array.isArray(x[0]) ? x : [x]);
   if (dest !== p.at) {
     if (cur.zone === 'dt' && d.zone === 'dt') pts.push(...E(cur.local).slice().reverse(), ...E(d.local));
     else pts.push(...E(cur.entry).slice().reverse(), ...E(d.entry));
   }
+  if (toIsle0 && toIsle0 !== fromIsle) pts.push(...bridgeVia(toIsle0, false));
   pts.push(spot || d.spot);
   const out = []; let prev = [p.x, p.z];
   for (const q of pts) { const det = routeAround(prev, q); const ordered = det.length ? orderDetour(prev, det) : []; out.push(...ordered, q); prev = q; }
@@ -1177,6 +1183,7 @@ function plan(p) {
   if (seek) { const t = person(seek); if (!t) { p.makeup = p.befriend = p.confessTo = p.proposeTo = p.breakWith = null; } else if (!t.inside) { setTask(p, 'visit', t.path.length ? t.dest : t.at, jitter([t.x, t.z], 1.5), { who: t.id }); return; } }
   if (t > 0.26 && t < 0.56 && p.hunger < 0.6 && planDate(p)) return;
   if (planHangout(p)) return;
+  if (planLandmark(p)) return;
   if (p.hunger > 0.45) {
     if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return; }
     const i = W.bushes.findIndex((n) => n > 0);
@@ -1214,6 +1221,7 @@ function startDo(p) {
   if (k === 'event') { p.busyUntil = now + 1; return; }
   if (k === 'donate') { p.busyUntil = now + 1.5 * ts(); return; }
   if (k === 'hangout') { hangoutStart(p); return; }
+  if (k === 'landmark') { p.busyUntil = now + 5 * ts(); const pl = (W.placed || []).find((q) => q.id === p.task.id); if (pl) p.face = Math.atan2(pl.x - p.x, pl.z - p.z); bubble(p, ({ carousel: ['Wheee!', 'One more ride!'], onsen: ['Ahhh…', 'So warm.'], clinic: ['Just a checkup.', 'Say ahh.'], observatory: ['Look at all the stars.', 'Is that a planet?'], museum: ['Ooh, a golden koi!', 'Culture.'], ferris: ['I can see my house!', "Don't rock it!"] }[p.task.type] || ['Nice.'])[Math.floor(rand() * 2)], 2.6); return; }
   if (k === 'court') { p.inside = true; p.busyUntil = now + (p.task.wed ? 4 : 9) * ts(); if (interior?.kind === 'hall') interior.dirty = true; return; }
   if (k === 'service') { p.busyUntil = now + 5 * ts(); p.face = Math.atan2(p.task.x - p.x, p.task.z - p.z); bubble(p, pick(['Community service. Great.', 'Planting flowers. As a punishment. Sure.', 'This is so embarrassing.']), 2.6); return; }
   if (k === 'snowman') { p.busyUntil = now + 4 * ts(); p.face = rand() * 6.28; bubble(p, pick(['Snowman time!', 'Roll, roll, roll…', 'This one will be the best one.']), 2.4); return; }
@@ -1226,6 +1234,7 @@ function finishDo(p) {
   if (k === 'work') { if (W.t < 0.24) { p.busyUntil = now + 1; return false; } endWork(p); }
   else if (k === 'event') { if (W.t < (p.task.until || 0) && W.t < 0.67) { p.busyUntil = now + 1; if (rand() < 0.02) { const ev = EVENTS[W.event?.id]; if (ev) bubble(p, pick(['This is so fun!', 'Best day ever.', W.event.id === 'snowball' ? 'Got you!' : W.event.id === 'bday' ? 'Happy birthday!' : W.event.id === 'beach' ? 'The water is perfect!' : W.event.id === 'blossoms' ? 'The petals are falling on my head!' : W.event.id === 'harvest' ? 'Pass the pumpkin soup?' : W.event.id === 'wedding' ? "I'm not crying, you're crying." : W.event.id === 'stars' ? 'Look, a shooting star!' : W.event.id === 'fishing' ? 'I got a bite!' : 'Yay!']), 2); } return false; } if (W.event?.id === 'fishing' && W.event.host === p.id) { const winner = pick(W.people.filter((q) => W.event.going.includes(q.id))); if (winner) { winner.coins += 4; remember(winner, 'I won the fishing contest!', 3, 'won'); diary(`<b>${esc(winner.name)}</b> won the fishing contest and 4 coins.`); } } remember(p, `Went to ${EVENTS[W.event?.id]?.name || 'the event'}.`, 2, 'event'); addJoy(p, 10); }
   else if (k === 'hangout') hangoutEnd(p);
+  else if (k === 'landmark') landmarkDone(p);
   else if (k === 'court') { p.inside = false; if (interior?.kind === 'hall') interior.dirty = true; }
   else if (k === 'service') { if (!spotProblem(p.task.x, p.task.z)) { W.placed.push({ id: uid(), type: 'flowers', x: p.task.x, z: p.task.z, rot: rand() * 6.28, day: W.day, by: p.name }); buildPlaced(); diary(`🌷 <b>${esc(p.name)}</b> planted a flower bed as community service.`); } remember(p, 'Did community service. Planted flowers for the town.', 2, 'service'); bubble(p, pick(['Done. Happy now?', "…Okay, it's kind of pretty.", 'Never again.']), 2.4); }
   else if (k === 'snowman') { if (seasonOf().id === 'winter') { W.snowmen = W.snowmen || []; W.snowmen.push({ x: p.x + Math.sin(p.face) * 1.2, z: p.z + Math.cos(p.face) * 1.2, face: p.face + Math.PI, by: p.name, day: W.day, scarf: topColors(p)[0] || COLORS[p.outfit.shirt] && p.outfit.shirt }); if (W.snowmen.length > 8) W.snowmen.shift(); buildSnowmen(); addJoy(p, 8); bubble(p, pick(['Ta-da!', 'His name is Gerald.', 'Perfect.', 'Needs a hat. Oh well.']), 2.4); remember(p, 'Built a snowman.', 1, 'snowman'); diary(`<b>${esc(p.name)}</b> built a snowman.`); } }
@@ -1366,7 +1375,7 @@ function newDay() {
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }
-  birthdayMorning(); miliMorning(); courtMorning();
+  birthdayMorning(); miliMorning(); courtMorning(); museumDaily();
   if (MODE === 'host') { morningFerry(); ferryDepartures(); checkOther(); }
   diary(`Morning. The weather is ${W.weather}. You got 20 new coins.`);
   saveNow();
@@ -1401,7 +1410,7 @@ function step(dt) {
     if (p.task?.kind === 'walkwith') { walkWithStep(p, dt); continue; }
     if (p.path.length) {
       const tgt = p.path[0], dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
-      const achy = p.body.ailments?.length && W.t < 0.15 ? 0.75 : 1;
+      const achy = p.body.ailments?.length && W.t < 0.15 && !(p.healedUntil >= W.day) ? 0.75 : 1;
       if (achy < 1 && p.sickDay !== W.day && /sick/.test(p.body.ailments.join(' ')) && rand() < 0.01) { p.sickDay = W.day; bubble(p, pick(['Ugh. Sick again.', 'Mornings are the worst.', 'My joints. Man.']), 2.6); remember(p, 'Felt sick this morning, like always.', 1, 'sick'); }
       const sp = achy * 3.1 * p.body.speed * (p.hunger > 0.9 ? 0.65 : 1) * (0.7 + 0.3 * p.grow) * (W.weather === 'storm' ? 0.85 : 1) * (W.meeting ? 1.6 : 1);
       if (d < 0.2) { p.x = tgt.x; p.z = tgt.z; p.path.shift(); p.stuckT = 0; p.lastD = Infinity; if (!p.path.length) { p.at = p.dest; startDo(p); } continue; }
@@ -1529,8 +1538,8 @@ function applyCmd(c) {
       const B = BUILDS[c.type]; if (!B) return '';
       if (C.coins < B.price) return `You need ${plural(B.price, 'coin')} for ${a_an(B.name)}.`;
       let x = c.x, z = c.z;
-      if (x === undefined || x === null) { const sp = autoSpot(); if (!sp) return 'There is no room left. Try buying more land.'; [x, z] = sp; }
-      const prob = spotProblem(x, z); if (prob) return prob;
+      if (x === undefined || x === null) { const sp = autoSpot(B.size || 0); if (!sp) return 'There is no room left. Try buying more land.'; [x, z] = sp; }
+      const prob = spotProblem(x, z, B.size || 0); if (prob) return prob;
       C.coins -= B.price; W.placed.push({ id: uid(), type: c.type, x, z, rot: rand() * 6.28, day: W.day });
       buildPlaced(); reactToBuild(B.name); diary(`<span class="cr">Creator</span> put ${a_an(esc(B.name))} in town.`); markDirty();
       return `Placed ${a_an(B.name)}.`;
@@ -1570,7 +1579,18 @@ function applyCmd(c) {
     case 'debate': { const a = person(c.a), b = person(c.b); if (!a || !b) return ''; const k = fileCase('debate', a, b, { topic: String(c.topic || pick(DEBATES)).slice(0, 80), byCreator: true }); return k ? `⚖ ${a.name} and ${b.name} have been summoned to debate: ${k.topic}` : 'They already have a debate waiting.'; }
     case 'skip': { const t = Sound.skip(); return t ? `♪ Now playing: ${t}` : 'The box has music turned off.'; }
     case 'gather': return gatherCmd(c);
+    case 'landtap': {
+      const M = mats(), key = 'lt' + c.id;
+      if ((treeCool[key] || 0) > now) return c.kind === 'orchard' ? 'No ripe fruit yet. Try another tree.' : c.kind === 'boulder' ? 'You already chipped this one. Give it a minute.' : 'This crystal is still recharging.';
+      treeCool[key] = now + (c.kind === 'crystal' ? 60 : 30);
+      if (c.kind === 'orchard') { M.wood++; spawnBurst(c.x, 3, c.z, ['#6fbf6a', '#ffb347'], 14, 2, 0.3); markDirty(); if (rand() < 0.45) { const it = newItem('food', 'apple', null, null, 2); it.grown = true; W.creator.items.push(it); Sound.coin(); return '+1 wood and an apple 🍎'; } Sound.step(); return '+1 wood 🪵'; }
+      if (c.kind === 'boulder') { const n = 2 + (rand() < 0.3 ? 1 : 0); M.stone += n; spawnBurst(c.x, 1, c.z, ['#c9c3e0', '#8a84a8'], 16, 2, 0.3); Sound.step(); markDirty(); return `+${n} stone 🪨`; }
+      const got = pick(['shells', 'flowers', 'stone']), n = 2 + Math.floor(rand() * 2); M[got] += n; spawnBurst(c.x, 1.5, c.z, ['#9fd3ff', '#c9b3ff', '#ffb3e6', '#ffffff'], 30, 2.4, 0.3); Sound.sparkle(); markDirty();
+      if (rand() < 0.08) { const n2 = 5; W.creator.coins += n2; return `+${n} ${MATS[got]} and ${n2} coins hidden inside ✨`; }
+      return `+${n} ${MATS[got]} ✨`;
+    }
     case 'craft': return craftCmd(c);
+    case 'donate': { if (!(W.placed || []).some((pl) => pl.type === 'museum')) return 'Build a museum first.'; const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return ''; const it = C.items.splice(i, 1)[0]; W.museum = W.museum || []; W.museum.push({ name: itemName(it), day: W.day }); for (const p of W.people) if (rand() < 0.4) remember(p, `The Creator gave ${a_an(itemName(it))} to the museum.`, 1, 'museum'); diary(`🏛 <span class="cr">Creator</span> donated ${a_an(esc(itemName(it)))} to the museum.`); Sound.sparkle(); markDirty(); return `Donated ${a_an(itemName(it))}. The museum has ${plural(W.museum.length, 'exhibit')} now.`; }
     case 'sell': { const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return 'That item is gone.'; const it = C.items.splice(i, 1)[0], v = sellValue(it); C.coins = Math.min(9999, C.coins + v); Sound.coin(); markDirty(); return `Sold ${a_an(itemName(it))} for ${plural(v, 'coin')}.`; }
     case 'shine': return shineCmd(c.id);
     case 'catname': W.catName = String(c.name || '').slice(0, 20) || null; markDirty(); return `Her cat is called ${catName()} now.`;
@@ -2412,6 +2432,7 @@ function foodMesh(id) {
     case 'baguette': { plate(); const b = mesh(new T3.CapsuleGeometry(0.07, 0.5, 4, 8), toon('#e0a860'), 0, 0.1, 0); b.rotation.z = Math.PI / 2; g.add(b); break; }
     case 'vanilla': case 'matchaice': case 'chilimango': { const cone = mesh(new T3.ConeGeometry(0.12, 0.35, 10), toon('#e8b878'), 0, 0.18, 0); cone.rotation.x = Math.PI; g.add(cone); g.add(mesh(sph(0.14, 10, 8), toon(id === 'vanilla' ? '#fff8e8' : id === 'matchaice' ? '#a8d88a' : '#ffb347'), 0, 0.42, 0)); break; }
     case 'sundae': g.add(mesh(cyl(0.18, 0.1, 0.2, 12), new T3.MeshBasicMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.5 }), 0, 0.1, 0, false)); g.add(mesh(sph(0.15, 10, 8), toon('#ffb3c7'), 0, 0.28, 0)); g.add(mesh(sph(0.05, 6, 4), toon('#e2466b'), 0, 0.44, 0)); break;
+    case 'apple': plate(); for (const [x, c] of [[-0.12, '#ff5a4a'], [0.12, '#ffb347']]) { g.add(mesh(sph(0.15, 12, 9), toon(c), x, 0.17, 0)); g.add(mesh(cyl(0.015, 0.015, 0.08, 4), toon('#6b4a3a'), x, 0.34, 0)); } break;
     case 'strawberry': plate(); for (let i = 0; i < 4; i++) { g.add(mesh(new T3.ConeGeometry(0.09, 0.16, 7), toon('#ff4f6a'), Math.cos(i * 1.6) * 0.12, 0.11, Math.sin(i * 1.6) * 0.12).rotateX(Math.PI)); } break;
     case 'carrot': plate(); for (let i = 0; i < 3; i++) { const c = mesh(new T3.ConeGeometry(0.05, 0.4, 6), toon('#ff9a3c'), -0.1 + i * 0.1, 0.08, 0); c.rotation.z = Math.PI / 2; g.add(c); } break;
     case 'tomato': plate(); g.add(mesh(sph(0.16, 12, 9), toon('#ff5a4a'), -0.08, 0.17, 0)); g.add(mesh(sph(0.13, 12, 9), toon('#ff5a4a'), 0.13, 0.15, 0.05)); break;
@@ -3001,48 +3022,96 @@ const BUILDS = {
   tree: { name: 'cherry tree', price: 12 }, picnic: { name: 'picnic table', price: 15 }, campfire: { name: 'campfire', price: 20 },
   arch: { name: 'flower arch', price: 25 }, pond: { name: 'lily pond', price: 30 }, swings: { name: 'swing set', price: 35 },
   planter: { name: 'planter box', price: 9 }, birdbath: { name: 'birdbath', price: 12 }, umbrella: { name: 'beach umbrella', price: 10 }, pumpkins: { name: 'pumpkin pile', price: 8 }, lights: { name: 'string lights', price: 14 },
-  gazebo: { name: 'gazebo', price: 45 }, fountain2: { name: 'little fountain', price: 60 }, windmill: { name: 'windmill', price: 70 },
+  gazebo: { name: 'gazebo', price: 45 },
+  carousel: { name: 'carousel', price: 700, size: 3, big: true, blurb: 'Kids and grown-ups ride it for a happy boost.' },
+  onsen: { name: 'hot spring', price: 1100, size: 3.5, big: true, blurb: 'Residents soak here and come out relaxed.' },
+  clinic: { name: 'clinic', price: 1400, size: 3.5, big: true, blurb: 'Residents with aches and morning sickness feel better after a checkup.' },
+  observatory: { name: 'observatory', price: 1800, size: 3.5, big: true, blurb: 'Residents stargaze here in the evening.' },
+  museum: { name: 'museum', price: 2600, size: 4.5, big: true, blurb: 'Donate rare fish and handmade things. Visitors buy tickets.' },
+  ferris: { name: 'ferris wheel', price: 3800, size: 4.5, big: true, blurb: 'The biggest thing on the island. Everyone wants a ride.' }, fountain2: { name: 'little fountain', price: 60 }, windmill: { name: 'windmill', price: 70 },
 };
-const LOBES = { west: { name: 'West meadow', price: 80, a: 270 }, east: { name: 'East meadow', price: 150, a: 88 }, north: { name: 'North hill', price: 250, a: 330 } };
+const LOBES = {
+  west: { name: 'West meadow', price: 300, a: 270, blurb: 'A grassy meadow to the west.' }, east: { name: 'East meadow', price: 500, a: 88, blurb: 'A grassy meadow to the east.' }, north: { name: 'North hill', price: 800, a: 330, blurb: 'A breezy hill up north.' },
+  orchard: { name: 'Sunrise Orchard', price: 1200, a: 135, kind: 'orchard', blurb: 'Fruit trees. Tap them for wood and apples.' },
+  peak: { name: 'Glimmer Peak', price: 2500, a: 245, d: 62, r: 13, bridge: true, kind: 'peak', blurb: 'A little mountain island across a bridge. Boulders full of stone, and a lookout at the top.' },
+  starlight: { name: 'Starlight Isle', price: 4500, a: 108, d: 64, r: 12, bridge: true, kind: 'star', blurb: 'A glowing island of crystals. Tap them for rare finds. Best stargazing on the island.' },
+};
+const lobeR = (k) => LOBES[k].r || LOBE_R;
+function lobeProps(k) {
+  const L = LOBES[k], out = [];
+  if (L.kind === 'orchard') for (let i = 0; i < 7; i++) { const a = (i / 7) * 6.28 + 0.3, rr = 5 + (i % 2) * 3; out.push([Math.cos(a) * rr, Math.sin(a) * rr, 1.8]); }
+  if (L.kind === 'peak') { out.push([0, 0, 5.5]); for (let i = 0; i < 5; i++) { const a = (i / 5) * 6.28; out.push([Math.cos(a) * 8.5, Math.sin(a) * 8.5, 1.4]); } }
+  if (L.kind === 'star') for (let i = 0; i < 9; i++) { const a = (i / 9) * 6.28, rr = 8.4 + (i % 2) * 1.2; out.push([Math.cos(a) * rr, Math.sin(a) * rr, 1.2]); }
+  return out;
+}
 const LOBE_R = 12.5, LOBE_D = 37;
 let placing = null, placedGroup = null, landGroup = null;
-function lobeCenter(k) { return polar(LOBES[k].a, LOBE_D); }
-function spotProblem(x, z) {
+function lobeCenter(k) { return polar(LOBES[k].a, LOBES[k].d || LOBE_D); }
+function spotProblem(x, z, size = 0) {
   const r = Math.hypot(x, z);
-  let onLand = r < 28.5 || Math.hypot(x - DT.x, z - DT.z) < DT.R - 1.5 || Math.hypot(x - BEACH[0], z - BEACH[1]) < BEACH_R - 1.5;
+  let onLand = r < 28.5 - size || Math.hypot(x - DT.x, z - DT.z) < DT.R - 1.5 - size || Math.hypot(x - BEACH[0], z - BEACH[1]) < BEACH_R - 1.5 - size;
   if (Math.hypot(x - DT.x, z - DT.z) < 16) return "That's the downtown square and road.";
-  for (const b of Object.values(DT_BLD)) { const [bx, bz] = polarDT(b.a, b.r); if (Math.hypot(x - bx, z - bz) < 8) return "That's too close to a building."; }
-  for (const k of W.lobes || []) { const [cx, cz] = lobeCenter(k); if (Math.hypot(x - cx, z - cz) < LOBE_R - 1.2) onLand = true; }
+  for (const b of Object.values(DT_BLD)) { const [bx, bz] = polarDT(b.a, b.r); if (Math.hypot(x - bx, z - bz) < 8 + size) return "That's too close to a building."; }
+  for (const k of W.lobes || []) { const [cx, cz] = lobeCenter(k); if (Math.hypot(x - cx, z - cz) < lobeR(k) - 1.2 - size) onLand = true; for (const [px, pz, pr] of lobeProps(k)) if (Math.hypot(x - cx - px, z - cz - pz) < pr + 1 + size) return LOBES[k].kind === 'peak' ? 'That is the mountain.' : LOBES[k].kind === 'star' ? 'The crystals are there.' : 'A fruit tree is there.'; }
   if (!onLand) return 'Pick a spot on land.';
-  if (r < 6.8) return "That's too close to the fountain.";
-  for (const b of Object.values(BLD)) { const [bx, bz] = polar(b.a, b.r); if (Math.hypot(x - bx, z - bz) < 7.8) return "That's too close to a building."; }
+  if (r < 6.8 + size) return "That's too close to the fountain.";
+  for (const b of Object.values(BLD)) { const [bx, bz] = polar(b.a, b.r); if (Math.hypot(x - bx, z - bz) < 7.8 + size) return "That's too close to a building."; }
   const [gx, gz] = polar(158, 22); if (Math.hypot(x - gx, z - gz) < 6.5) return "That's the garden.";
   const [px, pz] = polar(252, 23.5); if (Math.hypot(x - px, z - pz) < 4) return "The big tree is there.";
-  if (Math.abs(x) < 3.2 && z > 11) return 'That would block the path to the pier.';
-  for (const pl of W.placed || []) if (Math.hypot(x - pl.x, z - pl.z) < 3) return 'Something is already there.';
+  if (Math.abs(x) < 3.2 + size && z > 11) return 'That would block the path to the pier.';
+  if (Math.hypot(x - PLOT_AT[0], z - PLOT_AT[1]) < 3.5 + size) return "That's your garden plot.";
+  for (const pl of W.placed || []) if (Math.hypot(x - pl.x, z - pl.z) < 3 + size + (BUILDS[pl.type]?.size || 0)) return 'Something is already there.';
   return null;
 }
-function autoSpot() {
-  const areas = [[0, 0, 27], [DT.x, DT.z, 29]].concat((W.lobes || []).map((k) => [...lobeCenter(k), LOBE_R - 2]));
-  for (let i = 0; i < 400; i++) { const [cx, cz, R] = pick(areas); const a = rand() * 6.28, r = Math.sqrt(rand()) * R; const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (!spotProblem(x, z)) return [x, z]; }
+function autoSpot(size = 0) {
+  const areas = [[0, 0, 27], [DT.x, DT.z, 29]].concat((W.lobes || []).map((k) => [...lobeCenter(k), lobeR(k) - 2]));
+  for (let i = 0; i < 500; i++) { const [cx, cz, R] = pick(areas); const a = rand() * 6.28, r = Math.sqrt(rand()) * R; const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (!spotProblem(x, z, size)) return [x, z]; }
   return null;
 }
 function buildLand() {
   if (!landGroup) { landGroup = new T3.Group(); scene.add(landGroup); }
   while (landGroup.children.length) { const c = landGroup.children[0]; landGroup.remove(c); disposeTree(c); }
   for (const k of W.lobes || []) {
-    const [x, z] = lobeCenter(k);
-    landGroup.add(mesh(cyl(LOBE_R, LOBE_R - 1.4, 2.4, 48), [toon('#c9a27a'), toon(ISL.grass), toon('#8a6a4e')], x, -1.2, z, false));
-    landGroup.add(mesh(cyl(LOBE_R + 1.3, LOBE_R + 1.7, 0.4, 48), toon('#f3dfb0'), x, -0.35, z, false));
-    const f = mesh(new T3.RingGeometry(LOBE_R + 1.4, LOBE_R + 2.6, 48), new T3.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }), x, -0.84, z, false); f.rotation.x = -Math.PI / 2; landGroup.add(f);
-    // a little path out to the meadow
-    const [ex, ez] = polar(LOBES[k].a, 12.2), [lx, lz] = polar(LOBES[k].a, LOBE_D - 4);
-    const len = Math.hypot(lx - ex, lz - ez), pm = mesh(box(2.4, 0.07, len), toon('#efe4d0'), (ex + lx) / 2, 0.036, (ez + lz) / 2, false); pm.rotation.y = Math.atan2(lx - ex, lz - ez); landGroup.add(pm);
+    const [x, z] = lobeCenter(k), R = lobeR(k), L = LOBES[k], D = L.d || LOBE_D;
+    const grass = L.kind === 'star' ? toon('#9fb8ff') : toon(ISL.grass);
+    landGroup.add(mesh(cyl(R, R - 1.4, 2.4, 48), [toon('#c9a27a'), grass, toon('#8a6a4e')], x, -1.2, z, false));
+    landGroup.add(mesh(cyl(R + 1.3, R + 1.7, 0.4, 48), toon(L.kind === 'star' ? '#e8e4ff' : '#f3dfb0'), x, -0.35, z, false));
+    const f = mesh(new T3.RingGeometry(R + 1.4, R + 2.6, 48), new T3.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }), x, -0.84, z, false); f.rotation.x = -Math.PI / 2; landGroup.add(f);
+    const seg = (r1, r2, mat, y = 0.036, w = 2.4) => { const [ax, az] = polar(L.a, r1), [bx, bz] = polar(L.a, r2); const len = Math.hypot(bx - ax, bz - az), m = mesh(box(w, 0.07, len), mat, (ax + bx) / 2, y, (az + bz) / 2, false); m.rotation.y = Math.atan2(bx - ax, bz - az); landGroup.add(m); };
+    if (L.bridge) {
+      seg(12.2, 29, toon('#efe4d0'));
+      seg(28.5, D - R + 1.5, toon('#c49a6c'), 0.12, 2.6);
+      for (let r = 30; r < D - R + 1; r += 3) for (const s of [-1, 1]) { const [px, pz] = polar(L.a, r), a2 = (L.a * Math.PI) / 180; const ox = Math.cos(a2) * 1.35 * s, oz = Math.sin(a2) * 1.35 * s; landGroup.add(mesh(cyl(0.12, 0.12, 2.2, 6), toon('#8a6a4e'), px + ox, -0.4, pz + oz)); landGroup.add(mesh(sph(0.14, 6, 5), toon('#8a6a4e'), px + ox, 0.75, pz + oz)); }
+      seg(D - R + 1, D - 2, toon('#efe4d0'));
+    } else seg(12.2, D - 4, toon('#efe4d0'));
+    const deco = new T3.Group(); deco.position.set(x, 0, z); landGroup.add(deco);
+    if (L.kind === 'orchard') lobeProps(k).forEach(([tx, tz], i) => {
+      const t = new T3.Group();
+      t.add(mesh(cyl(0.25, 0.35, 2, 8), toon('#9a6f4e'), 0, 1, 0)); t.add(mesh(sph(1.5, 12, 9), toon('#6fbf6a'), 0, 2.8, 0));
+      for (let j = 0; j < 6; j++) { const b2 = j * 1.05; t.add(mesh(sph(0.2, 8, 6), toon(j % 2 ? '#ff5a4a' : '#ffb347'), Math.cos(b2) * 1.3, 2.5 + (j % 3) * 0.35, Math.sin(b2) * 1.3)); }
+      t.position.set(tx, 0, tz); const id = `orch${i}`; t.traverse((o) => { o.userData.tap = { kind: 'orchard', id, x: x + tx, z: z + tz }; }); t.children.forEach((c) => tappables.push(c)); deco.add(t);
+    });
+    if (L.kind === 'peak') {
+      deco.add(mesh(new T3.ConeGeometry(5.2, 7, 10), toon('#8fae6a'), 0, 3.5, 0));
+      const cap = mesh(new T3.ConeGeometry(2.2, 2.9, 10), toon(seasonOf().id === 'winter' ? '#ffffff' : '#a9a3c2'), 0, 5.6, 0); deco.add(cap);
+      deco.add(mesh(box(1.4, 0.15, 0.5), toon('#c49a6c'), 0, 7.1, 0));
+      for (let i = 0; i < 5; i++) { const a3 = (i / 5) * 6.28, id = `rock${i}`, bx = Math.cos(a3) * 8.5, bz = Math.sin(a3) * 8.5; const r3 = mesh(new T3.DodecahedronGeometry(0.9 + (i % 2) * 0.4, 0), toon('#a9a3c2'), bx, 0.7, bz); r3.userData.tap = { kind: 'boulder', id, x: x + bx, z: z + bz }; tappables.push(r3); deco.add(r3); }
+    }
+    if (L.kind === 'star') lobeProps(k).forEach(([cx2, cz2], i) => {
+      const c = ['#7fb8ff', '#b39bff', '#ff9ad8'][i % 3];
+      const cr = mesh(new T3.OctahedronGeometry(0.6 + (i % 3) * 0.25, 0), toon(c, { emissive: new T3.Color(c).multiplyScalar(0.22) }), cx2, 1 + (i % 3) * 0.3, cz2); cr.scale.y = 1.8; cr.userData.tap = { kind: 'crystal', id: `cry${i}`, x: x + cx2, z: z + cz2 }; cr.userData.spinY = true; tappables.push(cr); deco.add(cr);
+    });
   }
 }
 function placedMesh(pl) {
   const g = new T3.Group(), W8 = toon('#c49a6c'), D8 = toon('#8a6a4e');
   switch (pl.type) {
+    case 'carousel': { g.add(mesh(cyl(3, 3.1, 0.4, 24), toon('#fff4dc'), 0, 0.2, 0)); const top = new T3.Group(); top.userData.spinY = true; top.add(mesh(new T3.ConeGeometry(3.3, 1.6, 16), toon('#ff9fbf'), 0, 4.2, 0)); top.add(mesh(cyl(0.25, 0.25, 3.6, 8), toon('#ffd36b'), 0, 2.2, 0)); for (let i = 0; i < 6; i++) { const a = (i / 6) * 6.28; top.add(mesh(cyl(0.05, 0.05, 3.2, 5), toon('#ffd36b'), Math.cos(a) * 2.2, 2.1, Math.sin(a) * 2.2)); const horse = mesh(box(0.35, 0.5, 0.9), toon(['#ffffff', '#c9b3ff', '#9fd3ff'][i % 3]), Math.cos(a) * 2.2, 1.3 + (i % 2) * 0.3, Math.sin(a) * 2.2); horse.rotation.y = -a; top.add(horse); } top.position.y = 0.3; g.add(top); break; }
+    case 'onsen': { g.add(mesh(cyl(3.2, 3.3, 0.5, 20), toon('#a9a3c2'), 0, 0.25, 0)); g.add(mesh(cyl(2.7, 2.7, 0.08, 20), toon('#9fd8e8', { emissive: new T3.Color('#1a4a56') }), 0, 0.46, 0, false)); for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.28; g.add(mesh(new T3.DodecahedronGeometry(0.45, 0), toon('#8a84a8'), Math.cos(a) * 3.1, 0.5, Math.sin(a) * 3.1)); } for (let i = 0; i < 6; i++) { const s = mesh(sph(0.5, 8, 6), new T3.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false }), (rand() - 0.5) * 3, 1, (rand() - 0.5) * 3, false); s.userData.steam = i / 6; g.add(s); } const sg = mesh(box(1.4, 0.8, 0.08), toon('#fff4dc'), 0, 1.3, 3.4); g.add(sg); g.add(mesh(cyl(0.05, 0.05, 1.2, 5), toon('#8a6a4e'), 0, 0.6, 3.38)); break; }
+    case 'clinic': { g.add(mesh(box(5.4, 3.6, 4.4), toon('#ffffff'), 0, 1.8, 0)); const r = roofPrism(5.8, 4.8, 1.3, toon('#9fd3ff')); r.position.y = 3.6; g.add(r); g.add(mesh(box(1.4, 2.2, 0.15), toon('#9fd3ff'), 0, 1.1, 2.22)); g.add(mesh(box(1.2, 0.35, 0.1), toon('#ff6f5e'), 0, 3.0, 2.25)); g.add(mesh(box(0.35, 1.2, 0.1), toon('#ff6f5e'), 0, 3.0, 2.25)); for (const s of [-1.8, 1.8]) g.add(mesh(box(1, 1, 0.12), toon('#bfe8ff'), s, 2, 2.22)); break; }
+    case 'observatory': { g.add(mesh(cyl(2.6, 2.8, 3.2, 20), toon('#fff4dc'), 0, 1.6, 0)); g.add(mesh(new T3.SphereGeometry(2.6, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon('#c9b3ff'), 0, 3.2, 0)); g.add(mesh(box(0.7, 2.4, 5.4), toon('#3d4f86'), 0, 4.2, 0, false)); const sc = mesh(cyl(0.3, 0.45, 2.4, 10), toon('#ffd36b'), 0, 5, 1.2); sc.rotation.x = -0.9; g.add(sc); g.add(mesh(box(1.2, 2, 0.15), toon('#6b4a3a'), 0, 1, 2.75)); break; }
+    case 'museum': { g.add(mesh(box(8, 0.5, 6.4), toon('#d4cbe0'), 0, 0.25, 0)); g.add(mesh(box(7, 4, 5), toon('#f4ecdc'), 0, 2.5, -0.4)); for (const x of [-2.7, -0.9, 0.9, 2.7]) g.add(mesh(cyl(0.28, 0.32, 3.8, 10), toon('#fffaf2'), x, 2.4, 2.6)); g.add(mesh(box(7.6, 0.6, 1.4), toon('#b7a6d8'), 0, 4.6, 2.3)); const r = roofPrism(7.8, 6.6, 1.8, toon('#b7a6d8')); r.position.set(0, 4.9, -0.2); g.add(r); const sg = sign('Museum', '#fffaf2', '#6b4a3a', 3.6); sg.position.set(0, 4.6, 3.02); g.add(sg); g.add(mesh(box(1.6, 2.6, 0.15), toon('#6b4a3a'), 0, 1.8, 2.12)); break; }
+    case 'ferris': { g.add(mesh(box(6, 0.4, 3), toon('#d4cbe0'), 0, 0.2, 0)); for (const s of [-1, 1]) for (const k of [-1, 1]) { const leg = mesh(cyl(0.12, 0.15, 7.6, 6), toon('#fff4dc'), k * 1.6, 3.6, s * 0.9); leg.rotation.z = k * 0.22; g.add(leg); } const wheel = new T3.Group(); wheel.position.y = 7.2; wheel.userData.spin = true; wheel.add(mesh(new T3.TorusGeometry(5, 0.14, 6, 40), toon('#ff9fbf'), 0, 0, 0)); wheel.add(mesh(new T3.TorusGeometry(3.2, 0.08, 6, 30), toon('#ffd36b'), 0, 0, 0)); for (let i = 0; i < 10; i++) { const a = (i / 10) * 6.28; const sp = mesh(box(0.08, 5, 0.08), toon('#fff4dc'), Math.cos(a) * 2.5, Math.sin(a) * 2.5, 0, false); sp.rotation.z = a - Math.PI / 2; wheel.add(sp); wheel.add(mesh(box(0.9, 0.8, 0.9), toon(['#9fd3ff', '#c9b3ff', '#ffe98a', '#9fe3c4', '#ffb3c7'][i % 5]), Math.cos(a) * 5, Math.sin(a) * 5 - 0.5, 0)); } g.add(wheel); break; }
     case 'planter': g.add(mesh(box(1.8, 0.5, 0.7), W8, 0, 0.25, 0)); for (let i = 0; i < 6; i++) { const x = -0.7 + i * 0.28; g.add(mesh(cyl(0.02, 0.02, 0.4, 4), toon('#6fbf6a'), x, 0.65, 0, false)); g.add(mesh(sph(0.12, 8, 6), toon(['#ff9fbf', '#ffe98a', '#c9b3ff', '#ffffff', '#ff9fbf', '#9fd3ff'][i]), x, 0.88, 0)); } break;
     case 'birdbath': { g.add(mesh(cyl(0.18, 0.3, 1.0, 10), toon('#d4cbe0'), 0, 0.5, 0)); g.add(mesh(cyl(0.7, 0.4, 0.25, 16), toon('#d4cbe0'), 0, 1.1, 0)); g.add(mesh(cyl(0.6, 0.6, 0.04, 16), toon('#8fd8ff', { emissive: new T3.Color('#1a4a66') }), 0, 1.22, 0, false)); const bird = new T3.Group(); bird.add(mesh(sph(0.13, 8, 6), toon('#9fd3ff'), 0, 0, 0)); bird.add(mesh(new T3.ConeGeometry(0.04, 0.1, 4), toon('#ffb347'), 0, 0.02, 0.15, false).rotateX(Math.PI / 2)); bird.position.set(0.55, 1.36, 0); g.add(bird); break; }
     case 'umbrella': { g.add(mesh(cyl(0.05, 0.05, 2.6, 6), toon('#fff4dc'), 0, 1.3, 0)); const top = mesh(new T3.ConeGeometry(1.5, 0.6, 12), toon(pick(['#ff9fbf', '#9fd3ff', '#ffe98a'])), 0, 2.7, 0); g.add(top); g.add(mesh(box(1.1, 0.04, 1.9), toon('#ffffff'), 1.1, 0.03, 0, false)); break; }
@@ -3080,7 +3149,7 @@ function reactToBuild(name) {
 }
 function placeStrollSpot() {
   const pl = pick(W.placed || []); if (!pl) return null;
-  const a = rand() * 6.28, r = pl.type === 'gazebo' || pl.type === 'pond' ? 3 : 1.8;
+  const a = rand() * 6.28, r = BUILDS[pl.type]?.size ? BUILDS[pl.type].size + 1.6 : pl.type === 'gazebo' || pl.type === 'pond' ? 3 : 1.8;
   return { spot: [pl.x + Math.cos(a) * r, pl.z + Math.sin(a) * r], name: BUILDS[pl.type].name };
 }
 function cancelPlacing() { placing = null; $('#placeBar').hidden = true; }
@@ -4172,7 +4241,7 @@ let camGoal = null, unfollowId = null, wantPhoto = false, albumVer = 0;
 const keysDown = new Set();
 function shiftView(dx, dz) { controls.target.x += dx; controls.target.z += dz; camera.position.x += dx; camera.position.z += dz; }
 function clampView() {
-  const t = controls.target, cx = clamp(t.x, -72, 72), cz = clamp(t.z, -100, 58);
+  const t = controls.target, cx = clamp(t.x, -90, 90), cz = clamp(t.z, -100, 78);
   if (cx !== t.x || cz !== t.z) shiftView(cx - t.x, cz - t.z);
 }
 function slideTo(x, z, k) { const t = controls.target; shiftView((x - t.x) * k, (z - t.z) * k); }
@@ -4283,7 +4352,7 @@ const shines = [];
 function shineCmd(id) {
   const i = shines.findIndex((s) => s.id === id); if (i < 0) return '';
   const s = shines.splice(i, 1)[0]; scene.remove(s.g);
-  const v = s.big ? 10 : 1 + Math.floor(rand() * 3); W.creator.coins = Math.min(9999, W.creator.coins + v);
+  const v = s.big ? 8 : rand() < 0.62 ? 1 : rand() < 0.9 ? 2 : 3; W.creator.coins = Math.min(9999, W.creator.coins + v);
   spawnBurst(s.x, 1.2, s.z, ['#ffd36b', '#fff6d6'], s.big ? 50 : 18, 2, 0.3); Sound.coin(); if (s.big) Sound.levelup();
   W.shinesFound = (W.shinesFound || 0) + 1; markDirty();
   return s.big ? `A golden star! +${v} coins.` : `+${v} ✦`;
@@ -4293,13 +4362,13 @@ function shineFrame(dt) {
   if (MODE !== 'host' || interior) return;
   for (let i = shines.length - 1; i >= 0; i--) { const s = shines[i]; if (Math.hypot(s.x - controls.target.x, s.z - controls.target.z) > 42) { scene.remove(s.g); shines.splice(i, 1); } }
   for (const s of shines) { s.g.rotation.y += dt * 3; s.g.position.y = 1.2 + Math.sin(now * 3 + s.x) * 0.15; }
-  if (now < nextShine || shines.length >= 6) return;
-  nextShine = now + 5 + rand() * 6;
+  if (now < nextShine || shines.length >= 3) return;
+  nextShine = now + 11 + rand() * 11;
   const cx = controls.target.x, cz = controls.target.z;
   for (let k = 0; k < 20; k++) {
     const x = cx + (rand() - 0.5) * 30, z = cz + (rand() - 0.5) * 30;
     if (spotProblem(x, z)) continue;
-    const big = rand() < 0.06, m = toon(big ? '#ffd36b' : '#ffe98a', { emissive: new T3.Color(big ? '#8a6a10' : '#6a5a10') });
+    const big = rand() < 0.035, m = toon(big ? '#ffd36b' : '#ffe98a', { emissive: new T3.Color(big ? '#8a6a10' : '#6a5a10') });
     const g = new T3.Group(); const c = mesh(big ? new T3.OctahedronGeometry(0.9, 0) : cyl(0.6, 0.6, 0.14, 18), m, 0, 0, 0, false); if (!big) c.rotation.x = Math.PI / 2; g.add(c);
     g.position.set(x, 1.2, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'shine', id })); scene.add(g); tappables.push(c);
     shines.push({ id, g, x, z, big }); break;
@@ -4618,6 +4687,33 @@ function renderCourt() {
     ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}`;
 }
 
+function planLandmark(p) {
+  const big = (W.placed || []).filter((pl) => BUILDS[pl.type]?.big);
+  if (!big.length || p.visitor) return false;
+  const t = W.t;
+  let pool = big.filter((pl) => pl.type !== 'observatory' || (t > 0.5 && t < 0.6));
+  if (p.body.ailments?.length && !(p.healedUntil >= W.day + 1)) { const cl = big.find((pl) => pl.type === 'clinic'); if (cl && rand() < 0.4) pool = [cl]; }
+  if (!pool.length || rand() > 0.13) return false;
+  const pl = pick(pool), size = BUILDS[pl.type].size, a = rand() * 6.28;
+  const dest = Math.hypot(pl.x - DT.x, pl.z - DT.z) < DT.R ? 'downtown' : 'plaza';
+  setTask(p, 'landmark', dest, [pl.x + Math.cos(a) * (size + 0.8), pl.z + Math.sin(a) * (size + 0.8)], { id: pl.id, type: pl.type });
+  return true;
+}
+function landmarkDone(p) {
+  const T = p.task, n = BUILDS[T.type]?.name || 'landmark';
+  addJoy(p, { carousel: 10, onsen: 14, clinic: 6, observatory: 12, museum: 10, ferris: 16 }[T.type] || 8);
+  if (T.type === 'clinic') { p.healedUntil = W.day + 1; if (p.body.ailments?.length) bubble(p, pick(['Joints feel… okay? Huh.', 'The doctor said drink more water. Wow.', 'Tomorrow morning should be easier.']), 3); }
+  if (T.type === 'onsen') p.hunger = Math.max(0, p.hunger - 0.05);
+  if (T.type === 'museum' && (W.museum || []).length) remember(p, `Went to the museum and saw ${pick(W.museum).name}.`, 1, 'museum');
+  else remember(p, `Went to the ${n}.`, 1, 'landmark');
+  if (T.type === 'museum' || T.type === 'ferris' || T.type === 'carousel') { W.tickets = (W.tickets || 0) + 1; }
+}
+function museumDaily() {
+  const n = (W.museum || []).length, tix = W.tickets || 0; W.tickets = 0;
+  if (!tix) return;
+  const coins = Math.min(12, Math.floor(tix / 3) + Math.floor(n / 4));
+  if (coins > 0) { W.creator.coins += coins; diary(`🎟 Yesterday's ticket sales brought in ${plural(coins, 'coin')}.`); }
+}
 function closeFishing() { fishing = null; $('#fishBox').hidden = true; }
 
 // photos
@@ -4949,7 +5045,7 @@ function personalSpace(dt) {
   }
 }
 function keepOnLand(p) {
-  if (p.z > 28.5 && p.z < 39.5) p.x = clamp(p.x, -1.25, 1.25); else if (p.z >= 39.5) p.x = clamp(p.x, -2.3, 2.3);
+  if (Math.abs(p.x) < 4 && p.z > 28.5 && p.z < 39.5) p.x = clamp(p.x, -1.25, 1.25); else if (Math.abs(p.x) < 4 && p.z >= 39.5 && p.z < 43) p.x = clamp(p.x, -2.3, 2.3);
   for (const [ox, oz, r] of OBSTACLES) { const dx = p.x - ox, dz = p.z - oz, d = Math.hypot(dx, dz); if (d < r + 0.3 && d > 1e-3) { p.x = ox + dx / d * (r + 0.3); p.z = oz + dz / d * (r + 0.3); } }
 }
 function spaceOut(a, b) {
@@ -5626,7 +5722,8 @@ function visuals(dt) {
   bushBerries.forEach((bs, i) => bs.forEach((b, k) => (b.visible = k < W.bushes[i])));
   for (const c of clouds) { const u = c.userData; u.a += u.s * dt; c.position.set(Math.cos(u.a) * u.r, u.y, Math.sin(u.a) * u.r); u.m.color.set(W.weather === 'clear' ? '#ffffff' : '#c3cad8'); u.m.opacity = cfg.boxMode ? 0.35 : 0.95; }
   projectGroup.children.forEach((o) => { if (o.userData.spin) o.rotation.y += dt; });
-  if (placedGroup) placedGroup.traverse((o) => { if (o.userData.spin) o.rotation.z += dt * 0.8; if (o.userData.flame) { o.scale.y = 0.8 + Math.sin(now * 12 + o.id) * 0.2; o.visible = true; } });
+  if (landGroup) landGroup.traverse((o) => { if (o.userData.spinY) o.rotation.y += dt * 0.5; });
+  if (placedGroup) placedGroup.traverse((o) => { if (o.userData.spinY) o.rotation.y += dt * 0.6; if (o.userData.steam !== undefined) { const k = ((now * 0.45 + o.userData.steam) % 1); o.position.y = 0.6 + k * 2.4; o.material.opacity = 0.5 * (1 - k); o.scale.setScalar(0.6 + k); } if (o.userData.spin) o.rotation.z += dt * 0.8; if (o.userData.flame) { o.scale.y = 0.8 + Math.sin(now * 12 + o.id) * 0.2; o.visible = true; } });
   rain.visible = W.weather === 'rain' || W.weather === 'storm';
   if (rain.visible) { const a = rainGeo.attributes.position.array, sp = W.weather === 'storm' ? 34 : 22; for (let i = 0; i < RAIN_N; i++) { a[i * 3 + 1] -= sp * dt; if (a[i * 3 + 1] < 0) a[i * 3 + 1] = 34; } rainGeo.attributes.position.needsUpdate = true; }
   foam.material.opacity = 0.4 + Math.sin(now * 1.2) * 0.15;
@@ -5704,7 +5801,7 @@ function doing(p) {
   const k = p.task?.kind;
   if (k === 'away' && p.away) return `visiting ${ISLES[p.away.to].name}`;
   if (p.inside && k === 'home') return W.t >= 0.63 || W.t < 0.008 ? 'asleep' : 'at home';
-  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', court: 'at Glimmer Hall', service: 'doing community service' }[k] || 'wandering';
+  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service' }[k] || 'wandering';
 }
 function showTab(t) {
   activeTab = t;
@@ -5846,7 +5943,7 @@ function renderGifts() {
     <div class="picker">${W.people.map((p) => `<button class="btn" type="button" data-pickto="${p.id}" aria-pressed="${p.id === pickTo}">${esc(p.name)}${p.cr.wish ? ' ✧' : ''}</button>`).join('')}</div>
     ${pickTo ? `<p class="hint">${esc(person(pickTo).name)} ${person(pickTo).cr.wish ? `is wishing for ${esc(wishText(person(pickTo).cr.wish))}.` : "isn't wishing for anything right now."}</p>` : '<p class="hint">Pick someone, then tap Give on an item.</p>'}
     <p class="label">Your collection</p>
-    ${C.items.length ? `<div class="items">${C.items.map((it) => itemCard(it, `<div class="item-row"><span class="item-by">${pickTo && wishMatch(person(pickTo), it) ? '✧ their wish' : ''}</span><button class="btn" type="button" data-sell="${it.uid}">Sell ${sellValue(it)} ✦</button><button class="btn gold" type="button" data-give="${it.uid}" data-to="${pickTo || ''}" ${pickTo ? '' : 'disabled'}>Give</button></div>`)).join('')}</div>` : '<p class="hint">Nothing yet. Visit the Shops tab.</p>'}
+    ${C.items.length ? `<div class="items">${C.items.map((it) => itemCard(it, `<div class="item-row"><span class="item-by">${pickTo && wishMatch(person(pickTo), it) ? '✧ their wish' : ''}</span>${(W.placed || []).some((pl) => pl.type === 'museum') && (it.catchName || it.handmade || it.q >= 3) ? `<button class="btn" type="button" data-donate="${it.uid}">Donate</button>` : ''}<button class="btn" type="button" data-sell="${it.uid}">Sell ${sellValue(it)} ✦</button><button class="btn gold" type="button" data-give="${it.uid}" data-to="${pickTo || ''}" ${pickTo ? '' : 'disabled'}>Give</button></div>`)).join('')}</div>` : '<p class="hint">Nothing yet. Visit the Shops tab.</p>'}
     <p class="label">Who you've given to</p>
     <div class="chips">${W.people.map((p) => `<span class="chip">${esc(p.name)}: ${Math.round(C.gifts[p.id] || 0)}</span>`).join('')}</div>
     <p class="hint">Residents keep track. Favor one person too much and the others notice.</p>`;
@@ -5887,9 +5984,11 @@ function renderBuild() {
   $('#pane-build').innerHTML = `
     <div class="wallet"><b>${C.coins} ✦</b><span class="hint">Make the island yours. Residents notice what you add, and they'll hang out around it.</span></div>
     <p class="label">Decorations</p>
-    <div class="items">${Object.entries(BUILDS).map(([k, b]) => `<div class="item"><div class="item-top"><span class="item-name">${esc(cap(b.name))}</span></div><div class="item-row"><span class="price">${b.price} ✦</span></div><div class="btns">${MODE === 'host' ? `<button class="btn gold" type="button" data-place="${k}" ${C.coins < b.price ? 'disabled' : ''}>Place it</button>` : ''}<button class="btn" type="button" data-autoplace="${k}" ${C.coins < b.price ? 'disabled' : ''}>${MODE === 'host' ? 'Anywhere' : 'Place it'}</button></div></div>`).join('')}</div>
+    <div class="items">${Object.entries(BUILDS).filter(([, b]) => !b.big).map(([k, b]) => `<div class="item"><div class="item-top"><span class="item-name">${esc(cap(b.name))}</span></div><div class="item-row"><span class="price">${b.price} ✦</span></div><div class="btns">${MODE === 'host' ? `<button class="btn gold" type="button" data-place="${k}" ${C.coins < b.price ? 'disabled' : ''}>Place it</button>` : ''}<button class="btn" type="button" data-autoplace="${k}" ${C.coins < b.price ? 'disabled' : ''}>${MODE === 'host' ? 'Anywhere' : 'Place it'}</button></div></div>`).join('')}</div>
+    <p class="label">Landmarks</p><p class="hint">Big, expensive buildings that change what residents do.${(W.museum || []).length ? ` The museum has ${plural(W.museum.length, 'exhibit')}.` : ''}</p>
+    <div class="items">${Object.entries(BUILDS).filter(([, b]) => b.big).map(([k, b]) => { const have = (W.placed || []).some((pl) => pl.type === k); return `<div class="item"><div class="item-top"><span class="item-name">${esc(cap(b.name))}</span>${have ? ' <span class="chip good">Built</span>' : ''}</div><span class="item-by">${esc(b.blurb)}</span><div class="item-row"><span class="price">${b.price} ✦</span></div><div class="btns">${MODE === 'host' ? `<button class="btn gold" type="button" data-place="${k}" ${C.coins < b.price ? 'disabled' : ''}>Place it</button>` : ''}<button class="btn" type="button" data-autoplace="${k}" ${C.coins < b.price ? 'disabled' : ''}>${MODE === 'host' ? 'Anywhere' : 'Place it'}</button></div></div>`; }).join('')}</div>
     <p class="label">More land</p>
-    <div class="items">${Object.entries(LOBES).map(([k, l]) => `<div class="item"><span class="item-name">${esc(l.name)}</span>${W.lobes.includes(k) ? '<span class="chip good">Yours</span>' : `<div class="item-row"><span class="price">${l.price} ✦</span><button class="btn gold" type="button" data-land="${k}" ${C.coins < l.price ? 'disabled' : ''}>Raise it</button></div>`}</div>`).join('')}</div>
+    <div class="items">${Object.entries(LOBES).map(([k, l]) => `<div class="item"><span class="item-name">${esc(l.name)}</span><span class="item-by">${esc(l.blurb || '')}</span>${W.lobes.includes(k) ? '<span class="chip good">Yours</span>' : `<div class="item-row"><span class="price">${l.price} ✦</span><button class="btn gold" type="button" data-land="${k}" ${C.coins < l.price ? 'disabled' : ''}>Raise it</button></div>`}</div>`).join('')}</div>
     ${(W.placed || []).length ? `<p class="label">What you've built</p><div class="chips">${W.placed.map((pl) => `<span class="chip">${esc(BUILDS[pl.type].name)} <button class="btn" type="button" data-unplace="${pl.id}" style="padding:1px 8px;font-size:11px">Remove</button></span>`).join('')}</div>` : ''}`;
 }
 let mailOpen = null;
@@ -5933,6 +6032,7 @@ sheet.addEventListener('click', (e) => {
   if (d.debateform !== undefined) { debateForm = !debateForm; refreshPanel(true); return; }
   if (d.startdebate !== undefined) { const a = $('#dbA').value, b = $('#dbB').value, topic = ($('#dbCustom').value.trim() || $('#dbTopic').value).slice(0, 80); if (a === b) { toast('Pick two different residents.'); return; } debateForm = false; send({ t: 'debate', a, b, topic }); return; }
   if (d.craft) { send({ t: 'craft', kind: d.craft, id: d.cid, color: d.color || $('#craftColor')?.value }); return; }
+  if (d.donate) { send({ t: 'donate', uid: d.donate }); return; }
   if (d.sell) { send({ t: 'sell', uid: d.sell }); return; }
   if (d.plotpick !== undefined) { plotPick = plotPick === Number(d.plotpick) ? null : Number(d.plotpick); refreshPanel(true); return; }
   if (d.plot) { if (d.plot === 'plant') plotPick = null; send({ t: 'plot', act: d.plot, i: Number(d.i), crop: d.crop }); return; }
@@ -6041,7 +6141,7 @@ function wireTownInput() {
     ray.setFromCamera(ndc, camera);
     if (placing) {
       const pt = new T3.Vector3(); ray.ray.intersectPlane(new T3.Plane(new T3.Vector3(0, 1, 0), 0), pt);
-      const prob = pt ? spotProblem(pt.x, pt.z) : 'Pick a spot on land.';
+      const prob = pt ? spotProblem(pt.x, pt.z, BUILDS[placing.type]?.size || 0) : 'Pick a spot on land.';
       if (prob) { toast(prob); return; }
       const res = applyCmd({ t: 'place', type: placing.type, x: pt.x, z: pt.z }); toast(res); cancelPlacing(); return;
     }
@@ -6059,6 +6159,7 @@ function wireTownInput() {
     else if (tp.kind === 'hall') openInterior({ kind: 'hall' });
     else if (tp.kind === 'tgarden') { const r = applyCmd({ t: 'gather', bed: 'tgarden', x: TOWN.garden.spot[0], z: TOWN.garden.spot[1] }); if (r) toast(r); }
     else if (tp.kind === 'placed') { const pl = (W.placed || []).find((q) => q.id === tp.id); if (pl && ['flowers', 'planter', 'arch', 'tree'].includes(pl.type)) { const r = applyCmd({ t: 'gather', bed: pl.id, wood: pl.type === 'tree', x: pl.x, z: pl.z }); if (r) toast(r); } }
+    else if (['orchard', 'boulder', 'crystal'].includes(tp.kind)) { const r = applyCmd({ t: 'landtap', kind: tp.kind, id: tp.id, x: tp.x, z: tp.z }); if (r) toast(r); }
     else if (tp.kind === 'node' || tp.kind === 'tree') { const r = applyCmd({ t: 'gather', id: tp.id, tree: tp.kind === 'tree', x: tp.x, z: tp.z }); if (r) toast(r); }
     else if (tp.kind === 'shine') { const r = applyCmd({ t: 'shine', id: tp.id }); if (r) toast(r); }
     else if (tp.kind === 'plot') { activeTab = 'gifts'; openSheet(); $('#pane-gifts').scrollTop = 0; }
