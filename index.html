@@ -189,6 +189,7 @@
   .paper h3 { margin: 0; font: 20px/1.25 var(--display); }
   .paper p { margin: 0; }
   .paper .btn { background: #ffd36b; color: #2a2008; border-color: #2a2238; }
+  #np { display: block; margin-top: 2px; opacity: .8; font-size: 11px; }
   .cambar { position: fixed; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); display: flex; gap: 8px; z-index: 3; }
   .cambar .btn { font-size: 14px; padding: 10px 14px; background: var(--raise); }
   .cambar .btn[aria-pressed="true"] { color: #2a2008; background: var(--gold); border-color: var(--gold); }
@@ -237,7 +238,7 @@
 <div id="tags"></div>
 <p class="loading" id="loading">Building the town…</p>
 
-<div class="hud" id="hud"><b id="hudName">Glimmer Town</b><span id="clock"></span></div>
+<div class="hud" id="hud"><b id="hudName">Glimmer Town</b><span id="clock"></span><span id="np"></span></div>
 <button class="toggle" id="toggle" type="button">Town</button>
 <p class="ghost-hint" id="ghostHint" style="opacity:0">Tap empty space to bring the menus back</p>
 <div class="roomcard" id="roomcard" hidden><div class="rc"><b id="rcTitle"></b><span id="rcSub"></span></div><button class="btn" id="rcClose" type="button">Back to town</button></div>
@@ -252,6 +253,7 @@
   <div class="pad-btns" id="padGo">
     <button class="btn" type="button" id="padMode" aria-pressed="false">Move mode</button>
     <button class="btn" type="button" data-go="reset">Reset view</button>
+    <button class="btn" type="button" id="padSong">♪ Next song</button>
     <button class="btn" type="button" data-go="fountain">Fountain</button>
     <button class="btn" type="button" data-go="downtown">Downtown</button>
     <button class="btn" type="button" data-go="pier">Pier</button>
@@ -331,7 +333,7 @@
     <p class="hint" id="resetHint">This replaces everyone who lives here now.</p>
   </div>
 </section>
-<div class="cambar" id="cambar"><button class="btn" id="cbPhoto" type="button" aria-label="Take a photo">📷</button><button class="btn" id="cbMove" type="button" aria-pressed="false">✥ Move</button><button class="btn" id="cbGo" type="button">Go to…</button></div>
+<div class="cambar" id="cambar"><button class="btn" id="cbPhoto" type="button" aria-label="Take a photo">📷</button><button class="btn" id="cbMove" type="button" aria-pressed="false">✥ Move</button><button class="btn" id="cbGo" type="button">Go to…</button><button class="btn" id="cbSong" type="button" aria-label="Next song">♪</button></div>
 <div class="goto" id="goto" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -450,7 +452,7 @@ const EVENTS = {
   bday: { name: 'a birthday party at Moonbean Café', place: 'cafe', t0: 0.36, t1: 0.43, at: '2:30 pm', special: true },
   snowball: { name: 'a snowball fight in the park', place: 'park', t0: 0.34, t1: 0.41, at: '2:00 pm', season: 'winter' },
   blossoms: { name: 'blossom viewing in the garden', place: 'garden', t0: 0.32, t1: 0.39, at: '1:30 pm', season: 'spring' },
-  beach: { name: 'a beach day by the pier', place: 'pier', t0: 0.3, t1: 0.37, at: '1:00 pm', season: 'summer' },
+  beach: { name: 'a beach day at Seashell Beach', place: 'beach', t0: 0.3, t1: 0.37, at: '1:00 pm', season: 'summer' },
   harvest: { name: 'a harvest supper at Moonbean Café', place: 'cafe', t0: 0.5, t1: 0.57, at: '6:00 pm', season: 'autumn' },
 };
 
@@ -620,7 +622,9 @@ const DT_HUB = [4, -42.5];
 const DT_BLD = { home2: { a: 0, r: 22, d: 8 }, home3: { a: 300, r: 22, d: 8 }, bakery: { a: 58, r: 21, d: 8 }, books: { a: 108, r: 21, d: 8 }, arcade: { a: 245, r: 21, d: 8 }, icecream: { a: 202, r: 21, d: 8 } };
 const DT_NAMES = { home2: 'Bluebell Court', home3: 'Sunny Heights', bakery: 'Sweet Rise Bakery', books: 'Paper Moon Books', arcade: 'Pixel Palace', icecream: 'Sundae Best' };
 for (const [k, b] of Object.entries(DT_BLD)) TOWN[k] = { name: DT_NAMES[k], spot: polarDT(b.a, b.r - b.d / 2 - 0.8), entry: [...DT_GATE, DT_HUB, polarDT(b.a, 10.2)], local: [polarDT(b.a, 10.2)], zone: 'dt' };
+TOWN.beach = { name: 'Seashell Beach', spot: polar(222, 36), entry: [polar(229, 11.4), polar(229, 27.5)] };
 TOWN.downtown = { name: 'downtown', spot: [DT.x, DT.z + 6], entry: [...DT_GATE, DT_HUB], local: [], zone: 'dt' };
+const BEACH = polar(222, 39), BEACH_R = 9.5;
 const OBSTACLES = [[0, 0, FOUNTAIN_R], [DT.x, DT.z, 3.6]];
 const homeKey = (p) => (p.room >= 15 ? 'home3' : p.room >= 9 ? 'home2' : 'home');
 
@@ -1155,7 +1159,8 @@ function strollSpot() {
   const r = rand();
   if (r < 0.18) { const a = rand() * Math.PI * 2, rr = 4.5 + rand() * 5; return ['downtown', [DT.x + Math.cos(a) * rr, DT.z + Math.sin(a) * rr]]; }
   if (r < 0.45) { const a = rand() * Math.PI * 2, rr = FOUNTAIN_R + 1.2 + rand() * 6; return ['plaza', [Math.cos(a) * rr, Math.sin(a) * rr]]; }
-  if (r < 0.6) return ['pier', [(rand() - 0.5) * 1.6, 31 + rand() * 7]];
+  if (r < 0.52) return ['pier', [(rand() - 0.5) * 1.6, 31 + rand() * 7]];
+  if (r < 0.62) { const a = rand() * 6.28, rr = rand() * 6; return ['beach', [BEACH[0] + Math.cos(a) * rr, BEACH[1] + Math.sin(a) * rr]]; }
   if (r < 0.8) return ['park', jitter(TOWN.park.spot, 6)];
   return ['garden', jitter(TOWN.garden.spot, 5)];
 }
@@ -1553,6 +1558,7 @@ function applyCmd(c) {
     case 'shopview': if (SHOPS[c.shop]) openInterior({ kind: 'shop', shop: c.shop }); return '';
     case 'set': if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); } return '';
     case 'plot': return plotCmd(c);
+    case 'skip': { const t = Sound.skip(); return t ? `♪ Now playing: ${t}` : 'The box has music turned off.'; }
     case 'gather': return gatherCmd(c);
     case 'craft': return craftCmd(c);
     case 'sell': { const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return 'That item is gone.'; const it = C.items.splice(i, 1)[0], v = sellValue(it); C.coins = Math.min(9999, C.coins + v); Sound.coin(); markDirty(); return `Sold ${a_an(itemName(it))} for ${plural(v, 'coin')}.`; }
@@ -2181,6 +2187,22 @@ function buildTown() {
     }
     for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; g.add(mesh(box(0.16, 0.9, 0.16), toon('#fff4dc'), Math.cos(a) * 5.6, 0.45, Math.sin(a) * 4.8)); }
     const [x, z] = polar(158, 22); g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z); scene.add(g);
+    g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'tgarden' }; tappables.push(o); } });
+  }
+  // Seashell Beach
+  {
+    const [bx, bz] = BEACH, sand = toon('#f3dfb0'), g = new T3.Group();
+    const disc = mesh(cyl(BEACH_R, BEACH_R + 0.8, 0.9, 40), sand, 0, -0.4, 0, false); disc.receiveShadow = true; g.add(disc);
+    const wet = mesh(new T3.RingGeometry(BEACH_R + 0.6, BEACH_R + 1.6, 40), new T3.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 }), 0, -0.82, 0, false); wet.rotation.x = -Math.PI / 2; g.add(wet);
+    for (const [a, r, c] of [[0.4, 4.5, '#ff9fbf'], [2.1, 3.8, '#9fd3ff']]) { const tw = mesh(box(1.1, 0.04, 2), toon(c), Math.cos(a) * r, 0.07, Math.sin(a) * r, false); tw.rotation.y = a; g.add(tw); }
+    g.add(mesh(cyl(0.05, 0.05, 2.6, 6), toon('#fff4dc'), 3.6, 1.3, 1.8)); g.add(mesh(new T3.ConeGeometry(1.5, 0.6, 12), toon('#ffe98a'), 3.6, 2.7, 1.8));
+    const castle = new T3.Group(); castle.add(mesh(box(1.2, 0.5, 1.2), toon('#e8cf9a'), 0, 0.25, 0)); for (const [cx, cz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) { castle.add(mesh(cyl(0.2, 0.22, 0.8, 8), toon('#e8cf9a'), cx, 0.4, cz)); castle.add(mesh(new T3.ConeGeometry(0.22, 0.3, 8), toon('#e8cf9a'), cx, 0.95, cz)); } castle.add(mesh(new T3.ConeGeometry(0.06, 0.3, 4), toon('#ff6f5e'), 0.5, 1.2, 0.5)); castle.position.set(-2.5, 0, -1.5); g.add(castle);
+    const log = mesh(cyl(0.25, 0.3, 2.6, 8), toon('#bfa27a'), -1, 0.25, 4.5); log.rotation.z = Math.PI / 2; log.rotation.y = 0.6; g.add(log);
+    for (let i = 0; i < 5; i++) { const a = rand() * 6.28, r = BEACH_R - 1 + rand(); g.add(mesh(new T3.DodecahedronGeometry(0.35 + rand() * 0.3, 0), toon('#a9a3c2'), Math.cos(a) * r, 0.1, Math.sin(a) * r)); }
+    const sign = mesh(box(1.8, 0.7, 0.08), toon('#fff4dc'), 0, 1.0, 0); const tx = document.createElement('canvas'); tx.width = 256; tx.height = 96; const c2 = tx.getContext('2d'); c2.fillStyle = '#fff4dc'; c2.fillRect(0, 0, 256, 96); c2.fillStyle = '#6b4a3a'; c2.font = '26px "Mochiy Pop One", sans-serif'; c2.textAlign = 'center'; c2.fillText('Seashell', 128, 42); c2.fillText('Beach', 128, 80);
+    const face = mesh(new T3.PlaneGeometry(1.74, 0.64), new T3.MeshBasicMaterial({ map: new T3.CanvasTexture(tx) }), 0, 1.0, 0.045, false); const sg = new T3.Group(); sg.add(sign, face, mesh(cyl(0.05, 0.05, 1, 5), toon('#8a6a4e'), 0, 0.4, -0.02));
+    const [sx, sz] = polar(222, 30.5); sg.position.set(sx - bx, 0, sz - bz); sg.rotation.y = Math.atan2(sx, sz) + Math.PI; g.add(sg);
+    g.position.set(bx, 0, bz); scene.add(g);
   }
   // pier
   {
@@ -2972,7 +2994,7 @@ let placing = null, placedGroup = null, landGroup = null;
 function lobeCenter(k) { return polar(LOBES[k].a, LOBE_D); }
 function spotProblem(x, z) {
   const r = Math.hypot(x, z);
-  let onLand = r < 28.5 || Math.hypot(x - DT.x, z - DT.z) < DT.R - 1.5;
+  let onLand = r < 28.5 || Math.hypot(x - DT.x, z - DT.z) < DT.R - 1.5 || Math.hypot(x - BEACH[0], z - BEACH[1]) < BEACH_R - 1.5;
   if (Math.hypot(x - DT.x, z - DT.z) < 16) return "That's the downtown square and road.";
   for (const b of Object.values(DT_BLD)) { const [bx, bz] = polarDT(b.a, b.r); if (Math.hypot(x - bx, z - bz) < 8) return "That's too close to a building."; }
   for (const k of W.lobes || []) { const [cx, cz] = lobeCenter(k); if (Math.hypot(x - cx, z - cz) < LOBE_R - 1.2) onLand = true; }
@@ -3149,19 +3171,21 @@ const Sound = (() => {
     ctx = new AC();
     master = ctx.createGain(); master.connect(ctx.destination);
     music = ctx.createGain(); sfx = ctx.createGain(); voiceBus = ctx.createGain();
-    const soft = ctx.createBiquadFilter(); soft.type = 'lowpass'; soft.frequency.value = 3200; music.connect(soft); soft.connect(master);
+    const soft = ctx.createBiquadFilter(); soft.type = 'lowpass'; soft.frequency.value = 3200; music.connect(soft); soft.connect(master); try { const verb = ctx.createConvolver(), len = ctx.sampleRate * 2.2, ir = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); } verb.buffer = ir; const wet = ctx.createGain(); wet.gain.value = 0.32; soft.connect(wet); wet.connect(verb); verb.connect(master); } catch (e) {}
     sfx.connect(master); voiceBus.connect(master);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     levels(); return ctx;
   }
-  function levels() { if (!ctx) return; const v = cfg.volume ?? 0.7; master.gain.value = v; music.gain.value = cfg.music === false ? 0 : 0.22; sfx.gain.value = cfg.sfx === false ? 0 : 0.55; voiceBus.gain.value = cfg.voices === false ? 0 : 0.5; }
+  function levels() { if (!ctx) return; const v = cfg.volume ?? 0.7; master.gain.value = v; music.gain.value = cfg.music === false ? 0 : 0.3; sfx.gain.value = cfg.sfx === false ? 0 : 0.55; voiceBus.gain.value = cfg.voices === false ? 0 : 0.5; }
   function tone(freq, t0, dur, o = {}) {
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(freq, t0);
     if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * o.slide), t0 + dur);
     const vol = o.vol ?? 0.2, a = o.attack ?? 0.005;
     g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(vol, t0 + a); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + (o.release ?? 0.08));
-    osc.connect(g); g.connect(o.dest || sfx); osc.start(t0); osc.stop(t0 + dur + (o.release ?? 0.08) + 0.05);
+    let head = g; if (o.lp) { const lf = ctx.createBiquadFilter(); lf.type = 'lowpass'; lf.frequency.value = o.lp; g.connect(lf); head = lf; }
+    if (o.vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = o.vib; lg.gain.value = freq * 0.006; l.connect(lg); lg.connect(osc.frequency); l.start(t0); l.stop(t0 + dur + (o.release ?? 0.08) + 0.05); }
+    osc.connect(g); head.connect(o.dest || sfx); osc.start(t0); osc.stop(t0 + dur + (o.release ?? 0.08) + 0.05);
   }
   function noise(t0, dur, o = {}) {
     const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
@@ -3169,35 +3193,199 @@ const Sound = (() => {
     g.gain.setValueAtTime(o.vol ?? 0.1, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     src.connect(f); f.connect(g); g.connect(o.dest || sfx); src.start(t0); src.stop(t0 + dur + 0.05);
   }
-  // --- music: a gentle pentatonic loop that changes with the time of day ---
+  // --- music: a little radio station of songs that change with the island ---
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
-  const CHORDS = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]];
-  const SCALE = [0, 2, 4, 7, 9];
-  let mel = 2;
-  function schedule() {
-    if (!ok() || cfg.music === false || !W) return;
-    const night = W.t >= 0.6 || W.t < 0.03, fest = W.event?.id === 'festival' && W.event.day === W.day && W.t > 0.55 && W.t < 0.67;
-    const bpm = fest ? 112 : night ? 60 : W.meeting ? 72 : 86, spb = 60 / bpm / 2;
-    if (nextBeat < ctx.currentTime) nextBeat = ctx.currentTime + 0.05;
-    while (nextBeat < ctx.currentTime + 0.4) {
-      const bar = Math.floor(beat / 8) % 4, pos = beat % 8, ch = CHORDS[bar];
-      if (pos === 0) { for (const n of ch) tone(hz(n - (night ? 12 : 0)), nextBeat, spb * 7, { type: 'triangle', vol: night ? 0.05 : 0.045, attack: 0.25, release: 0.6, dest: music }); tone(hz(ch[0] - 24), nextBeat, spb * 3, { type: 'sine', vol: 0.09, attack: 0.02, dest: music }); }
-      if (pos === 4 && !night) tone(hz(ch[0] - 24 + 7), nextBeat, spb * 2, { type: 'sine', vol: 0.07, dest: music });
-      const density = fest ? 0.9 : night ? 0.35 : 0.6;
-      if (Math.random() < density) {
-        mel = clamp(mel + Math.floor(Math.random() * 5) - 2, 0, 9);
-        const n = 72 + SCALE[mel % 5] + Math.floor(mel / 5) * 12 + (night ? 12 : 0);
-        tone(hz(n), nextBeat, night ? spb * 1.8 : spb * 0.8, { type: night ? 'sine' : 'triangle', vol: night ? 0.06 : 0.07, attack: 0.01, release: night ? 0.9 : 0.2, dest: music });
+  const SC = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], mixo: [0, 2, 4, 5, 7, 9, 10], lydian: [0, 2, 4, 6, 7, 9, 11] };
+  // p: chord degrees; bar: bars per chord; lead/pad/bass/arp: instruments; k/s/h: drum strings; b: bass pattern (R root, 5 fifth, 8 octave, 3 third, - rest)
+  const SONGS = {
+    petal: { title: 'Petal Parade', key: 67, sc: 'major', bpm: 96, p: [0, 4, 5, 3], lead: 'bell', arp: 'pluck', arpP: '0.1.2.1.', pad: 'pad', b: 'R...5...R...5.8.', k: 'x.......x.......', h: '..x...x...x...x.', dens: 0.55 },
+    toast: { title: 'Morning Toast', key: 65, sc: 'major', bpm: 88, p: [0, 3, 5, 4], lead: 'marimba', pad: 'pad', b: 'R..5..R.R..5..8.', h: 'x.x.x.x.x.x.x.x.', hv: 0.5, dens: 0.6 },
+    lemonade: { title: 'Lemonade Pier', key: 62, sc: 'major', bpm: 104, swing: 0.25, p: [1, 4, 0, 5], sev: true, lead: 'epiano', pad: 'epad', b: 'R..5..8.R..5..3.', rim: '...x..x....x..x.', h: 'x.x.x.x.x.x.x.x.', hv: 0.35, dens: 0.5 },
+    scooter: { title: 'Sunbeam Scooters', key: 69, sc: 'mixo', bpm: 112, p: [0, 6, 3, 0], lead: 'chip', arp: 'chip', arpP: '0120', b: 'R.R.5.5.R.R.8.5.', bass: 'chipbass', k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', dens: 0.6 },
+    cinnamon: { title: 'Cinnamon Leaves', key: 64, sc: 'dorian', bpm: 84, meter: 12, p: [0, 3, 6, 4], lead: 'flute', pad: 'pad', arp: 'pluck', arpP: '.0.1.2', b: 'R.....5.....', k: 'x...........', dens: 0.45 },
+    sweater: { title: 'Sweater Weather', key: 62, sc: 'dorian', bpm: 78, swing: 0.2, p: [0, 3, 0, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R......5R.....3.', k: 'x.......x.x.....', s: '....x.......x...', h: '..x...x...x...x.', hv: 0.4, dens: 0.4 },
+    snowglobe: { title: 'Snow Globe', key: 72, sc: 'major', bpm: 70, meter: 12, p: [0, 5, 3, 4], lead: 'musicbox', arp: 'musicbox', arpP: '0.1.2.1.2.1.', pad: 'pad', b: 'R...........', dens: 0.4 },
+    cocoa: { title: 'Cocoa Window', key: 65, sc: 'major', bpm: 72, swing: 0.3, p: [3, 2, 1, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R.......5...3...', k: 'x......x..x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.35, crackle: true },
+    lantern: { title: 'Lantern Walk', key: 64, sc: 'major', bpm: 70, p: [0, 5, 1, 4], sev: true, lead: 'flute', pad: 'pad', arp: 'pluck', arpP: '0...2...1...2...', b: 'R.......5.......', dens: 0.4 },
+    moon: { title: 'Moon Over Glimmer', key: 57, sc: 'minor', bpm: 56, p: [0, 5, 2, 6], sev: true, lead: 'bell', pad: 'pad', b: 'R...............', dens: 0.25, hi: 12 },
+    firefly: { title: 'Firefly Lullaby', key: 60, sc: 'lydian', bpm: 60, meter: 12, p: [0, 1, 0, 4], lead: 'musicbox', pad: 'pad', arp: 'bell', arpP: '0.....2.....', b: 'R...........', dens: 0.3 },
+    umbrella: { title: 'Umbrella Day', key: 63, sc: 'dorian', bpm: 76, swing: 0.25, p: [0, 3, 5, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R......5..R.....', k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.35, crackle: true },
+    thunder: { title: 'Thunder Tea', key: 50, sc: 'minor', bpm: 84, p: [0, 5, 3, 4], lead: 'saw', pad: 'pad', b: 'R.R.....R.R..5..', k: 'x.....x.x.......', tom: '..............xx', dens: 0.35 },
+    starfall: { title: 'Starfall Stomp', key: 67, sc: 'major', bpm: 124, p: [0, 4, 5, 3], lead: 'chip', arp: 'chip', arpP: '0122', b: 'R.8.R.8.R.8.5.8.', bass: 'chipbass', k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', clap: '....x.......x...', dens: 0.75 },
+    promises: { title: 'Petals & Promises', key: 65, sc: 'major', bpm: 84, meter: 12, p: [0, 3, 4, 0, 5, 1, 4, 4], lead: 'bell', pad: 'pad', arp: 'pluck', arpP: '..0.1...0.1.', b: 'R...........', dens: 0.5 },
+    cake: { title: 'Cake Parade', key: 70, sc: 'major', bpm: 116, p: [0, 3, 4, 0], lead: 'marimba', arp: 'pizz', arpP: '0.1.2.1.', b: 'R...5...R...5...', k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.', dens: 0.7 },
+    order: { title: 'Order, Order', key: 60, sc: 'major', bpm: 72, p: [0, 4, 3, 4], lead: 'pizz', arp: 'pizz', arpP: '0...1...2...1...', b: 'R.......5.......', bass: 'pizzbass', dens: 0.35 },
+    jazz: { title: 'Moonbean Jazz', key: 65, sc: 'dorian', bpm: 96, swing: 0.34, p: [1, 4, 0, 0], sev: true, lead: 'epiano', pad: 'epad', b: 'R...3...5...8...', bassWalk: true, rim: '....x.......x...', h: 'x..xx..xx..xx..x', hv: 0.35, dens: 0.45 },
+    rush: { title: 'Pixel Rush', key: 64, sc: 'minor', bpm: 170, p: [0, 5, 3, 6], lead: 'chip', arp: 'chip', arpP: '0120', pad: 'pad', b: 'R.R.R.R.R.R.8.5.', bass: 'chipbass', breaks: true, dens: 0.7 },
+    oven: { title: 'Warm Oven Waltz', key: 62, sc: 'major', bpm: 92, meter: 12, p: [0, 4, 0, 3, 0, 4, 5, 4], lead: 'flute', arp: 'pluck', arpP: '..0.1...0.1.', b: 'R...........', dens: 0.45 },
+    pages: { title: 'Quiet Pages', key: 69, sc: 'major', bpm: 64, p: [0, 2, 3, 4], sev: true, lead: 'musicbox', pad: 'pad', b: 'R...............', dens: 0.3 },
+    aisle: { title: 'Aisle Nine', key: 67, sc: 'major', bpm: 100, swing: 0.2, p: [3, 4, 2, 5], sev: true, lead: 'epiano', b: 'R..5..R.R..5..R.', rim: '...x..x....x..x.', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.4 },
+    runway: { title: 'Runway Thread', key: 65, sc: 'minor', bpm: 118, p: [0, 5, 6, 4], lead: 'saw', pad: 'pad', b: '..R...R...R...R.', k: 'x...x...x...x...', h: '..x...x...x...x.', clap: '....x.......x...', dens: 0.45 },
+    sawdust: { title: 'Sawdust Folk', key: 62, sc: 'mixo', bpm: 98, p: [0, 6, 3, 0], lead: 'pluck', arp: 'pluck', arpP: '0.2.1.2.', b: 'R...5...R...5...', k: 'x.......x.......', rim: '....x.......x...', dens: 0.55 },
+    sprinkles: { title: 'Sprinkles', key: 72, sc: 'major', bpm: 120, p: [0, 5, 3, 4], lead: 'chip', arp: 'musicbox', arpP: '0.1.2.1.', b: 'R...R...5...5...', bass: 'chipbass', k: 'x.......x.......', s: '....x.......x...', dens: 0.65 },
+    roomtone: { title: 'Room Tone', key: 62, sc: 'major', bpm: 74, swing: 0.28, p: [3, 4, 2, 5], sev: true, lead: 'epiano', pad: 'epad', b: 'R.......5.......', k: 'x......x..x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.25, dens: 0.3, crackle: true },
+    lullaby: { title: 'Pillow Fort', key: 65, sc: 'major', bpm: 58, meter: 12, p: [0, 3, 0, 4], lead: 'musicbox', pad: 'pad', b: 'R...........', dens: 0.3 },
+    fixed: { title: 'Fixed Point', key: 66, sc: 'minor', bpm: 172, p: [0, 5, 2, 6], sev: true, lead: 'bell', pad: 'pad', arp: 'musicbox', arpP: '0.1.2.3.', b: 'R.......R.......', breaks: true, dens: 0.35, hi: 12 },
+    pigeons: { title: 'City Pigeons', key: 60, sc: 'dorian', bpm: 90, swing: 0.3, p: [0, 3, 1, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R..R......5..R..', k: 'x......x..x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.35, dens: 0.4 },
+  };
+  const PLAYLISTS = {
+    spring: ['petal', 'toast', 'lantern'], summer: ['lemonade', 'scooter', 'petal'], autumn: ['cinnamon', 'sweater', 'toast'], winter: ['snowglobe', 'cocoa', 'sweater'],
+    evening: ['lantern', 'cocoa', 'roomtone'], night: ['moon', 'lullaby', 'firefly'], summernight: ['firefly', 'moon'], rain: ['umbrella', 'cocoa'], storm: ['thunder', 'umbrella'],
+    festival: ['starfall'], wedding: ['promises'], bday: ['cake'], meeting: ['order'], city: ['pigeons', 'aisle', 'scooter'],
+    cafe: ['jazz', 'cocoa'], arcade: ['rush', 'scooter'], bakery: ['oven', 'toast'], books: ['pages', 'lullaby'], mart: ['aisle'], clothes: ['runway'], nook: ['sawdust'], icecream: ['sprinkles'],
+    room: ['roomtone', 'cocoa'], roomnight: ['lullaby', 'moon'], mili: ['fixed', 'roomtone'],
+  };
+  function contextKey() {
+    if (!W) return 'spring';
+    if (interior) {
+      if (interior.kind === 'shop') return PLAYLISTS[interior.shop] ? interior.shop : 'mart';
+      const p = typeof person === 'function' && person(interior.id);
+      if (p && isMili(p)) return 'mili';
+      return W.t >= 0.6 || W.t < 0.03 ? 'roomnight' : 'room';
+    }
+    if (W.meeting) return 'meeting';
+    const ev = W.event && W.event.day === W.day && EVENTS[W.event.id];
+    if (ev && W.t >= ev.t0 - 0.02 && W.t < ev.t1) { if (W.event.id === 'wedding') return 'wedding'; if (W.event.id === 'festival') return 'festival'; if (W.event.id === 'bday') return 'bday'; }
+    if (W.weather === 'storm') return 'storm';
+    if (W.weather === 'rain') return 'rain';
+    const night = W.t >= 0.63 || W.t < 0.03;
+    if (night) return seasonOf().id === 'summer' ? 'summernight' : 'night';
+    if (W.t >= 0.52) return 'evening';
+    if (controls && Math.hypot(controls.target.x - DT.x, controls.target.z - DT.z) < 26) return 'city';
+    return seasonOf().id;
+  }
+  // seeded melodies so each song has its own tune that repeats like a real song
+  function seeded(str) { let h = 2166136261; for (const c of str) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function makePhrase(r, meter, dens) {
+    const n = meter * 2, out = new Array(n).fill(null);
+    let deg = 4 + Math.floor(r() * 3);
+    for (let i = 0; i < n; i++) {
+      const strong = i % (meter / 2) === 0, mid = i % 4 === 0, off = i % 2 === 0;
+      const pr = strong ? 0.85 : mid ? dens : off ? dens * 0.55 : dens * 0.18;
+      if (r() < pr && !(i === n - 2 || i === n - 1)) {
+        const leap = r() < 0.15 ? (r() < 0.5 ? -3 : 3) : Math.floor(r() * 5) - 2;
+        deg = Math.max(0, Math.min(11, deg + leap));
+        let len = 1; while (len < 6 && i + len < n && r() < (strong ? 0.6 : 0.35)) len++;
+        out[i] = { deg, len, snap: strong };
       }
-      if (W.weather !== 'clear' && pos === 0) noise(nextBeat, spb * 8, { freq: 1800, q: 0.4, vol: W.weather === 'storm' ? 0.05 : 0.025, dest: music });
-      nextBeat += spb; beat++;
+    }
+    return out;
+  }
+  function buildSong(key) {
+    const S = SONGS[key], r = seeded(S.title), meter = S.meter || 16;
+    const A = makePhrase(r, meter, S.dens), B = makePhrase(r, meter, S.dens * 1.1);
+    const A2 = A.map((x, i) => (i >= meter * 1.5 ? (r() < 0.5 ? null : x && { ...x, deg: Math.max(0, x.deg - 1) }) : x));
+    const drumsRand = seeded(S.title + 'breaks');
+    return { key, S, meter, phrases: [A, A2, B, A], bar: 0, step: 0, r: drumsRand, bus: null, started: 0 };
+  }
+  const deg2semi = (sc, d) => { const n = sc.length; const o = Math.floor(d / n); return sc[((d % n) + n) % n] + 12 * o; };
+  function chordOf(S, bar) { const sc = SC[S.sc], root = S.p[Math.floor(bar / (S.bar || 1)) % S.p.length]; const tones = [0, 2, 4].concat(S.sev ? [6] : []).map((i) => deg2semi(sc, root + i)); return tones; }
+  function inst(name, m, t, dur, v, bus) {
+    const f = hz(m), o = { dest: bus };
+    switch (name) {
+      case 'bell': tone(f, t, dur * 0.4, { type: 'sine', vol: 0.07 * v, attack: 0.003, release: 1.1, ...o }); tone(f * 2.01, t, 0.05, { type: 'sine', vol: 0.02 * v, release: 0.6, ...o }); break;
+      case 'musicbox': tone(f * 2, t, 0.04, { type: 'sine', vol: 0.055 * v, attack: 0.002, release: 0.9, ...o }); tone(f * 4.02, t, 0.02, { type: 'sine', vol: 0.012 * v, release: 0.35, ...o }); break;
+      case 'marimba': tone(f, t, 0.06, { type: 'sine', vol: 0.09 * v, attack: 0.002, release: 0.35, ...o }); tone(f * 4, t, 0.015, { type: 'sine', vol: 0.02 * v, release: 0.06, ...o }); break;
+      case 'pluck': tone(f, t, 0.05, { type: 'triangle', vol: 0.07 * v, attack: 0.002, release: 0.28, ...o }); break;
+      case 'pizz': tone(f, t, 0.03, { type: 'triangle', vol: 0.08 * v, attack: 0.001, release: 0.14, ...o }); break;
+      case 'chip': tone(f, t, Math.max(0.05, dur * 0.8), { type: 'square', vol: 0.03 * v, attack: 0.002, release: 0.03, ...o }); break;
+      case 'flute': tone(f, t, dur, { type: 'sine', vol: 0.06 * v, attack: 0.07, release: 0.25, vib: 5.5, ...o }); tone(f * 2, t, dur, { type: 'sine', vol: 0.007 * v, attack: 0.09, release: 0.2, ...o }); break;
+      case 'epiano': tone(f, t, dur * 0.5, { type: 'sine', vol: 0.06 * v, attack: 0.004, release: 0.8, ...o }); tone(f * 1.004, t, dur * 0.4, { type: 'triangle', vol: 0.014 * v, release: 0.6, ...o }); tone(f * 3, t, 0.02, { type: 'sine', vol: 0.008 * v, release: 0.15, ...o }); break;
+      case 'saw': tone(f, t, dur, { type: 'sawtooth', vol: 0.018 * v, attack: 0.02, release: 0.12, lp: 1800, ...o }); break;
+      case 'pad': tone(f, t, dur, { type: 'triangle', vol: 0.025 * v, attack: 0.5, release: 1.0, ...o }); tone(f * 1.006, t, dur, { type: 'sine', vol: 0.018 * v, attack: 0.6, release: 1.1, ...o }); break;
+      case 'epad': tone(f, t, dur, { type: 'sine', vol: 0.03 * v, attack: 0.08, release: 0.9, vib: 3, ...o }); break;
+      case 'bass': tone(f, t, dur, { type: 'sine', vol: 0.12 * v, attack: 0.01, release: 0.08, ...o }); tone(f * 2, t, dur * 0.4, { type: 'triangle', vol: 0.018 * v, release: 0.05, ...o }); break;
+      case 'chipbass': tone(f, t, dur, { type: 'triangle', vol: 0.09 * v, attack: 0.002, release: 0.02, ...o }); break;
+      case 'pizzbass': tone(f, t, 0.05, { type: 'triangle', vol: 0.1 * v, attack: 0.001, release: 0.2, ...o }); break;
     }
   }
-  setInterval(schedule, 150);
+  const drum = {
+    k(t, v, b) { tone(150, t, 0.13, { slide: 0.28, vol: 0.17 * v, attack: 0.002, release: 0.05, dest: b }); },
+    s(t, v, b) { noise(t, 0.14, { freq: 1900, q: 0.7, vol: 0.075 * v, dest: b }); tone(210, t, 0.04, { type: 'triangle', vol: 0.03 * v, dest: b }); },
+    h(t, v, b) { noise(t, 0.03, { filter: 'highpass', freq: 7500, vol: 0.035 * v, dest: b }); },
+    rim(t, v, b) { tone(1750, t, 0.008, { type: 'square', vol: 0.025 * v, release: 0.02, dest: b }); },
+    clap(t, v, b) { for (let i = 0; i < 3; i++) noise(t + i * 0.011, 0.07, { freq: 1300, q: 1.2, vol: 0.05 * v, dest: b }); },
+    tom(t, v, b) { tone(120, t, 0.2, { slide: 0.6, vol: 0.12 * v, dest: b }); },
+  };
+  const BREAKS = [['x.........x.....', '....x..x.x..x..x'], ['x.x.......xx....', '....x.x.....x.x.'], ['x.....x...x.....', '....x...x.xxx.x.'], ['x..x..x...x..x..', '..x.x..x..x.xxxx']];
+  let cur = null, pending = null, nextStep = 0, songBars = 0, beatClock = { t0: 0, spb: 0.5 }, npTitle = '', lastCtx = '', rot = {};
+  function pickSong(ctxKey, skip) {
+    const L = PLAYLISTS[ctxKey] || PLAYLISTS.spring;
+    rot[ctxKey] = rot[ctxKey] === undefined ? Math.floor(Math.random() * L.length) : (rot[ctxKey] + 1) % L.length;
+    return L[rot[ctxKey]];
+  }
+  function startSong(key) {
+    if (cur && cur.bus) { const b = cur.bus; b.gain.setTargetAtTime(0, ctx.currentTime, 0.4); setTimeout(() => { try { b.disconnect(); } catch (e) {} }, 3000); }
+    cur = buildSong(key); cur.bus = ctx.createGain(); cur.bus.gain.value = 0; cur.bus.connect(music); cur.bus.gain.setTargetAtTime(1, ctx.currentTime + 0.3, 0.6);
+    nextStep = Math.max(nextStep, ctx.currentTime + 0.12); songBars = 0; npTitle = cur.S.title;
+    beatClock = { t0: nextStep, spb: 60 / cur.S.bpm };
+    try { const np = document.getElementById('np'); if (np) np.textContent = `♪ ${npTitle}`; } catch (e) {}
+    try { if (typeof onSongChange === 'function') onSongChange(npTitle); } catch (e) {}
+  }
+  function schedule() {
+    if (!ok() || cfg.music === false || !W) return;
+    const c = contextKey();
+    if (!cur || c !== lastCtx) { lastCtx = c; startSong(pickSong(c)); }
+    const S = cur.S, meter = cur.meter, sd = 60 / S.bpm / 4, b = cur.bus, sc = SC[S.sc];
+    if (nextStep < ctx.currentTime) nextStep = ctx.currentTime + 0.05;
+    while (nextStep < ctx.currentTime + 0.9) {
+      const i = cur.step % meter, bar = Math.floor(cur.step / meter), sec = bar % 32;
+      const intro = sec < 2, brk = sec >= 20 && sec < 24, big = sec >= 24;
+      const t = nextStep + (S.swing && i % 4 === 2 ? S.swing * sd : 0);
+      const ch = chordOf(S, bar), root = S.key - 12;
+      // pad
+      if (S.pad && i === 0 && bar % (S.bar || 1) === 0) for (const n of ch.slice(0, 3)) inst(S.pad, root + 12 + n, t, sd * meter * (S.bar || 1) * 0.95, brk ? 1.2 : 1, b);
+      // bass
+      const bc = S.b[i % S.b.length];
+      if (bc && bc !== '.' && bc !== '-' && !brk) {
+        let off = bc === 'R' ? ch[0] : bc === '5' ? ch[0] + 7 : bc === '8' ? ch[0] + 12 : bc === '3' ? ch[1] : ch[0];
+        if (S.bassWalk) off = [ch[0], ch[1], ch[2], ch[0] + 12][Math.floor(i / 4)];
+        inst(S.bass || 'bass', root - 12 + off, t, sd * 3, 1, b);
+      }
+      // arp
+      if (S.arp && S.arpP) { const a = S.arpP[i % S.arpP.length]; if (a && a !== '.') inst(S.arp, root + 24 + ch[Number(a) % ch.length] + (big ? 12 : 0), t, sd * 2, brk ? 0.9 : 0.7, b); }
+      // drums
+      if (!brk && !(intro && sec < 1)) {
+        const v = intro ? 0.6 : 1;
+        if (S.breaks) {
+          const pat = BREAKS[Math.floor(cur.r() * 1000 + bar) % BREAKS.length];
+          if (pat[0][i] === 'x') drum.k(t, v, b);
+          if (pat[1][i] === 'x') drum.s(t, v * (0.7 + cur.r() * 0.4), b);
+          if (i % 2 === 1) drum.h(t, 0.5, b);
+          if (bar % 4 === 3 && i >= 12) { drum.s(t, 0.6, b); drum.s(t + sd / 2, 0.5, b); }
+        } else {
+          if (S.k && S.k[i] === 'x') drum.k(t, v, b);
+          if (S.s && S.s[i] === 'x') drum.s(t, v, b);
+          if (S.h && S.h[i] === 'x') drum.h(t, v * (S.hv ?? 1), b);
+          if (S.rim && S.rim[i] === 'x') drum.rim(t, v, b);
+          if (S.clap && S.clap[i] === 'x' && !intro) drum.clap(t, v, b);
+          if (S.tom && S.tom[i] === 'x' && bar % 2 === 1) drum.tom(t, v, b);
+        }
+      }
+      if (S.crackle && i % 4 === 0 && Math.random() < 0.5) noise(t + Math.random() * sd * 3, 0.01, { filter: 'highpass', freq: 4000, vol: 0.012, dest: b });
+      if (W.weather !== 'clear' && i === 0 && W.weather !== 'snow') noise(t, sd * meter, { freq: 1800, q: 0.4, vol: W.weather === 'storm' ? 0.04 : 0.02, dest: b });
+      // melody
+      if (!intro) {
+        const ph = cur.phrases[Math.floor(bar / 2) % 4], idx = (bar % 2) * meter + i, nt = ph[idx];
+        if (nt) {
+          let semi = deg2semi(sc, nt.deg);
+          if (nt.snap) { let best = semi, bd = 99; for (const ctn of ch) for (const o of [-12, 0, 12]) { const cand = ctn + o; const d = Math.abs(cand - semi); if (d < bd) { bd = d; best = cand; } } semi = best; }
+          inst(S.lead, S.key + (S.hi || 0) + (big ? 12 : 0) + semi, t, sd * nt.len, brk ? 0.7 : 1, b);
+        }
+      }
+      nextStep += sd; cur.step++;
+      if (cur.step % meter === 0) { songBars++; if (songBars >= 64) { startSong(pickSong(lastCtx, true)); break; } }
+    }
+  }
+  setInterval(schedule, 120);
   const at = () => ctx.currentTime + 0.01;
   return {
     unlock() { const c = ensure(); if (!c) return; if (c.state === 'suspended') c.resume(); started = true; },
     levels,
+    nowPlaying() { return npTitle; },
+    skip() { if (!ok() || cfg.music === false) return ''; startSong(pickSong(lastCtx || contextKey(), true)); return npTitle; },
+    beatPhase() { if (!ok() || !cur) return (now * 1.5) % 1; return (((ctx.currentTime - beatClock.t0) / beatClock.spb) % 1 + 1) % 1; },
+    beatCount() { if (!ok() || !cur) return Math.floor(now * 1.5); return Math.floor((ctx.currentTime - beatClock.t0) / beatClock.spb); },
     ui() { if (!ok()) return; tone(1180, at(), 0.025, { type: 'triangle', vol: 0.06 }); },
     door() { if (!ok()) return; const t = at(); tone(1319, t, 0.12, { vol: 0.12 }); tone(988, t + 0.12, 0.22, { vol: 0.12, release: 0.4 }); },
     coin() { if (!ok()) return; const t = at(); tone(988, t, 0.05, { type: 'square', vol: 0.05 }); tone(1319, t + 0.06, 0.18, { type: 'square', vol: 0.05 }); },
@@ -3959,7 +4147,7 @@ function clampView() {
 function slideTo(x, z, k) { const t = controls.target; shiftView((x - t.x) * k, (z - t.z) * k); }
 function userPanned() { camGoal = null; camHome = false; unfollowId = openDetail; lastTouch = now; }
 function camSpots() {
-  const L = [['town', 'Whole town', 0, -16, null], ['fountain', 'Fountain', 0, 0, 40], ['downtown', 'Downtown', DT.x, DT.z + 4, 52], ['pier', 'Pier', 0, 35, 34], ['park', 'Park', ...TOWN.park.spot, 36], ['garden', 'Garden', ...TOWN.garden.spot, 36]];
+  const L = [['town', 'Whole town', 0, -16, null], ['fountain', 'Fountain', 0, 0, 40], ['downtown', 'Downtown', DT.x, DT.z + 4, 52], ['pier', 'Pier', 0, 35, 34], ['park', 'Park', ...TOWN.park.spot, 36], ['beach', 'Seashell Beach', ...BEACH, 36], ['garden', 'Garden', ...TOWN.garden.spot, 36]];
   for (const k of W.lobes || []) L.push([k, LOBES[k].name, ...lobeCenter(k), 44]);
   return L;
 }
@@ -4030,6 +4218,7 @@ function wireCamBar() {
   $('#cbGo').addEventListener('click', () => { const g = $('#goto'); if (g.hidden) renderGoto(); g.hidden = !g.hidden; });
   $('#goto').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (!b) return; camGo(b.dataset.go); $('#goto').hidden = true; });
   $('#cbPhoto').addEventListener('click', () => { wantPhoto = true; });
+  $('#cbSong').addEventListener('click', () => { Sound.unlock(); const t = Sound.skip(); toast(t ? `♪ Now playing: ${t}` : 'Music is off in Settings.'); });
   $('#fishReel').addEventListener('click', () => reel());
   $('#fishCast').addEventListener('click', () => openFishing());
   $('#fishClose').addEventListener('click', () => closeFishing());
@@ -4071,6 +4260,7 @@ function shineCmd(id) {
 let nextShine = 5;
 function shineFrame(dt) {
   if (MODE !== 'host' || interior) return;
+  for (let i = shines.length - 1; i >= 0; i--) { const s = shines[i]; if (Math.hypot(s.x - controls.target.x, s.z - controls.target.z) > 42) { scene.remove(s.g); shines.splice(i, 1); } }
   for (const s of shines) { s.g.rotation.y += dt * 3; s.g.position.y = 1.2 + Math.sin(now * 3 + s.x) * 0.15; }
   if (now < nextShine || shines.length >= 6) return;
   nextShine = now + 5 + rand() * 6;
@@ -4094,26 +4284,42 @@ function nodeMesh(kind) {
   else if (kind === 'stone') { g.add(mesh(new T3.DodecahedronGeometry(0.5, 0), toon('#a9a3c2'), 0, 0.35, 0)); g.add(mesh(new T3.DodecahedronGeometry(0.3, 0), toon('#8a84a8'), 0.5, 0.2, 0.2)); }
   else if (kind === 'flowers') for (let i = 0; i < 6; i++) { const a = i * 1.05; g.add(mesh(cyl(0.02, 0.02, 0.4, 4), toon('#6fbf6a'), Math.cos(a) * 0.35, 0.2, Math.sin(a) * 0.35, false)); g.add(mesh(sph(0.13, 8, 6), toon(['#ff9fbf', '#ffe98a', '#c9b3ff', '#ffffff'][i % 4]), Math.cos(a) * 0.35, 0.45, Math.sin(a) * 0.35)); }
   else { const s = mesh(new T3.ConeGeometry(0.3, 0.5, 8), toon('#ffd3c7'), 0, 0.2, 0); s.rotation.z = 1.4; g.add(s); g.add(mesh(sph(0.16, 8, 6), toon('#fff4dc'), 0.45, 0.1, 0.2)); }
+  g.userData.ringIdx = g.children.length;
   g.add(mesh(new T3.RingGeometry(0.75, 0.85, 20), new T3.MeshBasicMaterial({ color: 0xfff6d6, transparent: true, opacity: 0.6, side: 2 }), 0, 0.03, 0, false).rotateX(-Math.PI / 2));
   return g;
 }
 function nodeFrame(dt) {
   if (MODE !== 'host' || interior) return;
-  for (const n of nodes) n.g.children[n.g.children.length - 1].scale.setScalar(1 + Math.sin(now * 3 + n.x) * 0.08);
+  const cx0 = controls.target.x, cz0 = controls.target.z;
+  for (let i = nodes.length - 1; i >= 0; i--) { const n = nodes[i]; if (Math.hypot(n.x - cx0, n.z - cz0) > 42 || now - n.born > 150) { scene.remove(n.g); nodes.splice(i, 1); continue; } n.g.children[n.g.userData.ringIdx].scale.setScalar(1 + Math.sin(now * 3 + n.x) * 0.1); n.g.userData.gem.position.y = 1.5 + Math.sin(now * 2.5 + n.x) * 0.15; n.g.userData.gem.rotation.y += dt * 2; }
   if (now < nextNode || nodes.length >= 7) return;
-  nextNode = now + 4 + rand() * 5;
+  nextNode = now + 3 + rand() * 4;
   const cx = controls.target.x, cz = controls.target.z;
+  const nearBeach = Math.hypot(cx - BEACH[0], cz - BEACH[1]) < 22, nearGreen = [TOWN.garden.spot, TOWN.park.spot, ...(W.lobes || []).map(lobeCenter)].some(([gx, gz]) => Math.hypot(cx - gx, cz - gz) < 16);
   for (let k = 0; k < 25; k++) {
     let x = cx + (rand() - 0.5) * 34, z = cz + (rand() - 0.5) * 34;
-    let kind = pick(['wood', 'wood', 'stone', 'stone', 'flowers', seasonOf().id === 'winter' ? 'stone' : 'flowers', 'shells']);
-    if (kind === 'shells') { const a = rand() * 6.28; x = Math.cos(a) * 29.8; z = Math.sin(a) * 29.8; if (Math.abs(x) < 3 && z > 0) continue; }
+    const winter = seasonOf().id === 'winter';
+    let kind = nearBeach && rand() < 0.65 ? 'shells' : pick(nearGreen ? ['flowers', 'flowers', 'flowers', 'wood', 'stone'] : ['wood', 'wood', 'stone', 'stone', 'flowers', 'flowers', 'shells']);
+    if (winter && kind === 'flowers' && rand() < 0.5) kind = 'stone';
+    if (kind === 'shells') { const a = rand() * 6.28, rr = Math.sqrt(rand()) * (BEACH_R - 1.5); x = BEACH[0] + Math.cos(a) * rr; z = BEACH[1] + Math.sin(a) * rr; if (!nearBeach && rand() < 0.5) { const b = rand() * 6.28; x = Math.cos(b) * 29.6; z = Math.sin(b) * 29.6; if (Math.abs(x) < 3 && z > 0) continue; } }
     else if (spotProblem(x, z)) continue;
-    const g = nodeMesh(kind); g.position.set(x, 0, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'node', id })); scene.add(g); g.children.forEach((c) => tappables.push(c));
-    nodes.push({ id, g, x, z, kind }); break;
+    const g = nodeMesh(kind); g.scale.setScalar(1.35);
+    const gc = { wood: '#c49a6c', stone: '#c9c3e0', flowers: '#ff9fbf', shells: '#ffd3c7' }[kind], gem = mesh(new T3.OctahedronGeometry(0.22, 0), toon(gc, { emissive: new T3.Color(gc).multiplyScalar(0.5) }), 0, 1.5, 0, false); g.add(gem); g.userData.gem = gem;
+    g.position.set(x, kind === 'shells' ? 0.05 : 0, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'node', id })); scene.add(g); g.children.forEach((c) => tappables.push(c));
+    nodes.push({ id, g, x, z, kind, born: now }); break;
   }
 }
 function gatherCmd(c) {
   const M = mats();
+  if (c.bed) {
+    if ((treeCool[c.bed] || 0) > now) return c.wood ? 'This tree needs a rest.' : 'Let the flowers grow back a little first.';
+    treeCool[c.bed] = now + (c.bed === 'tgarden' ? 15 : 30);
+    if (c.wood) { M.wood++; spawnBurst(c.x, 3, c.z, ['#f7b6c8', '#ffc9d6'], 16, 2, 0.35); markDirty(); return '+1 wood 🪵'; }
+    if (seasonOf().id === 'winter' && rand() < 0.5) return 'Everything is frozen. Try again in a bit, or check the beach.';
+    const n = 1 + (rand() < 0.4 ? 1 : 0); M.flowers += n;
+    spawnBurst(c.x, 1, c.z, ['#ff9fbf', '#ffe98a', '#c9b3ff', '#ffffff'], 14, 1.6, 0.25); Sound.ui(); markDirty();
+    return `+${n} flowers 🌼`;
+  }
   if (c.tree) {
     if ((treeCool[c.id] || 0) > now) return 'This tree needs a rest. Try another one.';
     treeCool[c.id] = now + 25; const n = 1 + (rand() < 0.3 ? 1 : 0); M.wood += n;
@@ -4153,12 +4359,21 @@ function workshopHtml() {
   const card = (kind, id, color, label, who) => { const R = recipe(kind, id); return `<div class="item"><div class="item-top">${color ? `<span class="swatch" style="background:${COLORS[color]}"></span>` : ''}<span class="item-name">${esc(cap(label))}</span></div><span class="item-by">${who ? `✧ ${esc(who)} wishes for this · ` : ''}${recipeText(R)}</span><div class="btns"><button class="btn ${who ? 'gold' : ''}" type="button" data-craft="${kind}" data-cid="${id}" data-color="${color || ''}" ${canMake(R) ? '' : 'disabled'}>Make it</button></div></div>`; };
   return `<p class="label">Your workshop</p>
     <div class="chips">${Object.entries(MATS).map(([k, n]) => `<span class="chip">${n}: ${M[k] || 0}</span>`).join('')}</div>
-    <p class="hint">Tap trees for wood. Glowing piles of logs, rocks, flowers and shells pop up around town and on the beach. Handmade gifts mean the most.</p>
+    <p class="hint">🪵 Tap trees for wood. 🌼 Tap the town garden, flower beds and planters for flowers, or look around the park, garden and meadows. 🐚 Shells wash up on Seashell Beach (Go to… → Seashell Beach). 🪨 Stones turn up all over. Look for the little floating gems: each one marks something to pick up.</p>
     ${wishes.length ? `<p class="label">Wishes you can make</p><div class="items">${wishes.map((p) => { const w = p.cr.wish; return card(w.kind, w.id, w.color, wishText(w).replace(/^an? /, ''), p.name); }).join('')}</div>` : ''}
     <p class="label">Make anything</p>
     <div class="field"><label for="craftColor">Color</label><select id="craftColor">${Object.keys(COLORS).map((c) => `<option>${c}</option>`).join('')}</select></div>
     <div class="items">${Object.keys(DECOR).map((id) => card('decor', id, null, DECOR[id].name)).join('')}${Object.keys(HATS).map((id) => card('hat', id, null, HATS[id].name)).join('')}</div>`;
 }
+let lastSongTalk = 0;
+function onSongChange(title) {
+  if (!W || now - lastSongTalk < 40 || interior || rand() > 0.45) return;
+  const near = W.people.filter((p) => !p.inside && p.state === 'free' && controls && Math.hypot(p.x - controls.target.x, p.z - controls.target.z) < 14);
+  if (!near.length) return;
+  lastSongTalk = now; const p = pick(near);
+  setTimeout(() => bubble(p, pick([`Ooh, I love this one.`, `Is this "${title}"? Classic.`, 'Wait, who put this song on?', '♪ la la la ♪', isMili(p) ? 'This could use more breakbeats, honestly.' : 'This song makes me want to dance.', 'Hmm hm hmm ♪']), 3), 1500);
+}
+const DANCE = ['festival', 'wedding', 'bday', 'beach', 'harvest', 'blossoms'];
 function closeFishing() { fishing = null; $('#fishBox').hidden = true; }
 
 // photos
@@ -4923,6 +5138,13 @@ function poseFigure(p, m) {
   const ww = p.task?.kind === 'walkwith' && p.task.hands ? p.task : null;
   const led = !ww && W.people.find((q) => q.task?.kind === 'walkwith' && q.task.hands && q.task.lead === p.id && Math.hypot(q.x - p.x, q.z - p.z) < 1.3);
   if (ww || led) { const side = ww ? ww.side : -led.task.side; const i = side > 0 ? 1 : 0; m.arms[i].rotation.z = (i ? 1 : -1) * 1.05; }
+  if (!po && p.task?.kind === 'event' && p.task.phase === 'do' && W.event && DANCE.includes(W.event.id)) {
+    const ph = Sound.beatPhase(), bc = Sound.beatCount() + (p.room || 0);
+    m.fig.position.y = Math.abs(Math.sin(ph * Math.PI)) * 0.16;
+    const up = bc % 2 ? 1 : 0; m.arms[up].rotation.z = (up ? 1 : -1) * 2.5; m.arms[up].position.y = 1.05;
+    m.fig.rotation.z = Math.sin(ph * Math.PI * 2) * 0.08;
+    return;
+  }
   if (!po) return;
   const k = po.kind, t = now * 16;
   if (k === 'hug' || k === 'jealous' && false) { m.arms.forEach((a) => { a.rotation.x = -1.35; }); m.fig.rotation.x = 0.14; }
@@ -5582,6 +5804,8 @@ function wireTownInput() {
     if (tp.kind === 'shop') { openInterior({ kind: 'shop', shop: tp.shop }); }
     else if (tp.kind === 'mail') { activeTab = 'mail'; mailOpen = null; openSheet(); }
     else if (tp.kind === 'fish') openFishing();
+    else if (tp.kind === 'tgarden') { const r = applyCmd({ t: 'gather', bed: 'tgarden', x: TOWN.garden.spot[0], z: TOWN.garden.spot[1] }); if (r) toast(r); }
+    else if (tp.kind === 'placed') { const pl = (W.placed || []).find((q) => q.id === tp.id); if (pl && ['flowers', 'planter', 'arch', 'tree'].includes(pl.type)) { const r = applyCmd({ t: 'gather', bed: pl.id, wood: pl.type === 'tree', x: pl.x, z: pl.z }); if (r) toast(r); } }
     else if (tp.kind === 'node' || tp.kind === 'tree') { const r = applyCmd({ t: 'gather', id: tp.id, tree: tp.kind === 'tree', x: tp.x, z: tp.z }); if (r) toast(r); }
     else if (tp.kind === 'shine') { const r = applyCmd({ t: 'shine', id: tp.id }); if (r) toast(r); }
     else if (tp.kind === 'plot') { activeTab = 'gifts'; openSheet(); $('#pane-gifts').scrollTop = 0; }
@@ -5634,6 +5858,7 @@ function startRemote() {
   // touchpad
   const pad = $('#pad'), pts = new Map(); let acc = { dx: 0, dy: 0, dz: 0 }, pinch0 = 0, padPan = false;
   $('#padMode').addEventListener('click', () => { padPan = !padPan; $('#padMode').setAttribute('aria-pressed', String(padPan)); $('#padMode').textContent = padPan ? 'Moving' : 'Move mode'; pad.innerHTML = padPan ? 'Drag to slide around the town<br>Pinch to zoom' : 'Drag to turn the camera<br>Pinch to zoom'; });
+  $('#padSong').addEventListener('click', () => send({ t: 'skip' }));
   document.querySelectorAll('#padGo [data-go]').forEach((b) => b.addEventListener('click', () => send({ t: 'cam', place: b.dataset.go })));
   pad.addEventListener('pointerdown', (e) => { pad.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
   pad.addEventListener('pointermove', (e) => {
