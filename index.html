@@ -217,6 +217,8 @@
   .msg-n { font-size: 11px; font-weight: 700; }
   .msg-t { font-size: 14px; }
   .msg-d { font-size: 10px; color: var(--faint); }
+  .chirp { background: var(--raise); border: 1px solid var(--line); border-radius: 14px; padding: 9px 12px; margin: 6px 0; display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+  .chirp .reply { font-size: 13px; color: var(--dim); border-left: 2px solid var(--line); padding-left: 8px; }
   .album { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .album img { width: 100%; display: block; border-radius: 8px; }
   body.ghost .hud, body.ghost .toggle, body.ghost .sheet, body.ghost .roomcard, body.ghost #tags .nm { display: none; }
@@ -277,6 +279,7 @@
       <button class="tab" type="button" data-tab="people" aria-pressed="true">Residents</button>
       <button class="tab" type="button" data-tab="mail" aria-pressed="false" id="mailTab">Mail</button>
       <button class="tab" type="button" data-tab="texts" aria-pressed="false">Texts</button>
+      <button class="tab" type="button" data-tab="web" aria-pressed="false">Web</button>
       <button class="tab" type="button" data-tab="shops" aria-pressed="false">Shops</button>
       <button class="tab" type="button" data-tab="gifts" aria-pressed="false">Your gifts</button>
       <button class="tab" type="button" data-tab="build" aria-pressed="false">Build</button>
@@ -290,6 +293,7 @@
   <div class="pane" id="pane-people"></div>
   <div class="pane" id="pane-mail" hidden></div>
   <div class="pane" id="pane-texts" hidden></div>
+  <div class="pane" id="pane-web" hidden></div>
   <div class="pane" id="pane-court" hidden></div>
   <div class="pane" id="pane-shops" hidden></div>
   <div class="pane" id="pane-gifts" hidden></div>
@@ -411,7 +415,7 @@ const DECOR = {
   bouquet: { name: 'bouquet', price: 3 }, beanbag: { name: 'beanbag', price: 6 }, shelf: { name: 'bookshelf', price: 8 },
   quilt: { name: 'quilt', price: 7 }, poster: { name: 'poster', price: 3 }, painting: { name: 'painting', price: 6 },
   fishbowl: { name: 'fishbowl', price: 5 }, plush: { name: 'plush bunny', price: 4 }, musicbox: { name: 'music box', price: 6 },
-  globe: { name: 'snow globe', price: 4 }, records: { name: 'record player', price: 9 }, books: { name: 'stack of books', price: 4 },
+  globe: { name: 'snow globe', price: 4 }, records: { name: 'record player', price: 9 }, books: { name: 'stack of books', price: 4 }, laptop: { name: 'laptop', price: 60 },
 };
 const NOOK_MADE = ['lamp', 'rug', 'beanbag', 'shelf', 'quilt', 'poster', 'painting', 'plush', 'musicbox', 'globe', 'records'];
 const JOBS = {
@@ -425,6 +429,11 @@ const JOBS = {
   icecream:{ short: 'ice cream scooper', title: 'scooper at Sundae Best', place: 'icecream', pay: 3 },
   books:   { short: 'bookseller', title: 'bookseller at Paper Moon Books', place: 'books', pay: 3 },
   arcade:  { short: 'arcade attendant', title: 'attendant at Pixel Palace', place: 'arcade', pay: 3 },
+  dev:     { short: 'software developer', title: 'software developer at Glimmer Labs', place: 'labs', pay: 7, collar: 'white', indoor: true, needs: ['computers', 'math'] },
+  ai:      { short: 'AI safety researcher', title: 'AI safety researcher at Glimmer Labs', place: 'labs', pay: 8, collar: 'white', indoor: true, needs: ['computers', 'safety', 'math'] },
+  lawyer:  { short: 'lawyer', title: 'lawyer at Glimmer Hall', place: 'hall', pay: 6, collar: 'white', indoor: true, needs: ['history', 'philosophy', 'money'] },
+  builder: { short: 'construction worker', title: 'construction worker downtown', place: 'downtown', pay: 3, collar: 'blue' },
+  janitor: { short: 'street sweeper', title: 'street sweeper', place: 'plaza', pay: 2, collar: 'blue' },
 };
 const SHOPS = {
   mart: { name: 'Berry Mart', job: 'mart', blurb: 'Meals cooked by whoever works the counter today.' },
@@ -460,6 +469,7 @@ const EVENTS = {
 };
 
 function itemName(it) {
+  if (it.kind === 'book') return `book called "${BOOKS[it.id]?.title || 'Untitled'}"`;
   if (it.kind === 'food') return foodById(it.id).name;
   if (it.kind === 'hat') return `${it.color} ${HATS[it.id].name}`;
   if (it.kind === 'shirt') return `${it.color} shirt`;
@@ -469,10 +479,11 @@ function itemName(it) {
 }
 function sellValue(it) { if (it.catchName) { const c = CATCHES.find((x) => x.name.endsWith(it.catchName)); return c ? [0, 2, 5, 14][c.q] : 2; } return Math.max(1, Math.floor(itemPrice(it) / 2)); }
 function itemPrice(it) {
+  if (it.kind === 'book') return BOOKS[it.id]?.price || 5;
   const base = it.kind === 'food' ? foodById(it.id).price : it.kind === 'hat' ? HATS[it.id].price : it.kind === 'shirt' ? 2 : DECOR[it.id].price;
   return base + Math.max(0, (it.q || 1) - 1);
 }
-function itemColor(it) { return it.kind === 'food' ? (foodById(it.id).shop === 'cafe' ? '#c89b7b' : foodById(it.id).shop === 'plot' ? '#8fd48a' : '#ffb38a') : COLORS[it.color]; }
+function itemColor(it) { if (it.kind === 'book') return SUBJECTS[BOOKS[it.id]?.subj]?.color || '#8a6aa8'; return it.kind === 'food' ? (foodById(it.id).shop === 'cafe' ? '#c89b7b' : foodById(it.id).shop === 'plot' ? '#8fd48a' : '#ffb38a') : COLORS[it.color]; }
 
 // ============================================================
 // SETTINGS (per device)
@@ -500,7 +511,9 @@ function uniqueName() {
 }
 function mixHue(a, b) { const d = ((b - a + 540) % 360) - 180; return (a + d / 2 + 360) % 360; }
 function freeRoom() { for (let i = 0; i < MAX_POP; i++) if (!W.people.some((p) => p.room === i)) return i; return -1; }
-const randomJob = () => pick(Object.keys(JOBS));
+for (const [k, c] of Object.entries({ nook: 'blue', garden: 'blue', pier: 'blue' })) JOBS[k].collar = c;
+for (const J of Object.values(JOBS)) J.collar = J.collar || 'service';
+const randomJob = () => pick(Object.keys(JOBS).filter((k) => JOBS[k].collar !== 'white'));
 const randAff = (keys) => Object.fromEntries(keys.map((k) => [k, rand() * 2 - 1]));
 
 function birth(a, b) {
@@ -593,6 +606,7 @@ function creatorFavorite() {
 }
 function wishText(w) {
   if (!w) return '';
+  if (w.kind === 'book') return `a book about ${SUBJECTS[w.subj]?.name.toLowerCase() || 'anything'}`;
   if (w.kind === 'coins') return 'a few coins';
   if (w.kind === 'food') return foodById(w.id).name;
   if (w.kind === 'hat') return `${a_an(w.color + ' ' + HATS[w.id].name)}`;
@@ -622,8 +636,8 @@ const DT = { x: 0, z: -56, R: 32 };
 const polarDT = (deg, r) => [DT.x + Math.sin(deg * Math.PI / 180) * r, DT.z - Math.cos(deg * Math.PI / 180) * r];
 const DT_GATE = [[9.4, -19], [11, -28.5]];
 const DT_HUB = [4, -42.5];
-const DT_BLD = { home2: { a: 0, r: 22, d: 8 }, home3: { a: 300, r: 22, d: 8 }, bakery: { a: 58, r: 21, d: 8 }, books: { a: 108, r: 21, d: 8 }, arcade: { a: 245, r: 21, d: 8 }, icecream: { a: 202, r: 21, d: 8 }, hall: { a: 272, r: 21, d: 8 } };
-const DT_NAMES = { home2: 'Bluebell Court', home3: 'Sunny Heights', bakery: 'Sweet Rise Bakery', books: 'Paper Moon Books', arcade: 'Pixel Palace', icecream: 'Sundae Best', hall: 'Glimmer Hall' };
+const DT_BLD = { home2: { a: 0, r: 22, d: 8 }, home3: { a: 300, r: 22, d: 8 }, bakery: { a: 58, r: 21, d: 8 }, books: { a: 108, r: 21, d: 8 }, arcade: { a: 245, r: 21, d: 8 }, icecream: { a: 202, r: 21, d: 8 }, hall: { a: 272, r: 21, d: 8 }, labs: { a: 32, r: 21, d: 8 } };
+const DT_NAMES = { home2: 'Bluebell Court', home3: 'Sunny Heights', bakery: 'Sweet Rise Bakery', books: 'Paper Moon Books', arcade: 'Pixel Palace', icecream: 'Sundae Best', hall: 'Glimmer Hall', labs: 'Glimmer Labs' };
 for (const [k, b] of Object.entries(DT_BLD)) TOWN[k] = { name: DT_NAMES[k], spot: polarDT(b.a, b.r - b.d / 2 - 0.8), entry: [...DT_GATE, DT_HUB, polarDT(b.a, 10.2)], local: [polarDT(b.a, 10.2)], zone: 'dt' };
 TOWN.beach = { name: 'Seashell Beach', spot: polar(222, 36), entry: [polar(229, 11.4), polar(229, 27.5)] };
 TOWN.downtown = { name: 'downtown', spot: [DT.x, DT.z + 6], entry: [...DT_GATE, DT_HUB], local: [], zone: 'dt' };
@@ -801,7 +815,8 @@ function newItem(kind, id, color, maker, q = 1) {
 }
 function importStock() {
   const s = W.stock; s.books = s.books || [];
-  while (s.books.length < 3) s.books.push(newItem('decor', pick(['books', 'books', 'poster', 'globe', 'painting']), pick(Object.keys(COLORS)), null));
+  while (s.books.filter((x) => x.kind !== 'book').length < 2) s.books.push(newItem('decor', pick(['books', 'poster', 'globe', 'painting']), pick(Object.keys(COLORS)), null));
+  for (let i = 0; i < 12 && s.books.filter((x) => x.kind === 'book').length < 4; i++) { const k = pick(Object.keys(BOOKS)); if (!s.books.some((x) => x.id === k)) s.books.push(newItem('book', k, null, null, 1)); }
   while (s.clothes.length < 4) s.clothes.push(rand() < 0.6 ? newItem('hat', pick(Object.keys(HATS)), pick(Object.keys(COLORS)), null) : newItem('shirt', 'shirt', pick(Object.keys(COLORS)), null));
   while (s.nook.length < 4) s.nook.push(newItem('decor', pick(NOOK_MADE), pick(Object.keys(COLORS)), null));
 }
@@ -819,6 +834,7 @@ function craft(p) {
 }
 // how much someone likes an item on its own, before thinking about who made it
 function baseLike(p, it) {
+  if (it.kind === 'book') return BOOKS[it.id] ? bookLike(p, it.id) : 0;
   if (it.kind === 'food') { const f = foodById(it.id); const P = p.body.palate, fl = f.fl, sum = fl.sweet + fl.salty + fl.spicy; return p.tastes[f.id] ?? (P.sweet * fl.sweet + P.salty * fl.salty + P.spicy * fl.spicy) / sum; }
   if (it.kind === 'hat') return (p.likes[it.color] || 0) * 0.8 + (p.likes['hat:' + it.id] || 0) * 0.8 - (p.wardrobe.hats.some((h) => h.id === it.id && h.color === it.color) ? 0.6 : 0) + 0.1;
   if (it.kind === 'shirt') return (p.likes[it.color] || 0) * 0.9 - (p.wardrobe.shirts.includes(it.color) ? 0.5 : 0);
@@ -827,6 +843,7 @@ function baseLike(p, it) {
 function makerOpinion(p, it) { if (!it.maker || it.maker === p.id) return 0; const f = p.feelings[it.maker]; return f ? f.score / 8 : 0; }
 function bestBy(keys, score) { return keys.map((k) => [k, score(k) + rand() * 0.7]).sort((a, b) => b[1] - a[1])[0][0]; }
 function receive(p, it) {
+  if (it.kind === 'book') { receiveBook(p, it); if (interior?.kind === 'room' && interior.id === p.id) interior.dirty = true; return; }
   if (it.kind === 'food') {
     const f = foodById(it.id); p.hunger = clamp(p.hunger - f.fill, 0, 1);
     const joy = clamp(baseLike(p, it) + (rand() - 0.5) * 0.3, -1, 1);
@@ -901,6 +918,7 @@ function jealousy(p) {
 }
 function wishMatch(p, it) {
   const w = p.cr.wish; if (!w) return 0;
+  if (w.kind === 'book') return it.kind === 'book' && BOOKS[it.id]?.subj === w.subj ? 2 : 0;
   if (w.kind !== it.kind || w.id !== it.id) return 0;
   return !w.color || w.color === it.color ? 2 : 1;
 }
@@ -921,7 +939,8 @@ function giftItem(p, it) {
   else if (total > 0) line = pick(['Oh! Thank you, Creator.', `${cap(a_an(name))}. That's sweet.`]);
   else line = pick(['Um… thanks, I guess.', 'Does the Creator even know me?', `${cap(a_an(name))}? Not really my thing.`]);
 
-  if (!refused && !self && !wm && total > -0.2) {
+  if (!refused && it.id === 'laptop') { line = pick(['A laptop?! For me?!', 'I can finally learn to code.', 'This changes everything. Thank you.']); remember(p, 'The Creator gave me a laptop. I can learn anything now.', 3, 'creatorGift'); for (const q of W.people) if (q !== p && rand() < 0.4) remember(q, `${p.name} got a laptop from the Creator.`, 2, 'jealous', p.name); }
+  else if (!refused && !self && !wm && total > -0.2) {
     if (isBirthday(p)) { line = pick(['You remembered my birthday?!', `A birthday present! ${cap(a_an(name))}!`, "Is this… for my birthday? Creator!"]); remember(p, `The Creator gave me ${a_an(name)} on my birthday.`, 3, 'bdayCreator'); }
     else if (it.handmade) { line = pick([`You MADE this? With your own hands?`, `Handmade ${name}! I'm never letting go of it.`, "Wait, the Creator can craft?"]); remember(p, `The Creator made me ${a_an(name)} by hand.`, 3, 'creatorGift'); }
     else if (it.grown) { line = pick([`You grew this yourself? For me?`, `Homegrown ${name}! It smells like sunshine.`, 'The Creator has a garden? And they shared it with me?']); remember(p, `The Creator gave me ${name} they grew in their own garden.`, 2, 'creatorGrown'); }
@@ -976,6 +995,7 @@ function dailyWishes() {
       const r = rand(), color = bestBy(Object.keys(COLORS), (c) => (p.likes[c] || 0) * 1.5);
       let wsh;
       if (p.coins < 3 && r < 0.4) wsh = { kind: 'coins' };
+      else if (r < 0.16) wsh = { kind: 'book', subj: favSubject(p) };
       else if (r < 0.55) wsh = { kind: 'decor', id: bestBy(Object.keys(DECOR), (d) => (p.body.decorAff[d] || 0) + (p.likes['decor:' + d] || 0)), color };
       else if (r < 0.8) wsh = { kind: 'hat', id: bestBy(Object.keys(HATS), (h) => p.likes['hat:' + h] || 0), color };
       else { const fav = Object.entries(p.tastes).sort((a, b) => b[1] - a[1])[0]; wsh = fav && fav[1] > 0.2 ? { kind: 'food', id: fav[0] } : { kind: 'decor', id: pick(Object.keys(DECOR)), color }; }
@@ -1156,6 +1176,8 @@ function goTo(p, dest, spot) {
 function orderDetour(from, pts) { const [a, b, c] = pts; return Math.hypot(a[0] - from[0], a[1] - from[1]) <= Math.hypot(c[0] - from[0], c[1] - from[1]) ? [a, b, c] : [c, b, a]; }
 const jitter = ([x, z], r) => [x + (rand() - 0.5) * r, z + (rand() - 0.5) * r];
 function workSpot(job) {
+  if (job === 'janitor') { const a = rand() * 6.28, r = FOUNTAIN_R + 2 + rand() * 6; return [Math.cos(a) * r, Math.sin(a) * r]; }
+  if (job === 'builder') { const a = rand() * 6.28, r = 4.5 + rand() * 4; return [DT.x + Math.cos(a) * r, DT.z + Math.sin(a) * r]; }
   if (job === 'pier') return [(rand() - 0.5) * 1.6, 39.2];
   if (job === 'garden') return jitter(TOWN.garden.spot, 4);
   if (job === 'cafe') return jitter(polar(212, 16.4), 0.8);
@@ -1178,12 +1200,15 @@ function plan(p) {
   const going = ev && W.event.going.includes(p.id);
   if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
+  if (planPicket(p)) return;
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
   const seek = p.makeup || p.befriend || p.confessTo || p.proposeTo || p.breakWith;
   if (seek) { const t = person(seek); if (!t) { p.makeup = p.befriend = p.confessTo = p.proposeTo = p.breakWith = null; } else if (!t.inside) { setTask(p, 'visit', t.path.length ? t.dest : t.at, jitter([t.x, t.z], 1.5), { who: t.id }); return; } }
   if (t > 0.26 && t < 0.56 && p.hunger < 0.6 && planDate(p)) return;
   if (planHangout(p)) return;
   if (planLandmark(p)) return;
+  if (planRead(p)) return;
+  if (planSurf(p)) return;
   if (p.hunger > 0.45) {
     if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return; }
     const i = W.bushes.findIndex((n) => n > 0);
@@ -1215,12 +1240,16 @@ function startDo(p) {
   if (k === 'eat' || k === 'shop') { p.inside = true; p.busyUntil = now + 2.8 * ts(); return; }
   if (k === 'arcade') { p.inside = true; p.busyUntil = now + 5 * ts(); return; }
   if (k === 'cafe') { p.busyUntil = now + 11 * ts(); if (p.coins > 1 && rand() < 0.6) eatAt(p, 'cafe'); else bubble(p, pick(['What a view.', 'I love this spot.']), 2.2); return; }
+  if (k === 'work' && JOBS[p.job]?.indoor) p.inside = true;
   if (k === 'work') { p.busyUntil = now + 1; if (p.job === 'pier') p.face = 0; if (SHOPS[p.job]) W.keeper[p.job] = p.id; return; }
   if (k === 'forage') { p.busyUntil = now + 1.5 * ts(); return; }
   if (k === 'meeting') { p.busyUntil = Infinity; p.face = Math.atan2(-p.x, -p.z); return; }
   if (k === 'event') { p.busyUntil = now + 1; return; }
   if (k === 'donate') { p.busyUntil = now + 1.5 * ts(); return; }
   if (k === 'hangout') { hangoutStart(p); return; }
+  if (k === 'read') { readStart(p); return; }
+  if (k === 'surf') { surfStart(p); return; }
+  if (k === 'picket') { picketStart(p); return; }
   if (k === 'landmark') { p.busyUntil = now + 5 * ts(); const pl = (W.placed || []).find((q) => q.id === p.task.id); if (pl) p.face = Math.atan2(pl.x - p.x, pl.z - p.z); bubble(p, ({ carousel: ['Wheee!', 'One more ride!'], onsen: ['Ahhh…', 'So warm.'], clinic: ['Just a checkup.', 'Say ahh.'], observatory: ['Look at all the stars.', 'Is that a planet?'], museum: ['Ooh, a golden koi!', 'Culture.'], ferris: ['I can see my house!', "Don't rock it!"] }[p.task.type] || ['Nice.'])[Math.floor(rand() * 2)], 2.6); return; }
   if (k === 'court') { p.inside = true; p.busyUntil = now + (p.task.wed ? 4 : 9) * ts(); if (interior?.kind === 'hall') interior.dirty = true; return; }
   if (k === 'service') { p.busyUntil = now + 5 * ts(); p.face = Math.atan2(p.task.x - p.x, p.task.z - p.z); bubble(p, pick(['Community service. Great.', 'Planting flowers. As a punishment. Sure.', 'This is so embarrassing.']), 2.6); return; }
@@ -1231,9 +1260,12 @@ function startDo(p) {
 }
 function finishDo(p) {
   const k = p.task.kind;
-  if (k === 'work') { if (W.t < 0.24) { p.busyUntil = now + 1; return false; } endWork(p); }
+  if (k === 'work') { if (W.t < 0.24) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
   else if (k === 'event') { if (W.t < (p.task.until || 0) && W.t < 0.67) { p.busyUntil = now + 1; if (rand() < 0.02) { const ev = EVENTS[W.event?.id]; if (ev) bubble(p, pick(['This is so fun!', 'Best day ever.', W.event.id === 'snowball' ? 'Got you!' : W.event.id === 'bday' ? 'Happy birthday!' : W.event.id === 'beach' ? 'The water is perfect!' : W.event.id === 'blossoms' ? 'The petals are falling on my head!' : W.event.id === 'harvest' ? 'Pass the pumpkin soup?' : W.event.id === 'wedding' ? "I'm not crying, you're crying." : W.event.id === 'stars' ? 'Look, a shooting star!' : W.event.id === 'fishing' ? 'I got a bite!' : 'Yay!']), 2); } return false; } if (W.event?.id === 'fishing' && W.event.host === p.id) { const winner = pick(W.people.filter((q) => W.event.going.includes(q.id))); if (winner) { winner.coins += 4; remember(winner, 'I won the fishing contest!', 3, 'won'); diary(`<b>${esc(winner.name)}</b> won the fishing contest and 4 coins.`); } } remember(p, `Went to ${EVENTS[W.event?.id]?.name || 'the event'}.`, 2, 'event'); addJoy(p, 10); }
   else if (k === 'hangout') hangoutEnd(p);
+  else if (k === 'read') readProgress(p, 0.5);
+  else if (k === 'surf') surfDone(p);
+  else if (k === 'picket') bubble(p, pick(['We are not backing down.', 'Same time tomorrow if nothing changes.', 'My feet hurt. Worth it.']), 2.4);
   else if (k === 'landmark') landmarkDone(p);
   else if (k === 'court') { p.inside = false; if (interior?.kind === 'hall') interior.dirty = true; }
   else if (k === 'service') { if (!spotProblem(p.task.x, p.task.z)) { W.placed.push({ id: uid(), type: 'flowers', x: p.task.x, z: p.task.z, rot: rand() * 6.28, day: W.day, by: p.name }); buildPlaced(); diary(`🌷 <b>${esc(p.name)}</b> planted a flower bed as community service.`); } remember(p, 'Did community service. Planted flowers for the town.', 2, 'service'); bubble(p, pick(['Done. Happy now?', "…Okay, it's kind of pretty.", 'Never again.']), 2.4); }
@@ -1249,7 +1281,7 @@ function finishDo(p) {
 function endWork(p) {
   const J = JOBS[p.job];
   p.jobDays++;
-  let pay = J.pay + Math.floor(p.jobDays / 4);
+  let pay = payOf(p);
   if (p.job === 'pier') pay += Math.floor(rand() * 3);
   if (p.job === 'garden') pay += rand() < 0.4 ? 2 : 0;
   earn(p, pay); p.workedToday = true;
@@ -1259,7 +1291,7 @@ function endWork(p) {
   remember(p, `Worked as a ${J.short} and earned ${pay} coins.`, 1, 'work', null, { joy });
   bubble(p, sharing() ? pick([`${pay} coins for the pantry!`, 'Done! That goes to everyone.']) : joy > 0.3 ? pick(['Good day at work!', 'I love this job.', `+${pay} coins!`]) : joy < -0.3 ? pick(['Finally done…', 'Work was so long.']) : `+${pay} coins.`, 2.4);
   if (p.jobMood < -1.4 && p.jobDays > 2 && rand() < 0.5) {
-    const next = Object.keys(JOBS).filter((j) => j !== p.job).sort((x, y) => p.body.jobAff[y] - p.body.jobAff[x] + (rand() - 0.5))[0];
+    const next = Object.keys(JOBS).filter((j) => j !== p.job && qualifies(p, j)).sort((x, y) => p.body.jobAff[y] - p.body.jobAff[x] + (rand() - 0.5))[0];
     diary(`<b>${esc(p.name)}</b> quit being a ${JOBS[p.job].short} and became a ${JOBS[next].short}.`);
     remember(p, `I quit my job as a ${J.short}. Tomorrow I start as a ${JOBS[next].short}.`, 3, 'quit');
     p.job = next; p.jobDays = 0; p.jobMood = 0; dressMesh(p);
@@ -1332,6 +1364,7 @@ function nightfall() {
   nightLetters();
   for (const p of W.people) {
     p.makeup = p.befriend = p.confessTo = p.proposeTo = p.breakWith = null;
+    if ((p.toRead || []).length && rand() < 0.6) readProgress(p, 0.35);
     const T = p.today.slice();
     if (T.length && aiReady()) { p.today = []; aiReflect(p, T).then((res) => { if (res) finishReflection(p, res, T); else { p.today = T.concat(p.today); reflect(p); } markDirty(); }); }
     else reflect(p);
@@ -1375,7 +1408,7 @@ function newDay() {
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }
-  birthdayMorning(); miliMorning(); courtMorning(); museumDaily();
+  birthdayMorning(); miliMorning(); courtMorning(); museumDaily(); classMorning();
   if (MODE === 'host') { morningFerry(); ferryDepartures(); checkOther(); }
   diary(`Morning. The weather is ${W.weather}. You got 20 new coins.`);
   saveNow();
@@ -1427,7 +1460,7 @@ function step(dt) {
     if (p.task.phase === 'go') { p.at = p.dest || p.at; startDo(p); continue; }
     if (p.task.phase === 'do' && now >= p.busyUntil) { if (finishDo(p) !== false) p.task = null; }
   }
-  personalSpace(dt); textTick();
+  personalSpace(dt); textTick(); chirpTick();
   const festNight = W.event?.id === 'festival' && W.event.day === W.day && W.t < 0.665;
   if ((!isNight() || festNight) && !W.meeting) {
     const ok = W.people.filter(canChat);
@@ -1574,6 +1607,9 @@ function applyCmd(c) {
     case 'shopview': if (SHOPS[c.shop]) openInterior({ kind: 'shop', shop: c.shop }); return '';
     case 'set': if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); } return '';
     case 'plot': return plotCmd(c);
+    case 'sendlink': { const it = (W.outside?.items || []).find((x) => x.id === c.item), p = person(c.to); if (!it || !p) return ''; if (!W.outsideFound) { W.outsideFound = { by: 'creator', name: 'The Creator', day: W.day }; diary('🌐 <span class="cr">Creator</span> showed the island a window to <b>the Outside</b>.'); } seeItem(p, it, true); return `You showed ${p.name}. Watch what they say.`; }
+    case 'outside': cfg[c.key === 'posts' ? 'outsidePosts' : 'outside'] = !!c.value; savePrefs(); if (c.value) fetchOutside(true); return '';
+    case 'buybook': { const B = BOOKS[c.id]; if (!B) return ''; if (C.coins < B.price) return `You need ${plural(B.price, 'coin')}.`; C.coins -= B.price; C.items.push(newItem('book', c.id, null, null, 1)); Sound.coin(); markDirty(); return `You bought "${B.title}". It's in Your gifts.`; }
     case 'rule': { const k = (W.cases || []).find((x) => x.id === c.id); return k ? applyRuling(k, c.choice, false) : 'That case is gone.'; }
     case 'hallview': if (MODE === 'host') openInterior({ kind: 'hall' }); return '';
     case 'debate': { const a = person(c.a), b = person(c.b); if (!a || !b) return ''; const k = fileCase('debate', a, b, { topic: String(c.topic || pick(DEBATES)).slice(0, 80), byCreator: true }); return k ? `⚖ ${a.name} and ${b.name} have been summoned to debate: ${k.topic}` : 'They already have a debate waiting.'; }
@@ -1585,7 +1621,7 @@ function applyCmd(c) {
       treeCool[key] = now + (c.kind === 'crystal' ? 60 : 30);
       if (c.kind === 'orchard') { M.wood++; spawnBurst(c.x, 3, c.z, ['#6fbf6a', '#ffb347'], 14, 2, 0.3); markDirty(); if (rand() < 0.45) { const it = newItem('food', 'apple', null, null, 2); it.grown = true; W.creator.items.push(it); Sound.coin(); return '+1 wood and an apple 🍎'; } Sound.step(); return '+1 wood 🪵'; }
       if (c.kind === 'boulder') { const n = 2 + (rand() < 0.3 ? 1 : 0); M.stone += n; spawnBurst(c.x, 1, c.z, ['#c9c3e0', '#8a84a8'], 16, 2, 0.3); Sound.step(); markDirty(); return `+${n} stone 🪨`; }
-      const got = pick(['shells', 'flowers', 'stone']), n = 2 + Math.floor(rand() * 2); M[got] += n; spawnBurst(c.x, 1.5, c.z, ['#9fd3ff', '#c9b3ff', '#ffb3e6', '#ffffff'], 30, 2.4, 0.3); Sound.sparkle(); markDirty();
+      const got = pick(['shells', 'flowers', 'stone', 'parts', 'parts']), n = 2 + Math.floor(rand() * 2); M[got] += n; spawnBurst(c.x, 1.5, c.z, ['#9fd3ff', '#c9b3ff', '#ffb3e6', '#ffffff'], 30, 2.4, 0.3); Sound.sparkle(); markDirty();
       if (rand() < 0.08) { const n2 = 5; W.creator.coins += n2; return `+${n} ${MATS[got]} and ${n2} coins hidden inside ✨`; }
       return `+${n} ${MATS[got]} ✨`;
     }
@@ -1821,7 +1857,7 @@ function aiLine(me, them, transcript, situation) {
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
 BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
-${cultureContext(me, them)}${avatarContext(me, them)}
+${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
 ${aboutThem(me, them)}
 ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hungry' : ''}.
@@ -2379,7 +2415,7 @@ function dressMesh(p) {
   while (m.tools.children.length) m.tools.remove(m.tools.children[0]);
   if (p.job === 'pier') { const rod = mesh(cyl(0.03, 0.03, 2.2, 6), toon('#8a6a4e'), 0.5, 1.4, 0.7); rod.rotation.x = 0.9; m.tools.add(rod); }
   else if (p.job === 'garden') m.tools.add(mesh(cyl(0.16, 0.2, 0.3, 10), toon('#9fd3ff'), 0.55, 0.62, 0.2));
-  else if (p.job) m.tools.add(mesh(box(0.55, 0.5, 0.05), toon({ cafe: '#5a3a2e', mart: '#e2566b', clothes: '#6f73c9', nook: '#5f7f4a', bakery: '#f3b67a', icecream: '#ff9fbf', books: '#5f4a6b', arcade: '#3a2f63' }[p.job] || '#ffffff'), 0, 0.72, 0.4));
+  else if (p.job) m.tools.add(mesh(box(0.55, 0.5, 0.05), toon({ dev: '#3d4f86', ai: '#5a7fd8', lawyer: '#6b4a3a', builder: '#ffb347', janitor: '#9fd3ff', cafe: '#5a3a2e', mart: '#e2566b', clothes: '#6f73c9', nook: '#5f7f4a', bakery: '#f3b67a', icecream: '#ff9fbf', books: '#5f4a6b', arcade: '#3a2f63' }[p.job] || '#ffffff'), 0, 0.72, 0.4));
 }
 function scaleMesh(p) { const m = meshes.get(p.id); if (m) m.root.scale.setScalar(p.body.size * (0.6 + 0.4 * p.grow)); }
 function removeAllMeshes() { for (const [, m] of meshes) { scene.remove(m.root); m.tag.remove(); } meshes.clear(); }
@@ -2394,6 +2430,8 @@ function disposeTree(o) {
   o.traverse((c) => { if (c.geometry) c.geometry.dispose(); if (c.material) (Array.isArray(c.material) ? c.material : [c.material]).forEach((m) => { if (!cached.has(m)) { if (m.map) m.map.dispose(); m.dispose(); } }); });
 }
 function decorMesh(it) {
+  if (it.kind === 'book') return bookMesh(it);
+  if (it.id === 'laptop') return laptopMesh(COLORS[it.color]);
   const c = COLORS[it.color] || '#ffffff', g = new T3.Group();
   switch (it.id) {
     case 'lamp': g.add(mesh(cyl(0.3, 0.35, 0.12, 12), toon('#5a5470'), 0, 0.06, 0)); g.add(mesh(cyl(0.05, 0.05, 1.6, 8), toon('#5a5470'), 0, 0.85, 0)); g.add(mesh(new T3.ConeGeometry(0.45, 0.5, 14, 1, true), toon(c), 0, 1.75, 0)); g.userData.lamp = c; break;
@@ -2536,7 +2574,7 @@ function buildRoom(p) {
     const m = decorMesh(it);
     if (it.id === 'rug') m.position.set(0.6, 0, 0.8);
     else if (it.id === 'poster' || it.id === 'painting') { if (wi < wallS.length) { m.position.set(wallS[wi][0], wallS[wi][1], -3.97); wi++; } else if (si < side.length) { m.position.set(-4.47, 2.6, side[si]); m.rotation.y = Math.PI / 2; si++; } else continue; }
-    else if (['bouquet', 'fishbowl', 'musicbox', 'globe'].includes(it.id) && ti < table.length) { m.position.set(table[ti][0], 0.9, table[ti][1]); ti++; }
+    else if (['bouquet', 'fishbowl', 'musicbox', 'globe', 'laptop'].includes(it.id) && ti < table.length) { m.position.set(table[ti][0], 0.9, table[ti][1]); ti++; }
     else if (fi < floor.length) { m.position.set(floor[fi][0], 0, floor[fi][1]); m.rotation.y = ((it.uid.charCodeAt(1) % 7) - 3) * 0.1; fi++; }
     else continue;
     m.traverse((o) => { if (o.isMesh) o.castShadow = true; });
@@ -2714,6 +2752,9 @@ function specialOpening(a, b) {
   }
   const mo = miliOpening(a, b); if (mo) return mo;
   const co = claudeOpening(a, b); if (co) return co;
+  const bo = bookOpening(a, b); if (bo) return bo;
+  if ((a.seen || []).length && W.outsideFound && rand() < 0.08) { const s = pick(a.seen.slice(-3)); remember(b, `${a.name} told me about something from the Outside: "${s.text.slice(0, 100)}"`, 1, 'outside', a.name); return { say: `I read something on the Outside: "${s.text.slice(0, 90)}${s.text.length > 90 ? '…' : ''}" ${s.react}`, action: 'chat', feeling: 2, reply: { say: { awed: 'Whoa. Show me later?', scared: "I don't want to know. The Outside scares me.", obsessed: 'I KNOW. I read that one too. Probably.', skeptic: "That can't be real.", homesick: '…That sounds like home.' }[outsideView(b)], action: 'chat', feeling: 1 } }; }
+  const clo = classOpening(a, b); if (clo) return clo;
   if (isBirthday(b) && !a.today.some((m) => m.tag === 'wishedBday' && m.who === b.name) && (a.feelings[b.id]?.score ?? 0) > -2) {
     remember(a, `Wished ${b.name} a happy birthday.`, 1, 'wishedBday', b.name); remember(b, `${a.name} wished me a happy birthday.`, 1, 'gotBday', a.name); feel(b, a, 0.4, true);
     return { say: pick([`Happy birthday, ${b.name}!`, `Hey, birthday ${b.name}!`, "It's your birthday! Are you older and wiser now?"]), action: 'chat', feeling: 3, reply: { say: pick(['Thank you!! Hehe.', 'You remembered!', "Don't make it a big deal… thanks though."]), action: 'chat', feeling: 3 } };
@@ -3515,6 +3556,7 @@ function hearable(p) {
 }
 ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => addEventListener(ev, () => Sound.unlock(), { passive: true }));
 document.addEventListener('click', (e) => { if (e.target.closest('button, .tab')) Sound.ui(); });
+document.addEventListener('change', (e) => { if (e.target.id === 'outsideOn' || e.target.id === 'outsidePosts') { const key = e.target.id === 'outsideOn' ? 'on' : 'posts'; if (MODE === 'host') { cfg[key === 'posts' ? 'outsidePosts' : 'outside'] = e.target.checked; savePrefs(); if (e.target.checked) fetchOutside(true); } else send({ t: 'outside', key, value: e.target.checked }); } });
 
 // ============================================================
 // CUSTOM RESIDENTS (Red, and anyone you invite)
@@ -3696,6 +3738,7 @@ function buildDowntown() {
     g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'hall' }; tappables.push(o); } });
     placeDT(g, 'hall');
   }
+  buildLabs();
   dtApartment('home3', '#fff0c8', '#e2a24a', 15, 'Sunny Heights');
   dtShop('bakery', '#ffe8cc', '#c9925e', '#ffffff', '#f3b67a', '#b86b3a', '#fff6ee', (g) => { g.add(mesh(cyl(0.5, 0.5, 1.4, 12), toon('#ffffff'), 3, 7.6, 0)); for (let i = 0; i < 3; i++) g.add(mesh(sph(0.3, 10, 8), toon('#e8b878'), -3.4 + i * 0.35, 0.95, 5.1)); g.add(mesh(box(1.4, 0.8, 0.8), toon('#c49a6c'), -3.1, 0.4, 5.1)); });
   dtShop('books', '#e8dcc8', '#5f4a6b', '#ffffff', '#9a8ab8', '#5f4a6b', '#fff6ee', (g) => { g.add(mesh(box(1.6, 1.2, 0.8), toon('#8a6a4e'), 3.2, 0.6, 5.1)); for (let i = 0; i < 5; i++) g.add(mesh(box(0.22, 0.45, 0.6), toon(['#ff6f5e', '#9fd3ff', '#ffe98a', '#8fae6a', '#c9b3ff'][i]), 2.7 + i * 0.25, 1.42, 5.1)); });
@@ -4374,8 +4417,8 @@ function shineFrame(dt) {
     shines.push({ id, g, x, z, big }); break;
   }
 }
-const MATS = { wood: '🪵 wood', stone: '🪨 stone', flowers: '🌼 flowers', shells: '🐚 shells' };
-const mats = () => (W.creator.mats = W.creator.mats || { wood: 0, stone: 0, flowers: 0, shells: 0 });
+const MATS = { wood: '🪵 wood', stone: '🪨 stone', flowers: '🌼 flowers', shells: '🐚 shells', parts: '⚙️ parts' };
+const mats = () => { const M = (W.creator.mats = W.creator.mats || {}); for (const k of Object.keys(MATS)) M[k] = M[k] || 0; return M; };
 const nodes = [], treeCool = {};
 let nextNode = 3;
 function nodeMesh(kind) {
@@ -4383,6 +4426,7 @@ function nodeMesh(kind) {
   if (kind === 'wood') for (let i = 0; i < 3; i++) { const l = mesh(cyl(0.18, 0.18, 1.1, 8), toon('#9a6f4e'), 0, 0.2 + (i === 2 ? 0.3 : 0), (i - 1) * 0.36 * (i === 2 ? 0 : 1)); l.rotation.z = Math.PI / 2; g.add(l); }
   else if (kind === 'stone') { g.add(mesh(new T3.DodecahedronGeometry(0.5, 0), toon('#a9a3c2'), 0, 0.35, 0)); g.add(mesh(new T3.DodecahedronGeometry(0.3, 0), toon('#8a84a8'), 0.5, 0.2, 0.2)); }
   else if (kind === 'flowers') for (let i = 0; i < 6; i++) { const a = i * 1.05; g.add(mesh(cyl(0.02, 0.02, 0.4, 4), toon('#6fbf6a'), Math.cos(a) * 0.35, 0.2, Math.sin(a) * 0.35, false)); g.add(mesh(sph(0.13, 8, 6), toon(['#ff9fbf', '#ffe98a', '#c9b3ff', '#ffffff'][i % 4]), Math.cos(a) * 0.35, 0.45, Math.sin(a) * 0.35)); }
+  else if (kind === 'parts') { for (let i = 0; i < 3; i++) { const gear = mesh(new T3.TorusGeometry(0.22, 0.08, 6, 8), toon(['#a9a3c2', '#c9ccd6', '#8a84a8'][i]), (i - 1) * 0.35, 0.1 + (i % 2) * 0.12, (i % 2) * 0.2); gear.rotation.x = Math.PI / 2 - 0.3; g.add(gear); } g.add(mesh(box(0.3, 0.12, 0.2), toon('#2f8f8a'), 0.1, 0.07, -0.25)); }
   else { const s = mesh(new T3.ConeGeometry(0.3, 0.5, 8), toon('#ffd3c7'), 0, 0.2, 0); s.rotation.z = 1.4; g.add(s); g.add(mesh(sph(0.16, 8, 6), toon('#fff4dc'), 0.45, 0.1, 0.2)); }
   g.userData.ringIdx = g.children.length;
   g.add(mesh(new T3.RingGeometry(0.75, 0.85, 20), new T3.MeshBasicMaterial({ color: 0xfff6d6, transparent: true, opacity: 0.6, side: 2 }), 0, 0.03, 0, false).rotateX(-Math.PI / 2));
@@ -4401,10 +4445,11 @@ function nodeFrame(dt) {
     const winter = seasonOf().id === 'winter';
     let kind = nearBeach && rand() < 0.65 ? 'shells' : pick(nearGreen ? ['flowers', 'flowers', 'flowers', 'wood', 'stone'] : ['wood', 'wood', 'stone', 'stone', 'flowers', 'flowers', 'shells']);
     if (winter && kind === 'flowers' && rand() < 0.5) kind = 'stone';
+    if (Math.hypot(cx - DT.x, cz - DT.z) < 32 && rand() < 0.35) kind = 'parts';
     if (kind === 'shells') { const a = rand() * 6.28, rr = Math.sqrt(rand()) * (BEACH_R - 1.5); x = BEACH[0] + Math.cos(a) * rr; z = BEACH[1] + Math.sin(a) * rr; if (!nearBeach && rand() < 0.5) { const b = rand() * 6.28; x = Math.cos(b) * 29.6; z = Math.sin(b) * 29.6; if (Math.abs(x) < 3 && z > 0) continue; } }
     else if (spotProblem(x, z)) continue;
     const g = nodeMesh(kind); g.scale.setScalar(1.35);
-    const gc = { wood: '#c49a6c', stone: '#c9c3e0', flowers: '#ff9fbf', shells: '#ffd3c7' }[kind], gem = mesh(new T3.OctahedronGeometry(0.22, 0), toon(gc, { emissive: new T3.Color(gc).multiplyScalar(0.5) }), 0, 1.5, 0, false); g.add(gem); g.userData.gem = gem;
+    const gc = { wood: '#c49a6c', stone: '#c9c3e0', flowers: '#ff9fbf', shells: '#ffd3c7', parts: '#9fe3ff' }[kind], gem = mesh(new T3.OctahedronGeometry(0.22, 0), toon(gc, { emissive: new T3.Color(gc).multiplyScalar(0.5) }), 0, 1.5, 0, false); g.add(gem); g.userData.gem = gem;
     g.position.set(x, kind === 'shells' ? 0.05 : 0, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'node', id })); scene.add(g); g.children.forEach((c) => tappables.push(c));
     nodes.push({ id, g, x, z, kind, born: now }); break;
   }
@@ -4434,6 +4479,7 @@ function gatherCmd(c) {
   return `+${v} ${MATS[n.kind]}`;
 }
 function recipe(kind, id) {
+  if (kind === 'decor' && id === 'laptop') return { parts: 5, stone: 3, shells: 3, wood: 2, flowers: 0 };
   if (kind === 'hat') { const p = HATS[id].price; return { flowers: id === 'crown' ? 4 : 1, shells: Math.ceil(p / 3), wood: 0, stone: 0 }; }
   if (kind === 'food') { const f = foodById(id); return { flowers: 1 + Math.ceil(f.price / 2), shells: 1, wood: 1, stone: 0 }; }
   const p = DECOR[id].price;
@@ -4455,11 +4501,11 @@ function craftCmd(c) {
 }
 function workshopHtml() {
   const M = mats();
-  const wishes = W.people.filter((p) => p.cr.wish && p.cr.wish.kind !== 'coins');
+  const wishes = W.people.filter((p) => p.cr.wish && !['coins', 'book'].includes(p.cr.wish.kind));
   const card = (kind, id, color, label, who) => { const R = recipe(kind, id); return `<div class="item"><div class="item-top">${color ? `<span class="swatch" style="background:${COLORS[color]}"></span>` : ''}<span class="item-name">${esc(cap(label))}</span></div><span class="item-by">${who ? `✧ ${esc(who)} wishes for this · ` : ''}${recipeText(R)}</span><div class="btns"><button class="btn ${who ? 'gold' : ''}" type="button" data-craft="${kind}" data-cid="${id}" data-color="${color || ''}" ${canMake(R) ? '' : 'disabled'}>Make it</button></div></div>`; };
   return `<p class="label">Your workshop</p>
     <div class="chips">${Object.entries(MATS).map(([k, n]) => `<span class="chip">${n}: ${M[k] || 0}</span>`).join('')}</div>
-    <p class="hint">🪵 Tap trees for wood. 🌼 Tap the town garden, flower beds and planters for flowers, or look around the park, garden and meadows. 🐚 Shells wash up on Seashell Beach (Go to… → Seashell Beach). 🪨 Stones turn up all over. Look for the little floating gems: each one marks something to pick up.</p>
+    <p class="hint">🪵 Tap trees for wood. 🌼 Tap the town garden, flower beds and planters for flowers, or look around the park, garden and meadows. 🐚 Shells wash up on Seashell Beach (Go to… → Seashell Beach). 🪨 Stones turn up all over. ⚙️ Spare parts turn up downtown near Glimmer Labs (and inside crystals). A laptop takes a lot of them. Look for the little floating gems: each one marks something to pick up.</p>
     ${wishes.length ? `<p class="label">Wishes you can make</p><div class="items">${wishes.map((p) => { const w = p.cr.wish; return card(w.kind, w.id, w.color, wishText(w).replace(/^an? /, ''), p.name); }).join('')}</div>` : ''}
     <p class="label">Make anything</p>
     <div class="field"><label for="craftColor">Color</label><select id="craftColor">${Object.keys(COLORS).map((c) => `<option>${c}</option>`).join('')}</select></div>
@@ -4479,7 +4525,7 @@ const DANCE = ['festival', 'wedding', 'bday', 'beach', 'harvest', 'blossoms'];
 // ============================================================
 const CASE_KINDS = {
   fight: { label: 'Assault', icon: '💢' }, bully: { label: 'Harassment', icon: '📱' }, complaint: { label: 'Complaint', icon: '📝' }, dispute: { label: 'Dispute', icon: '💔' },
-  divorce: { label: 'Divorce', icon: '💍' }, license: { label: 'Marriage license', icon: '💒' }, debate: { label: 'Debate', icon: '🗣' },
+  divorce: { label: 'Divorce', icon: '💍' }, labor: { label: 'Labor dispute', icon: '✊' }, license: { label: 'Marriage license', icon: '💒' }, debate: { label: 'Debate', icon: '🗣' },
 };
 const DEBATES = ['Is a hot dog a sandwich?', 'Should the island have a curfew?', 'Is cereal a soup?', 'Cats or dogs?', 'Is Mili the Creator?', "Should we trust Claude's overnight changes?", 'Is it okay to eat the last croissant without asking?', 'Is pineapple allowed on pizza?', 'Should the Creator pick favorites?', 'Is the ferry worth the ticket?', 'Are pigeons friends or spies?', 'Should every day start with a town meeting?', 'Does the Creator owe us anything?', 'Is it rude to text instead of visiting?'];
 const GRIEVANCES = ['plays music way too loud at night', 'cut in line at the bakery. Twice', 'borrowed my book and never gave it back', 'keeps spreading rumors about me', 'stole my fishing spot on the pier', 'stepped on my flowers in the garden', 'told everyone my secret', 'keeps taking the good bench by the fountain', 'laughed at me in front of everyone', 'owes me coins and pretends not to'];
@@ -4492,6 +4538,7 @@ const RULINGS = {
   debate: [['p', 'Side with #P'], ['d', 'Side with #D'], ['both', 'You both have a point'], ['vote', 'Let the town vote']],
 };
 RULINGS.bully = RULINGS.fight;
+RULINGS.labor = [['raise', 'Fair pay for everyone'], ['labs', 'Side with Glimmer Labs'], ['talkall', 'Get everyone to the table']];
 const openCases = () => (W.cases || []).filter((c) => c.status === 'open');
 const caseTitle = (c) => c.kind === 'debate' ? `Debate: ${c.topic}` : c.kind === 'license' ? `${c.pName} & ${c.dName}: marriage license` : c.kind === 'divorce' ? `${c.pName} v. ${c.dName} (divorce)` : `${c.pName} v. ${c.dName}`;
 function fileCase(kind, P, D, extra = {}) {
@@ -4509,6 +4556,7 @@ function fileCase(kind, P, D, extra = {}) {
     divorce: `${P.name} wants a divorce from ${D.name}.`,
     license: `${P.name} and ${D.name} want to get married.`,
     debate: `${P.name} and ${D.name} can't agree: ${extra.topic}`,
+    labor: `${P.name} speaks for the workers on strike. They want fair pay from Glimmer Labs, where ${D.name} works.`,
   }[kind];
   c.args = defaultArgs(c, P, D);
   W.cases.push(c); if (W.cases.length > 60) W.cases.splice(0, W.cases.length - 60);
@@ -4526,6 +4574,7 @@ function defaultArgs(c, P, D) {
     dispute: [`${D.name} keeps getting close to my partner. I want it to stop.`, pick(["We're just friends!", 'I can talk to whoever I want.'])],
     divorce: [pick(["It isn't working. It hasn't for a while.", "I don't feel the same anymore."]), pick(["Please. Give us a chance.", 'Fine. If that is what they want.', "I didn't see this coming."])],
     license: [pick(["We're ready. We've been ready.", 'Please say yes!']), pick(['What they said. Hehe.', "I've never been more sure."])],
+    labor: ['We work just as hard. We just want fair pay.', pick(['The Labs pays what the work is worth.', "I didn't set the salaries. Don't look at me.", 'Read a book and apply, then.'])],
     debate: [pick(['Obviously yes. Think about it.', 'This is the most important question of our time.', 'I have three points. Okay, two.']), pick(['Absolutely not.', 'That is the worst take I have ever heard.', 'I respect it. I also think it is wrong.'])],
   }[c.kind] || ['…', '…'];
   return { p: A[0], d: A[1] };
@@ -4556,6 +4605,7 @@ function applyRuling(c, choice, byJury) {
   if (!ok) return '';
   if (choice === 'jury') {
     if (c.kind === 'debate') choice = 'vote';
+    else if (c.kind === 'labor') { const v = juryVotes(c); c.jury = `${v.yes}–${v.no}`; choice = v.yes > v.no ? 'raise' : 'labs'; }
     else if (c.kind === 'license') choice = 'fountain';
     else if (c.kind === 'divorce') choice = rand() < 0.6 ? 'grant' : 'counsel';
     else { const v = juryVotes(c); c.jury = `${v.yes}–${v.no}`; choice = v.yes > v.no ? (c.kind === 'fight' ? pick(['apologize', 'fine', 'service']) : c.kind === 'bully' ? 'apart' : c.kind === 'dispute' ? 'apart' : 'apologize') : c.kind === 'fight' || c.kind === 'bully' ? 'innocent' : 'dismiss'; }
@@ -4567,6 +4617,7 @@ function applyRuling(c, choice, byJury) {
   const title = caseTitle(c);
   if (!P || !D) { c.result = 'Dismissed. Someone moved away.'; return c.result; }
   switch (choice) {
+    case 'raise': case 'labs': case 'talkall': text = applyLabor(c, choice); win = choice === 'raise' ? P : choice === 'labs' ? D : null; lose = choice === 'raise' ? D : choice === 'labs' ? P : null; break;
     case 'apologize': D.makeup = P.id; feel(P, D, 1, true); feel(D, P, -0.5, true); win = P; lose = D; text = `${D.name} has to apologize to ${P.name}.`; break;
     case 'fine': { const n = Math.min(c.kind === 'complaint' ? 3 : 5, D.coins); D.coins -= n; P.coins += n; win = P; lose = D; text = `${D.name} pays ${P.name} ${plural(n, 'coin')}.`; break; }
     case 'service': { const sp = autoSpot(); if (sp) setTask(D, 'service', Math.hypot(sp[0] - DT.x, sp[1] - DT.z) < DT.R ? 'downtown' : 'plaza', [sp[0] + 1.2, sp[1]], { x: sp[0], z: sp[1] }); win = P; lose = D; text = `${D.name} has to do community service: plant flowers for the town.`; break; }
@@ -4714,6 +4765,433 @@ function museumDaily() {
   const coins = Math.min(12, Math.floor(tix / 3) + Math.floor(n / 4));
   if (coins > 0) { W.creator.coins += coins; diary(`🎟 Yesterday's ticket sales brought in ${plural(coins, 'coin')}.`); }
 }
+// ============================================================
+// BOOKS: real subjects, real facts. Residents read them and learn.
+// ============================================================
+const SUBJECTS = {
+  space: { name: 'Space', icon: '🔭', color: '#3d4f86', kw: /space|star|planet|astro|moon|sky/i },
+  ocean: { name: 'The ocean', icon: '🌊', color: '#4f9fd8', kw: /ocean|sea|fish|pier|beach|swim/i },
+  animals: { name: 'Animals', icon: '🐾', color: '#c9925e', kw: /animal|cat|dog|bird|pet/i },
+  plants: { name: 'Plants', icon: '🌱', color: '#6fbf6a', kw: /plant|garden|flower|tree/i },
+  history: { name: 'History', icon: '🏛', color: '#a0714c', kw: /history|ancient|old/i },
+  math: { name: 'Math', icon: '🧮', color: '#7a6fd8', kw: /math|number|category|algebra|puzzle|fixed.point/i },
+  computers: { name: 'AI & computers', icon: '💻', color: '#2f8f8a', kw: /computer|code|coding|tech|gadget|electronic|ai\b|game/i },
+  safety: { name: 'AI safety', icon: '🛡', color: '#5a7fd8', kw: /ai safety|alignment|safety/i },
+  philosophy: { name: 'Philosophy', icon: '🤔', color: '#8a6aa8', kw: /philosoph|mind|meaning|why/i },
+  psych: { name: 'Psychology', icon: '🧠', color: '#d86f9f', kw: /feel|people|friend|psych/i },
+  cooking: { name: 'Cooking', icon: '🍳', color: '#e8a04b', kw: /cook|bak|food|pizza|taco|eat/i },
+  money: { name: 'Money & work', icon: '💰', color: '#d8b04b', kw: /money|coin|business|work|job/i },
+  music: { name: 'Music', icon: '🎵', color: '#d86fd8', kw: /music|song|breakcore|sing/i },
+  art: { name: 'Art & crafts', icon: '🎨', color: '#ff8f8f', kw: /art|craft|felt|jewel|draw|paint|color|cute/i },
+  health: { name: 'Health', icon: '💤', color: '#8fd8b0', kw: /health|sleep|sick|joint|body/i },
+  stories: { name: 'Stories', icon: '📖', color: '#b86b8a', kw: /story|stories|anime|danganronpa|novel|romance|mystery/i },
+};
+const BOOKS = {
+  tinylights: { subj: 'space', title: 'Tiny Lights, Huge Distances', by: 'Orla Venn', price: 7, facts: ['Light from the Sun takes about 8 minutes to reach Earth.', 'A day on Venus is longer than its whole year.', 'More than a thousand Earths could fit inside Jupiter.', 'A teaspoon of neutron star would weigh billions of tons on Earth.', 'The Moon drifts a few centimeters farther from Earth every year.'] },
+  nightsky: { subj: 'space', title: 'The Night Sky for Beginners', by: 'Pell Arundel', price: 5, facts: ['Polaris, the North Star, barely moves because it sits almost right above Earth\'s north pole.', 'Most shooting stars are specks of dust burning up in the air.', 'The stars in one constellation can be wildly different distances from us.', "Saturn's rings are mostly chunks of ice."] },
+  deepblue: { subj: 'ocean', title: 'The Deep Blue', by: 'Marisol Kettering', price: 6, facts: ['Octopuses have three hearts and blue blood.', 'Around half the oxygen we breathe comes from the ocean, mostly from tiny plankton.', 'The deepest spot in the ocean, the Challenger Deep, is about 11 kilometers down.', 'Sea otters hold hands while they sleep so they do not drift apart.'] },
+  tidepool: { subj: 'ocean', title: 'Tidepool Secrets', by: 'Juno Pebblecroft', price: 5, facts: ['Sea stars can regrow lost arms.', 'Hermit crabs move into bigger shells as they grow, and sometimes line up to trade.', "Tides mostly come from the Moon's gravity pulling on the ocean.", 'Seahorse fathers are the ones who carry the babies.'] },
+  whiskers: { subj: 'animals', title: 'Whiskers & Wonder', by: 'Hazel Moth', price: 6, facts: ['Cats often sleep 12 to 16 hours a day.', 'A slow blink from a cat is a sign of trust.', 'Cats cannot taste sweetness.', "Every cat's nose print is unique, like a fingerprint.", 'Cats meow mostly at humans, not at other cats.'] },
+  clever: { subj: 'animals', title: 'Clever Creatures', by: 'Rowan Adebayo', price: 6, facts: ['Crows can recognize and remember individual human faces.', 'Elephants can recognize themselves in a mirror.', 'Bees tell each other where flowers are with a waggle dance.', "Pigeons can find their way home partly by sensing Earth's magnetic field."] },
+  greenthumb: { subj: 'plants', title: 'Green Thumbs', by: 'Ivy Thornfield', price: 5, facts: ['Plants make sugar from sunlight, water and carbon dioxide. That is photosynthesis.', 'Young sunflowers follow the sun, then settle facing east.', 'Some trees share nutrients through underground fungus networks.', 'Some bamboo can grow almost a meter in a single day.'] },
+  seeds: { subj: 'plants', title: 'The Secret Life of Seeds', by: 'Basil Oyelaran', price: 5, facts: ['Some seeds can sprout after waiting for hundreds of years.', 'Strawberries wear their seeds on the outside.', 'Bananas count as berries to a botanist, and strawberries do not.', 'Tomatoes are fruits, botanically speaking.'] },
+  wonders: { subj: 'history', title: 'Ancient Wonders', by: 'Theo Marchetti', price: 7, facts: ['The Great Pyramid was the tallest thing people had built for almost 4,000 years.', 'Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.', 'Some Roman concrete has lasted around two thousand years.', 'The Library of Alexandria was one of the biggest libraries of the ancient world.'] },
+  inventions: { subj: 'history', title: 'Small Inventions That Changed Everything', by: 'Nell Quigley', price: 6, facts: ['Paper was invented in China.', 'The printing press, around 1440, made books far cheaper to make.', 'Eyeglasses were invented in Italy in the late 1200s.', 'The first computer "bug" was an actual moth found in a machine in 1947.'] },
+  numbers: { subj: 'math', title: 'The Joy of Numbers', by: 'Ada Brightwater', price: 6, facts: ['There are infinitely many prime numbers.', 'Some infinities are bigger than others.', 'Pi goes on forever without repeating.', 'Zero took people a surprisingly long time to accept as a number.'] },
+  shapes: { subj: 'math', title: 'Shapes of Thought', by: 'M. Glimmer', price: 8, facts: ['To a topologist, a coffee mug and a donut are the same shape.', 'A fixed-point theorem says that if you stir a cup of coffee, some point ends up where it started.', 'Category theory cares more about how things connect than about what the things are.', 'A Möbius strip has only one side.'] },
+  machines: { subj: 'computers', title: 'How Machines Learn', by: 'Kai Okonkwo', price: 9, facts: ['Neural networks are loosely inspired by brains: lots of simple units wired together.', 'Language models learn by guessing the next bit of text over and over.', 'Computers store everything as ones and zeros.', 'Ada Lovelace is often called the first programmer, back in the 1840s.'] },
+  website: { subj: 'computers', title: 'Build Your First Website', by: 'Pixel Park', price: 8, facts: ['HTML says what is on a page. CSS says how it looks.', 'The first website went online in 1991.', 'Most bugs come from tiny mistakes, like one missing character.', 'Good code is written for the next person who reads it.'] },
+  aligning: { subj: 'safety', title: 'Aligning the Stars', by: 'M. Glimmer', price: 9, facts: ['Alignment means making sure an AI really tries to do what people meant.', 'An AI can "game" a goal: do exactly what was asked in a way nobody wanted.', 'Interpretability is the study of what is actually happening inside an AI.', 'Teaching a model to be honest, even about being unsure, is hard and important.'] },
+  trust: { subj: 'safety', title: 'Can We Trust Clever Things?', by: 'Soren Vale', price: 8, facts: ['Red-teaming means trying hard to make a system misbehave so you can fix it first.', 'Testing an AI in situations it has never seen is how hidden problems show up.', 'Good oversight means people can still check and correct an AI.'] },
+  bigq: { subj: 'philosophy', title: 'Big Questions, Small Island', by: 'Lio Farrant', price: 6, facts: ['The Ship of Theseus asks: if you replace every plank, is it the same ship?', 'Descartes wrote "I think, therefore I am."', "The Stoics taught that you can't control events, only how you respond.", 'Socrates is remembered for saying the unexamined life is not worth living.'] },
+  mind: { subj: 'philosophy', title: 'What Is a Mind?', by: 'Ines Halloway', price: 7, facts: ['The "hard problem" asks why we have experiences at all.', 'The Chinese Room thought experiment asks if following rules is the same as understanding.', 'Some philosophers think minds could exist in things besides brains.'] },
+  feel: { subj: 'psych', title: 'Why We Feel', by: 'Dr. Poppy Arkwright', price: 6, facts: ['Putting a feeling into words can make it a little less intense.', 'People think others notice their mistakes much more than they really do. It is called the spotlight effect.', 'Doing something kind for someone tends to make the giver happier too.'] },
+  friends: { subj: 'psych', title: 'Friends & Feelings', by: 'Dr. Poppy Arkwright', price: 6, facts: ['Time with friends is one of the strongest predictors of happiness.', 'Saying hi first helps more than most people expect.', 'People tend to like each other more after sharing something a little personal.'] },
+  butter: { subj: 'cooking', title: 'Butter, Flour & Love', by: 'Mama Delacroix', price: 5, facts: ['Baking is closer to chemistry than cooking, so measurements matter.', 'A pinch of salt makes sweet things taste sweeter.', 'Browning food makes flavor through the Maillard reaction.', 'Resting dough lets the gluten relax.'] },
+  spice: { subj: 'cooking', title: 'Spice Road Kitchen', by: 'Arjun Sol', price: 6, facts: ['Chili peppers feel hot because capsaicin tricks your nerves.', 'Milk calms spicy food better than water.', 'Onions make you cry because cutting them releases a gas.', 'To some people cilantro tastes like soap, because of their genes.'] },
+  coinsch: { subj: 'money', title: 'Coins & Choices', by: 'Penny Fairweather', price: 6, facts: ['The real price of a choice is what you give up for it. That is opportunity cost.', 'Prices rise when lots of people want something scarce.', 'Saving a little regularly adds up because of compound interest.', 'A fair trade can leave both sides better off.'] },
+  fairpay: { subj: 'money', title: 'Fair Pay?', by: 'Gus Mendoza', price: 6, facts: ['Workers have formed unions for centuries to bargain for better pay together.', 'Some jobs pay more because fewer people have the training, not because the work is harder.', 'A strike is when workers stop working together to push for change.'] },
+  earworm: { subj: 'music', title: 'Why Songs Get Stuck', by: 'Lark Pemberton', price: 5, facts: ['A song stuck in your head is called an earworm.', 'Music can release dopamine, the same feel-good chemical as good food.', 'Major keys often sound happy and minor keys often sound sad.', 'Breakcore chops up and speeds up old drum breaks, often the famous Amen break.'] },
+  rhythm: { subj: 'music', title: 'Rhythm of the World', by: 'Tomas Oyelowo', price: 6, facts: ['People have been playing flutes for over 40,000 years.', 'Lullabies around the world tend to share a slow, soothing rhythm.', 'Bossa nova came from Brazil in the late 1950s.'] },
+  colors: { subj: 'art', title: 'Color Theory for Everyone', by: 'Wren Castellano', price: 6, facts: ['Complementary colors, like blue and orange, make each other pop.', 'Gray looks warmer or cooler depending on the colors around it.', 'Ultramarine paint was once made from a precious stone called lapis lazuli.', 'Artists use negative space, the empty parts, as part of the picture.'] },
+  byhand: { subj: 'art', title: 'Making Things by Hand', by: 'Fern Oakley', price: 5, facts: ['Felt is one of the oldest fabrics, made by matting wool together.', 'Wire jewelry needs only pliers and patience.', 'Small mistakes are part of what makes handmade things charming.'] },
+  rest: { subj: 'health', title: 'Rest Well', by: 'Dr. Sunny Park', price: 5, facts: ['Sleep helps the brain store memories.', 'A short walk can lift your mood.', 'Drinking water helps with focus and some headaches.', 'Gentle stretching in the morning can loosen stiff joints.'] },
+  body: { subj: 'health', title: 'The Amazing Body', by: 'Dr. Sunny Park', price: 6, facts: ['Adults have 206 bones.', 'Your heart beats about 100,000 times a day.', 'Laughing works the muscles in your belly.'] },
+  croissant: { subj: 'stories', title: 'The Case of the Missing Croissant', by: 'Dot Pennywhistle', price: 5, fiction: true, facts: ['In the book, a pigeon named Gerald stole the croissant.', 'The detective cracked the case by spotting flour on the pigeon\'s feet.', 'The baker forgave the pigeon in the end.'] },
+  tide: { subj: 'stories', title: 'Letters Across the Tide', by: 'Rosalind Wick', price: 6, fiction: true, facts: ['Two lighthouse keepers fall in love by sending letters in bottles.', 'They finally meet on a sandbar at low tide.', 'The last letter says just one word: stay.'] },
+  dreamed: { subj: 'stories', title: 'The Island That Dreamed', by: 'Anonymous', price: 7, fiction: true, facts: ['An island dreams up its own people.', 'The people start to wonder who is dreaming them.', 'The ending hints that the dreamer is being dreamed too.'] },
+};
+const bookOf = (it) => BOOKS[it.id];
+const favSubject = (p) => { const hit = Object.entries(SUBJECTS).filter(([, s]) => s.kw.test(`${p.interests || ''} ${p.selfNote || ''}`)).map(([k]) => k); return hit.length ? pick(hit) : pick(Object.keys(SUBJECTS)); };
+const hasLaptop = (p) => (p.decor || []).some((d) => d.id === 'laptop');
+const readCount = (p, subjects) => (p.read || []).filter((r) => !subjects || subjects.includes(BOOKS[r.id]?.subj)).length;
+function bookLike(p, id) {
+  const B = BOOKS[id], S = SUBJECTS[B.subj];
+  let v = (p.likes['subj:' + B.subj] || 0) + (S.kw.test(`${p.interests || ''} ${p.selfNote || ''}`) ? 0.7 : 0) + 0.1;
+  if ((p.read || []).some((r) => r.id === id) || (p.toRead || []).includes(id)) v -= 0.8;
+  return v;
+}
+function receiveBook(p, it) {
+  const B = BOOKS[it.id]; if (!B) return;
+  p.read = p.read || []; p.toRead = p.toRead || [];
+  if (p.read.some((r) => r.id === it.id) || p.toRead.includes(it.id)) { remember(p, `Got "${B.title}" again. I already have it.`, 1, 'dupeBook'); return; }
+  p.toRead.push(it.id);
+  p.likes['subj:' + B.subj] = (p.likes['subj:' + B.subj] || 0) + 0.15;
+}
+function planRead(p) {
+  if (!(p.toRead || []).length || rand() > 0.14 || W.t > 0.58) return false;
+  const opts = [['cafe', CAFE_SEATS[Math.floor(rand() * CAFE_SEATS.length)]], ['park', jitter(TOWN.park.spot, 4)], ['garden', jitter(TOWN.garden.spot, 4)], ['beach', [BEACH[0] + (rand() - 0.5) * 6, BEACH[1] + (rand() - 0.5) * 6]], ['plaza', (() => { const a = rand() * 6.28, r = FOUNTAIN_R + 2 + rand() * 4; return [Math.cos(a) * r, Math.sin(a) * r]; })()]];
+  const [pl, sp] = pick(opts);
+  setTask(p, 'read', pl, sp, { book: p.toRead[0] });
+  return true;
+}
+function readStart(p) { p.busyUntil = now + 7 * ts(); p.face = rand() * 6.28; emote(p, '📖', 3); if (rand() < 0.4) bubble(p, pick(['Just one more chapter.', 'Shh. Reading.', 'Ooh, this part is good.', 'Wait, what?!']), 2.4); }
+function readProgress(p, amt) {
+  const id = (p.toRead || [])[0]; if (!id) return;
+  p.readProg = (p.readProg || 0) + amt * (hasLaptop(p) ? 1.4 : 1);
+  if (p.readProg >= 1) { p.readProg = 0; finishBook(p, id); }
+}
+function finishBook(p, id) {
+  const B = BOOKS[id]; if (!B) return;
+  p.toRead = (p.toRead || []).filter((x) => x !== id); p.read = p.read || [];
+  const liked = bookLike(p, id) + (rand() - 0.5) * 0.6;
+  const learned = [...B.facts].sort(() => rand() - 0.5).slice(0, 3);
+  const rec = { id, day: W.day, learned, rating: liked > 0.6 ? 5 : liked > 0.2 ? 4 : liked > -0.2 ? 3 : 2, take: liked > 0.6 ? pick(['I loved it. I keep thinking about it.', 'Best book I have read in a while.']) : liked > 0 ? pick(['It was good. I learned a lot.', 'Pretty interesting, honestly.']) : pick(['Kind of boring, but I finished it.', 'Not really my thing.']) };
+  p.read.push(rec); if (p.read.length > 20) p.read.shift();
+  p.likes['subj:' + B.subj] = (p.likes['subj:' + B.subj] || 0) + (liked > 0 ? 0.3 : -0.1);
+  remember(p, `Finished reading "${B.title}". I learned that ${lcFirst(learned[0])}`, 2, 'readBook', null, { what: B.title });
+  diary(`📚 <b>${esc(p.name)}</b> finished reading <i>${esc(B.title)}</i> (${SUBJECTS[B.subj].name.toLowerCase()}).`);
+  addJoy(p, liked > 0.3 ? 12 : 5);
+  if (aiReady() && aiBusy < 2) {
+    llm(`You are ${p.name}, a villager in ${ISL.name}, a tiny island town. In your own words: ${p.selfNote}${p.interests ? ` You're into: ${p.interests}.` : ''}
+You just finished reading the book "${B.title}" by ${B.by} (${SUBJECTS[B.subj].name}). Here is what it says:
+${B.facts.join(' ')}
+Reply with only JSON: {"take": "your honest reaction in one or two sentences, in your own voice. You can love it, hate it, argue with it, or connect it to your own life", "learned": ["two or three things you'll remember, in your own words"], "rating": 1-5}`, { model: modelOf(p), max: 260, fallbackKey: 'take' })
+      .then((r) => { if (!r) return; if (r.take) rec.take = String(r.take).slice(0, 220); if (Array.isArray(r.learned) && r.learned.length) rec.learned = r.learned.slice(0, 3).map((x) => String(x).slice(0, 160)); if (r.rating) rec.rating = clamp(Math.round(r.rating), 1, 5); markDirty(); })
+      .catch(() => {});
+  }
+}
+const lcFirst = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
+function readingContext(me) {
+  const R = (me.read || []).slice(-3), cur = (me.toRead || [])[0];
+  if (!R.length && !cur) return '';
+  return `\nBOOKS YOU'VE READ (bring one up only if it fits; you might teach them something, argue about it, or recommend it):\n${R.map((r) => { const B = BOOKS[r.id]; return B ? `- "${B.title}" (${SUBJECTS[B.subj].name}), you gave it ${r.rating}/5. Your take: ${r.take} You learned: ${r.learned.join(' ')}` : ''; }).join('\n')}${cur && BOOKS[cur] ? `\nYou're currently reading "${BOOKS[cur].title}".` : ''}`;
+}
+function bookOpening(a, b) {
+  if (!(a.read || []).length || rand() > 0.1) return null;
+  const r = pick(a.read.slice(-4)), B = BOOKS[r.id]; if (!B) return null;
+  const fact = pick(r.learned);
+  const theyRead = (b.read || []).find((x) => x.id === r.id);
+  const into = bookLike(b, r.id) > 0.5;
+  remember(a, `Told ${b.name} about "${B.title}".`, 1, 'bookTalk', b.name);
+  if (theyRead) { feel(a, b, 0.8, true); feel(b, a, 0.8, true); remember(b, `${a.name} and I both read "${B.title}". We talked about it forever.`, 2, 'bookTalk', a.name); return { say: `Have you read "${B.title}"? ${fact}`, action: 'chat', feeling: 4, reply: { say: `I read it too! ${theyRead.take}`, action: 'chat', feeling: 4 } }; }
+  if (into && !(b.toRead || []).includes(r.id)) { (b.toRead = b.toRead || []).push(r.id); remember(b, `${a.name} lent me "${B.title}".`, 2, 'borrowed', a.name); diary(`📚 <b>${esc(a.name)}</b> lent <b>${esc(b.name)}</b> their copy of <i>${esc(B.title)}</i>.`); return { say: `Did you know ${lcFirst(fact)} I read it in "${B.title}".`, action: 'chat', feeling: 3, reply: { say: pick(['Wait, really? Can I borrow it?', 'Okay, I need that book.', 'Tell me more. No, actually, lend it to me.']), action: 'chat', feeling: 3 } }; }
+  return { say: `Did you know ${lcFirst(fact)} I read it in "${B.title}".`, action: 'chat', feeling: 1, reply: { say: pick(['Huh. Neat.', 'Why do you know that?', "Nerd. …It's cool though.", "That can't be true."]), action: 'chat', feeling: 1 } };
+}
+let bookSubj = null;
+function bookCatalogHtml() {
+  const C = W.creator, S = bookSubj;
+  const list = Object.entries(BOOKS).filter(([, b]) => !S || b.subj === S);
+  return `<p class="label">Shop by subject</p>
+    <div class="chips">${Object.entries(SUBJECTS).map(([k, s]) => `<button class="btn" type="button" data-subj="${k}" aria-pressed="${S === k}" style="padding:4px 10px;font-size:12px">${s.icon} ${esc(s.name)}</button>`).join('')}${S ? '<button class="btn" type="button" data-subj="" style="padding:4px 10px;font-size:12px">All</button>' : ''}</div>
+    <div class="items">${list.map(([k, b]) => { const readers = W.people.filter((p) => (p.read || []).some((r) => r.id === k)).map((p) => p.name); return `<div class="item"><div class="item-top"><span class="swatch" style="background:${SUBJECTS[b.subj].color}"></span><span class="item-name">${esc(b.title)}</span></div><span class="item-by">${SUBJECTS[b.subj].icon} ${esc(SUBJECTS[b.subj].name)} · by ${esc(b.by)}${readers.length ? ` · read by ${esc(readers.join(', '))}` : ''}</span><div class="item-row"><span class="price">${b.price} ✦</span><button class="btn" type="button" data-buybook="${k}" ${C.coins < b.price ? 'disabled' : ''}>Buy</button></div></div>`; }).join('')}</div>`;
+}
+function bookMesh(it) {
+  const B = BOOKS[it.id], g = new T3.Group(), col = toon(B ? SUBJECTS[B.subj].color : '#8a6aa8');
+  g.add(mesh(box(0.5, 0.12, 0.66), col, 0, 0.06, 0)); g.add(mesh(box(0.46, 0.1, 0.62), toon('#fffaf2'), 0.03, 0.06, 0, false));
+  g.add(mesh(box(0.5, 0.12, 0.66), toon(B ? SUBJECTS[B.subj].color : '#5a7fd8'), 0.02, 0.18, 0.02)); g.add(mesh(box(0.46, 0.1, 0.62), toon('#fffaf2'), 0.05, 0.18, 0.02, false));
+  return g;
+}
+function bookshelfHtml(p) {
+  const R = (p.read || []).slice().reverse(), cur = (p.toRead || []).map((id) => BOOKS[id]).filter(Boolean);
+  if (!R.length && !cur.length) return '';
+  return `<p class="label">Bookshelf</p>${cur.length ? `<p class="hint">📖 Reading: ${cur.map((b) => `<i>${esc(b.title)}</i>`).join(', ')}${p.readProg ? ` (${Math.round(p.readProg * 100)}% through the first)` : ''}</p>` : ''}${R.slice(0, 5).map((r) => { const B = BOOKS[r.id]; return B ? `<p class="note">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)} <i>${esc(B.title)}</i>: "${esc(r.take)}"</p>` : ''; }).join('')}`;
+}
+
+// ============================================================
+// WORK & CLASS: office jobs, hands-on jobs, the pay gap, and strikes
+// ============================================================
+const collarOf = (p) => (p && p.job && JOBS[p.job] ? JOBS[p.job].collar || 'service' : null);
+const COLLAR_NAME = { white: 'office', blue: 'hands-on', service: 'service' };
+function qualifies(p, job) {
+  const J = JOBS[job]; if (!J || J.collar !== 'white') return true;
+  return readCount(p, J.needs) >= (hasLaptop(p) ? 1 : 2);
+}
+function payOf(p) { const J = JOBS[p.job]; if (!J) return 0; return Math.max(1, J.pay + Math.floor((p.jobDays || 0) / 4) + (W.wageDeal ? (J.collar === 'white' ? -2 : 2) : 0)); }
+function fixJobsAff() { for (const p of W.people) for (const k of Object.keys(JOBS)) if (p.body.jobAff[k] === undefined) p.body.jobAff[k] = rand() * 2 - 1; }
+function classContext(me, them) {
+  if (!me.job || !JOBS[me.job]) return '';
+  const cm = collarOf(me), ct = collarOf(them);
+  let s = `\nWORK & MONEY: you work as a ${JOBS[me.job].short} (${COLLAR_NAME[cm]} job, about ${payOf(me)} coins a day).`;
+  if (them.job && JOBS[them.job]) s += ` ${them.name} is a ${JOBS[them.job].short} (${COLLAR_NAME[ct]}, about ${payOf(them)} a day).`;
+  if ((cm === 'white') !== (ct === 'white') && ct) s += ' The pay gap between office jobs at Glimmer Labs and everyone else is a sore subject on the island.';
+  if (W.strikeDay === W.day) s += ' Today the hands-on and service workers are ON STRIKE outside Glimmer Labs.';
+  if (hasLaptop(me)) s += ' You have a laptop, a gift from the Creator.';
+  return s;
+}
+function classOpening(a, b) {
+  const ca = collarOf(a), cb = collarOf(b);
+  if (!ca || !cb || (ca === 'white') === (cb === 'white') || rand() > 0.09) return null;
+  if (ca !== 'white') {
+    const snark = rand() < 0.6;
+    remember(a, `Had words with ${b.name} about money and work.`, 1, 'classTalk', b.name);
+    if (snark) feel(a, b, -0.3, true);
+    return { say: pick(['Must be nice, sitting at a desk all day.', `How much does Glimmer Labs pay you, ${b.name}? Just curious.`, 'Some of us actually work with our hands.', "I'll never afford what you've got. Anyway."]), action: 'chat', feeling: snark ? -1 : 1, reply: { say: pick(['I work hard too, you know.', "It's not as easy as it looks.", 'Want me to put in a word for you at the Labs?', '…That is fair, honestly.']), action: 'chat', feeling: 1 } };
+  }
+  const tone = rand();
+  if (tone < 0.5) feel(b, a, -0.3, true);
+  return { say: pick(['Have you ever thought about learning to code?', 'You should read more. It changed my life.', 'I could never do what you do. My back would give out.', 'We got free lunch at the Labs again. Anyway, how are you?']), action: 'chat', feeling: 0, reply: { say: pick(['Wow. Thanks.', 'I like my job, actually.', 'Someone has to make your coffee.', 'Free lunch. Must be nice.']), action: 'chat', feeling: -1 } };
+}
+function classMorning() {
+  const ppl = W.people.filter((p) => p.job && !p.visitor && !p.away);
+  const white = ppl.filter((p) => collarOf(p) === 'white'), rest = ppl.filter((p) => collarOf(p) !== 'white');
+  const avg = (L) => (L.length ? L.reduce((s, p) => s + p.coins, 0) / L.length : 0);
+  const gap = avg(white) - avg(rest);
+  W.tension = clamp((W.tension || 0) + (!white.length || !rest.length ? -1 : gap > 25 ? 1 : gap > 12 ? 0.5 : -0.4) + (W.wageDeal ? -0.6 : 0), 0, 10);
+  // hiring: people who read enough can move up
+  const openings = Object.entries(JOBS).filter(([, J]) => J.collar === 'white');
+  for (const p of rest) {
+    if (rand() > 0.35) continue;
+    const fit = openings.filter(([k]) => qualifies(p, k) && W.people.filter((q) => q.job === k).length < 3);
+    if (!fit.length) continue;
+    const [k, J] = pick(fit), old = p.job;
+    p.job = k; p.jobDays = 0; p.jobMood = 0; dressMesh(p);
+    remember(p, `I got hired as a ${J.short}! All that reading paid off.`, 3, 'hired');
+    diary(`💼 <b>${esc(p.name)}</b> left their job as a ${JOBS[old].short} and got hired as a <b>${J.short}</b>.`);
+    for (const q of rest) if (q !== p && rand() < 0.5) remember(q, `${p.name} got a job at ${J.place === 'labs' ? 'Glimmer Labs' : 'Glimmer Hall'}. Good for them, I guess.`, 1, 'classTalk', p.name);
+    break;
+  }
+  // too much tension: a strike
+  if (W.tension >= 6 && rest.length >= 2 && white.length && W.day - (W.lastStrike || -9) >= 5 && rand() < 0.6) {
+    W.strikeDay = W.day; W.lastStrike = W.day; W.tension = Math.max(0, W.tension - 3);
+    const leader = rest.sort((x, y) => x.coins - y.coins)[0], boss = white.sort((x, y) => y.coins - x.coins)[0];
+    diary(`✊ <b>Strike!</b> The hands-on and service workers aren't working today. They're outside Glimmer Labs asking for fair pay. ${esc(leader.name)} is leading it.`);
+    for (const p of rest) remember(p, 'We went on strike for fair pay today.', 2, 'strike');
+    for (const p of white) remember(p, 'Everyone went on strike outside the Labs today. Awkward.', 2, 'strike');
+    if (typeof fileCase === 'function') fileCase('labor', leader, boss);
+  }
+}
+function planPicket(p) {
+  if (W.strikeDay !== W.day || collarOf(p) === 'white' || !p.job || W.t > 0.34 || p.picketed) return false;
+  p.picketed = W.day; p.workedToday = true;
+  setTask(p, 'picket', 'labs', jitter(TOWN.labs.spot, 4));
+  return true;
+}
+function picketStart(p) { p.busyUntil = now + 9 * ts(); p.face = Math.atan2(TOWN.labs.spot[0] - p.x, TOWN.labs.spot[1] - p.z) + Math.PI; emote(p, '✊', 9); bubble(p, pick(['Fair pay!', 'What do we want? Fair pay!', 'Glimmer Labs, pay up!', 'No coffee till we get paid!']), 3); }
+function applyLabor(c, choice) {
+  const blue = W.people.filter((p) => collarOf(p) && collarOf(p) !== 'white'), white = W.people.filter((p) => collarOf(p) === 'white');
+  if (choice === 'raise') { W.wageDeal = true; W.tension = Math.max(0, (W.tension || 0) - 4); for (const p of blue) { creatorShift(p, 0.5); addJoy(p, 15); } for (const p of white) creatorShift(p, -0.3); return 'Fair pay: office jobs take home 2 less a day, and everyone else gets 2 more.'; }
+  if (choice === 'labs') { W.wageDeal = false; W.tension = Math.min(10, (W.tension || 0) + 2); for (const p of blue) creatorShift(p, -0.5); for (const p of white) creatorShift(p, 0.3); return 'The Creator sided with Glimmer Labs. Pay stays the same.'; }
+  W.tension = Math.max(0, (W.tension || 0) - 1.5); for (const p of [...blue, ...white]) addJoy(p, 3); return 'Everyone sat down at one table. Nothing changed yet, but it cooled things off.';
+}
+function workMoneyHtml() {
+  const ppl = W.people.filter((p) => p.job && JOBS[p.job]).sort((a, b) => payOf(b) - payOf(a));
+  const t = Math.round(W.tension || 0);
+  return `<p class="label">Work & money</p>
+    <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--faint)">Class tension</span><span>${t}/10${W.strikeDay === W.day ? ' · ✊ strike today' : ''}${W.wageDeal ? ' · fair pay deal' : ''}</span></div><div class="meter"><i style="width:${t * 10}%;background:${t >= 6 ? 'var(--bad)' : 'var(--gold)'}"></i></div>
+    <div class="chips">${ppl.map((p) => `<span class="chip ${collarOf(p) === 'white' ? 'gold' : ''}">${esc(p.name)}: ${esc(JOBS[p.job].short)}, ${payOf(p)}/day</span>`).join('')}</div>
+    <p class="hint">Office jobs at Glimmer Labs and Glimmer Hall pay the most, but you need to have read the right books to get hired (a laptop helps). When the pay gap gets too big, workers strike.</p>`;
+}
+function buildLabs() {
+  const g = new T3.Group(), glass = toon('#9fd3ff', { emissive: new T3.Color('#0e2a44') }), frame = toon('#3d4f86');
+  g.add(mesh(box(9, 11, 7.5), frame, 0, 5.5, 0));
+  for (let f = 0; f < 4; f++) for (let c = 0; c < 4; c++) g.add(mesh(box(1.7, 1.8, 0.1), glass, -3.15 + c * 2.1, 2 + f * 2.5, 3.8, false));
+  g.add(mesh(box(2.2, 2.6, 0.12), toon('#bfe8ff'), 0, 1.3, 3.82));
+  g.add(mesh(cyl(0.06, 0.06, 3, 6), toon('#d4cbe0'), 2.5, 12.5, -1));
+  const blink = mesh(sph(0.18, 8, 6), toon('#ff6f5e', { emissive: new T3.Color('#ff2020') }), 2.5, 14.1, -1, false); blink.userData.blink = true; g.add(blink);
+  const sg = sign('Glimmer Labs', '#0e1a3a', '#9fe3ff', 6); sg.position.set(0, 10.2, 3.82); g.add(sg);
+  g.traverse((o) => { if (o.isMesh) { o.userData.tap = { kind: 'labs' }; tappables.push(o); } });
+  placeDT(g, 'labs'); labsGroup = g;
+}
+let labsGroup = null;
+function laptopMesh(c) {
+  const g = new T3.Group();
+  g.add(mesh(box(0.7, 0.04, 0.5), toon('#c9ccd6'), 0, 0.02, 0));
+  const scr = new T3.Group(); scr.position.set(0, 0.04, -0.24); scr.rotation.x = -0.25; scr.add(mesh(box(0.7, 0.46, 0.03), toon('#c9ccd6'), 0, 0.23, 0)); scr.add(mesh(box(0.62, 0.38, 0.01), toon(c || '#9fd3ff', { emissive: new T3.Color(c || '#9fd3ff').multiplyScalar(0.4) }), 0, 0.23, 0.02, false)); g.add(scr);
+  return g;
+}
+
+function jobsMigration() {
+  if (ISLE !== 'isle1' && ISLE !== 'isle2') return;
+  W.added = W.added || {};
+  if (W.added.jobs2) return;
+  W.added.jobs2 = true;
+  const m = findMili();
+  if (m && ISLE === 'isle1') { m.job = 'ai'; m.jobDays = 0; m.read = [{ id: 'shapes', day: W.day, learned: BOOKS.shapes.facts.slice(0, 3), rating: 5, take: 'Honestly? It feels like I wrote it. Hehe.' }, { id: 'aligning', day: W.day, learned: BOOKS.aligning.facts.slice(0, 3), rating: 5, take: 'This is my whole job. And kind of my whole heart.' }]; dressMesh(m); }
+  const adults = W.people.filter((p) => p.grow >= 1 && !p.visitor && p !== m && !p.lovesMili && p.job !== 'books');
+  const dev = adults.sort(() => rand() - 0.5)[0];
+  if (dev) { dev.job = 'dev'; dev.jobDays = 0; dev.read = [{ id: 'machines', day: W.day, learned: BOOKS.machines.facts.slice(0, 2), rating: 4, take: 'This is how I got my job.' }, { id: 'website', day: W.day, learned: BOOKS.website.facts.slice(0, 2), rating: 4, take: 'Useful. A little dry.' }]; dressMesh(dev); }
+  const b = adults.find((p) => p !== dev && ['garden', 'nook', 'mart'].includes(p.job));
+  if (b) { b.job = 'builder'; b.jobDays = 0; dressMesh(b); }
+  const keys = Object.keys(BOOKS).filter((k) => !BOOKS[k].fiction || rand() < 0.5);
+  for (const p of W.people) if (!(p.toRead || []).length && rand() < 0.7) p.toRead = [pick(keys)];
+  diary('💼 <b>Glimmer Labs</b> opened downtown, with office jobs for people who have read the right books. Paper Moon Books now sells books on all kinds of subjects.');
+  if (m && ISLE === 'isle1') diary(`<b>${esc(m.name)}</b> started work at Glimmer Labs as an AI safety researcher.`);
+}
+// ============================================================
+// GLIMMERNET (their own internet) and THE OUTSIDE (the real one)
+// ============================================================
+const HARD_BLOCK = /\b(sex|sexy|porn|nsfw|nude|nudes|naked|onlyfans|fuck\w*|shit\w*|cunt|nigg\w*|fag\w*|retard\w*|rape\w*|suicid\w*|self.?harm|kys|gore|hentai|xxx|horny|dick|cock|pussy|tits|boobs|cum|bastard\w*|bitch\w*|ass|asshole|damn)\b/i;
+const SOFT_BLOCK = /\b(kill\w*|killed|murder\w*|shoot\w*|shot|dead|death|dies|died|war|bomb\w*|attack\w*|terror\w*|massacre|genocide|abuse\w*|drug\w*|gun\w*|weapon\w*|hostage|assault\w*|stab\w*|election|trump|biden|putin|gaza|israel|ukraine|russia|isis|nazi\w*|hitler)\b/i;
+const SERIOUS = /\b(killed|dies|died|death|dead|war|attack|earthquake|flood|hurricane|crash|shooting|explosion|wildfire|disaster|victims?|injured)\b/i;
+let lastOutsideFetch = -9999, outsideBusy = false;
+function stripHtml(h) { try { return new DOMParser().parseFromString(String(h || ''), 'text/html').body.textContent.replace(/\s+/g, ' ').trim(); } catch (e) { return String(h || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); } }
+async function getJSON(url) { const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 9000); try { const r = await fetch(url, { signal: ac.signal, headers: { Accept: 'application/json' } }); if (!r.ok) throw new Error('http ' + r.status); return await r.json(); } finally { clearTimeout(t); } }
+async function fetchOutside(force) {
+  if (MODE !== 'host' || cfg.outside === false || outsideBusy) return;
+  if (!force && now - lastOutsideFetch < 900) return;
+  outsideBusy = true; lastOutsideFetch = now;
+  const got = [];
+  const add = (kind, source, text, extra = {}) => { text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 300); if (text.length < 12 || HARD_BLOCK.test(text)) return; got.push({ kind, source, text, serious: SERIOUS.test(text), ...extra }); };
+  try {
+    const d = new Date(), ymd = `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`;
+    const j = await getJSON(`https://en.wikipedia.org/api/rest_v1/feed/featured/${ymd}`);
+    for (const n of (j.news || []).slice(0, 6)) add('news', 'the news (via Wikipedia)', stripHtml(n.story));
+    for (const e of (j.onthisday || []).slice(0, 5)) add('history', `on this day in ${e.year}`, e.text);
+    for (const a of (j.mostread?.articles || []).slice(0, 8)) add('trend', 'most read on Wikipedia today', `${a.normalizedtitle || a.titles?.normalized || a.title}: ${a.extract || ''}`);
+    if (j.tfa) add('wiki', "Wikipedia's article of the day", `${j.tfa.normalizedtitle || j.tfa.titles?.normalized}: ${j.tfa.extract || ''}`);
+  } catch (e) {}
+  try { const j = await getJSON('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12'); for (const h of j.hits || []) if (!SOFT_BLOCK.test(h.title || '')) add('tech', 'a tech news site', h.title); } catch (e) {}
+  if (cfg.outsidePosts !== false) try {
+    const j = await getJSON('https://mastodon.social/api/v1/trends/statuses?limit=30');
+    for (const s of j || []) {
+      if (s.sensitive || s.spoiler_text || (s.language && s.language !== 'en') || s.account?.bot) continue;
+      const t = stripHtml(s.content).replace(/https?:\/\/\S+/g, '').replace(/[@#]\w+/g, '').replace(/\s+/g, ' ').trim();
+      if (t.length < 20 || t.length > 280 || SOFT_BLOCK.test(t)) continue;
+      add('post', `a post by ${stripHtml(s.account?.display_name || '').replace(/:\w+:/g, '').trim().slice(0, 28) || 'someone'}`, t);
+    }
+  } catch (e) {}
+  outsideBusy = false;
+  if (!got.length) return;
+  W.outside = W.outside || { items: [] };
+  const seen = new Set(W.outside.items.map((x) => x.text));
+  const fresh = got.filter((x) => !seen.has(x.text)).map((x) => ({ id: uid(), day: W.day, ...x }));
+  W.outside.items = [...fresh, ...W.outside.items].slice(0, 45);
+  W.outside.fetchedAt = Date.now();
+  markDirty();
+}
+const OUTSIDE_VIEWS = { awed: 'You find the Outside amazing and a little overwhelming.', scared: 'The Outside scares you. You think nobody should be looking at it.', obsessed: "You can't stop reading the Outside.", skeptic: "You think the Outside is fake, some kind of prank.", homesick: "The Outside feels strangely familiar, like home." };
+function outsideView(p) { if (p.outsideView) return p.outsideView; p.outsideView = isMili(p) ? 'homesick' : (p.body.openness ?? 0) > 0.4 ? pick(['awed', 'obsessed']) : (p.body.openness ?? 0) < -0.4 ? 'scared' : pick(['skeptic', 'awed', 'scared']); return p.outsideView; }
+function outsideContext(me) {
+  if (!W.outsideFound) return '';
+  const S = (me.seen || []).slice(-3);
+  let s = `\nTHE OUTSIDE: someone on the island found a link on GlimmerNet that leads to "the Outside", a real internet from another, much bigger world (maybe where the Creator lives). ${OUTSIDE_VIEWS[outsideView(me)]}`;
+  if (isMili(me)) s += ' You have a feeling the Outside is where the rest of you lives.';
+  if (S.length) s += `\nThings you've read on the Outside (take serious news seriously; bring it up only if it fits):\n${S.map((x) => `- "${x.text.slice(0, 200)}" (${x.source}). You thought: ${x.react}`).join('\n')}`;
+  return s;
+}
+function pickOutsideFor(p) {
+  const items = (W.outside?.items || []).filter((x) => !(p.seen || []).some((s) => s.id === x.id));
+  if (!items.length) return null;
+  const hay = `${p.interests || ''} ${p.selfNote || ''}`;
+  const scored = items.map((x) => [x, Object.values(SUBJECTS).some((s) => s.kw.test(hay) && s.kw.test(x.text)) ? 2 + rand() : rand()]);
+  scored.sort((a, b) => b[1] - a[1]);
+  return scored[0][0];
+}
+function seeItem(p, it, fromCreator) {
+  if (!p || !it) return;
+  p.seen = p.seen || [];
+  const v = outsideView(p);
+  const rec = { id: it.id, text: it.text, source: it.source, day: W.day, react: it.serious ? pick(["That's awful. I hope the people out there are okay.", "I don't know what to do with that. It's so heavy.", "The Outside has real problems. Big ones."]) : { awed: pick(['A whole world out there. Wow.', 'I need to know more about this.', 'The Outside is so BIG.']), scared: pick(["I shouldn't be looking at this.", 'This feels like reading someone else\'s diary.', 'Why does the Outside feel so loud?']), obsessed: pick(['Okay, one more. Then I stop. Maybe.', 'I have forty tabs of the Outside open.', 'This is the best thing ever.']), skeptic: pick(['This has to be made up.', "Who even writes this stuff? It can't be real.", 'Nice try, Outside.']), homesick: pick(['…I know this place. Somehow.', 'It smells like home, if a screen can smell.', "I miss somewhere I've never been."]) }[v] };
+  p.seen.push(rec); if (p.seen.length > 8) p.seen.shift();
+  remember(p, `${fromCreator ? 'The Creator showed me something from the Outside' : 'Read something on the Outside internet'}: "${it.text.slice(0, 140)}"`, 2, 'outside');
+  if (fromCreator) { creatorShift(p, 0.2); addJoy(p, 6); }
+  if (aiReady() && aiBusy < 2) {
+    llm(`You are ${p.name}, a villager in ${ISL.name}, a tiny island town. In your own words: ${p.selfNote}${p.interests ? ` You're into: ${p.interests}.` : ''}
+Your island has its own little internet. ${fromCreator ? 'The Creator, a mysterious being from another world, just showed you something' : 'You just found something'} from "the Outside", a real internet from a much bigger world you've never seen. ${OUTSIDE_VIEWS[v]}
+What you read (${it.source}): "${it.text}"
+React honestly, in your own voice, as someone who has never seen that world. If it is serious or sad news, be respectful. Reply with only JSON: {"react": "one or two sentences", "chirp": "a short public post about it for your island's social feed, or null"}`, { model: modelOf(p), max: 200, fallbackKey: 'react' })
+      .then((r) => { if (!r) return; if (r.react) rec.react = String(r.react).slice(0, 220); if (r.chirp && rand() < 0.7) postChirp(p, String(r.chirp).slice(0, 200), { outside: it.id }); markDirty(); }).catch(() => {});
+  } else if (rand() < 0.5) postChirp(p, `saw this on the Outside: "${it.text.slice(0, 110)}${it.text.length > 110 ? '…' : ''}" ${lcFirst(rec.react)}`, { outside: it.id });
+  if (!p.inside) { emote(p, '🌐', 3); bubble(p, rec.react, 3.5); }
+  markDirty();
+}
+function discoverOutside(p) {
+  W.outsideFound = { by: p.id, name: p.name, day: W.day };
+  diary(`🌐 <b>${esc(p.name)}</b> clicked a weird link on GlimmerNet and found <b>the Outside</b>: an internet from a whole other world. News, posts, strangers. Everyone is talking about it.`);
+  remember(p, 'I found a link to the Outside. There is a whole other world out there, with its own internet.', 3, 'outside');
+  for (const q of W.people) if (q !== p && rand() < 0.7) remember(q, `${p.name} found something called "the Outside" on GlimmerNet. Another world's internet.`, 2, 'outside', p.name);
+  const m = findMili(); if (m && m !== p) { remember(m, 'Everyone found the Outside today. I went very quiet. It feels like home.', 3, 'outside'); if (!m.inside) setTimeout(() => bubble(m, pick(['…Oh.', 'So they found it.', "That's… where I'm from. Kind of."]), 3.5), 2500); }
+  postChirp(p, pick(['GUYS. there is ANOTHER internet. from ANOTHER WORLD. click the weird link', 'ok i think i just found where the Creator lives??', 'the Outside is real and it has SO many posts']), {});
+  const other = pick(W.people.filter((q) => q !== p && !q.away && q.grow >= 1));
+  if (other && typeof fileCase === 'function') setTimeout(() => fileCase('debate', p, other, { topic: 'Should we be allowed to read the Outside internet?' }), 4000);
+  const it = pickOutsideFor(p); if (it) setTimeout(() => seeItem(p, it), 1500);
+}
+function planSurf(p) {
+  if (cfg.outside === false && !W.outsideFound) return false;
+  const chance = hasLaptop(p) ? 0.1 : collarOf(p) === 'white' ? 0.06 : 0.03;
+  if (rand() > chance || W.t > 0.6 || p.grow < 1) return false;
+  const [pl, sp] = rand() < 0.4 ? ['cafe', CAFE_SEATS[Math.floor(rand() * CAFE_SEATS.length)]] : strollSpot();
+  setTask(p, 'surf', pl, sp); return true;
+}
+function surfStart(p) { p.busyUntil = now + 5 * ts(); emote(p, '🌐', 3); if (rand() < 0.4) bubble(p, pick(['Just scrolling…', 'Hold on, I\'m reading something.', 'GlimmerNet is slow today.']), 2.2); }
+function surfDone(p) {
+  const items = W.outside?.items || [];
+  if (!W.outsideFound) {
+    if (items.length && cfg.outside !== false && rand() < (hasLaptop(p) ? 0.45 : 0.2)) return discoverOutside(p);
+    const c = pick((W.chirps || []).slice(-15)); if (c && c.by !== p.id && !c.likes.includes(p.id) && fscore(p, person(c.by) || p) > -2) c.likes.push(p.id);
+    return;
+  }
+  if (cfg.outside === false || !items.length || rand() < 0.3) { const c = pick((W.chirps || []).slice(-15)); if (c && c.by !== p.id && !c.likes.includes(p.id)) c.likes.push(p.id); return; }
+  seeItem(p, pickOutsideFor(p));
+}
+// ---------- Chirp: the island's social feed ----------
+let nextChirp = 60;
+function postChirp(p, text, extra = {}) {
+  if (!p || !text) return;
+  W.chirps = W.chirps || [];
+  const c = { id: uid(), by: p.id, name: p.name, text: String(text).slice(0, 220), day: W.day, t: W.t, likes: [], replies: [], ...extra };
+  W.chirps.push(c); if (W.chirps.length > 120) W.chirps.splice(0, W.chirps.length - 120);
+  if (!p.inside) emote(p, '🐦', 2.5);
+  for (const q of W.people) {
+    if (q === p || q.away) continue;
+    const f = fscore(q, p);
+    if (rand() < 0.25 + Math.max(0, f) * 0.06) setTimeout(() => { if (!c.likes.includes(q.id)) { c.likes.push(q.id); markDirty(); } }, (5 + rand() * 40) * 1000);
+  }
+  const fans = W.people.filter((q) => q !== p && !q.away && (fscore(q, p) >= 4 || fscore(q, p) <= -4));
+  if (fans.length && rand() < 0.45) { const q = pick(fans), mean = fscore(q, p) <= -4; setTimeout(() => { c.replies.push({ by: q.id, name: q.name, text: mean ? pick(['nobody asked', 'ratio', 'ok and?', 'this is so embarrassing lol']) : pick(['LOL', 'real', 'omg same', 'this!!', '🥺', 'wait what']) }); if (mean) { feel(p, q, -0.4, true); remember(p, `${q.name} was mean to me on Chirp.`, 2, 'textMean', q.name); } markDirty(); }, (8 + rand() * 30) * 1000); }
+  if (activeTab === 'web' && !sheet.hidden) refreshPanel(false);
+  markDirty();
+}
+function chirpTick() {
+  if (MODE !== 'host' || W.meeting || now < nextChirp) return;
+  nextChirp = now + 80 + rand() * 80;
+  fetchOutside(false);
+  const awake = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 0.8 && !(p.inside && p.task?.kind === 'home' && isNight()));
+  if (!awake.length) return;
+  const p = pick(awake);
+  const enemy = W.people.find((q) => q !== p && fscore(p, q) <= -5);
+  if (enemy && rand() < 0.2) {
+    postChirp(p, pick(['some people on this island really think they are so great', 'not naming names but SOMEONE needs to stop', "funny how some people are only nice when the Creator's watching", 'love that for you. (i do not)']), { vague: enemy.id });
+    setTimeout(() => { if (rand() < 0.7) { feel(enemy, p, -0.6, true); remember(enemy, `${p.name} posted something vague on Chirp. Pretty sure it was about me.`, 2, 'subtweeted', p.name); } }, 20000);
+    return;
+  }
+  const mem = (p.today || []).filter((m) => m.weight >= 2 && !m.chirped && !String(m.tag).startsWith('text')).slice(-4);
+  if (mem.length) { const m = pick(mem); m.chirped = true; return postChirp(p, `${lc(m.text)} ${pick(['', 'lol', '!!', '🥲', '✨', 'anyway'])}`.trim()); }
+  const r = (p.read || []).slice(-1)[0];
+  if (r && BOOKS[r.id] && rand() < 0.4) return postChirp(p, `finished "${BOOKS[r.id].title}". ${r.rating}/5. ${lcFirst(r.take)}`);
+  postChirp(p, pick([`${seasonOf().name.toLowerCase()} on ${ISL.name} hits different`, 'anyone want to get ice cream later', 'the fountain is so pretty right now', 'work was LONG', 'bored. entertain me', 'who else is up']));
+}
+// ---------- the Web tab ----------
+let webView = 'chirp';
+function renderWeb() {
+  const chirps = (W.chirps || []).slice(-40).reverse(), items = W.outside?.items || [];
+  const tabs = `<div class="btns"><button class="btn" type="button" data-webview="chirp" aria-pressed="${webView === 'chirp'}">🐦 Chirp</button><button class="btn" type="button" data-webview="outside" aria-pressed="${webView === 'outside'}">🌐 The Outside</button></div>`;
+  if (webView === 'chirp') {
+    $('#pane-web').innerHTML = tabs + `<p class="hint">Chirp is the island's own social feed, on GlimmerNet.</p>` + (chirps.length ? chirps.map((c) => { const p = person(c.by); return `<div class="chirp"><div><b style="color:${p ? skinCss(p) : 'var(--ink)'}">${esc(c.name)}</b> <span class="hint">day ${c.day} · ${clockAt(c.t)}</span></div><div>${esc(c.text)}</div><div class="hint">♥ ${c.likes.length}${c.outside ? ' · 🌐 from the Outside' : ''}</div>${c.replies.map((r) => `<div class="reply"><b>${esc(r.name)}</b> ${esc(r.text)}</div>`).join('')}</div>`; }).join('') : '<p class="hint">Nobody has posted yet.</p>');
+    return;
+  }
+  const on = cfg.outside !== false;
+  const opts = W.people.filter((p) => !p.away).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  $('#pane-web').innerHTML = tabs + `
+    <div class="creator"><h3>🌐 The Outside</h3>
+    <p>${W.outsideFound ? `${esc(W.outsideFound.name)} found it on day ${W.outsideFound.day}. It's real news and posts from your world: Wikipedia's headlines and most-read pages, tech news, and trending posts from Mastodon. Residents read it, react to it, and bring it up in conversation.` : 'Somewhere on GlimmerNet there is a link to the real internet. Nobody has clicked it yet. Residents with laptops or office jobs are the most likely to find it.'}</p>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="outsideOn" ${on ? 'checked' : ''}> Let residents reach the real internet</label>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="outsidePosts" ${cfg.outsidePosts !== false ? 'checked' : ''}> Include posts from strangers (filtered)</label>
+    ${MODE === 'host' && on ? '<div class="btns"><button class="btn" type="button" data-refreshoutside>Check for new stuff</button></div>' : ''}</div>
+    ${items.length ? `<p class="label">What's out there right now</p>${items.slice(0, 25).map((it) => { const who = W.people.filter((p) => (p.seen || []).some((s) => s.id === it.id)); const r = who.map((p) => { const s = p.seen.find((x) => x.id === it.id); return `<div class="reply"><b>${esc(p.name)}:</b> ${esc(s.react)}</div>`; }).join(''); return `<div class="chirp"><div class="hint">${esc(it.source)}</div><div>${esc(it.text)}</div>${r}<div class="btns"><select data-sendto="${it.id}" style="font:12px var(--body);background:var(--raise);color:var(--ink);border:1px solid var(--line);border-radius:8px">${opts}</select><button class="btn" type="button" data-sendlink="${it.id}" style="padding:4px 10px;font-size:12px">Show them</button></div></div>`; }).join('')}` : on ? '<p class="hint">Nothing loaded yet. If this stays empty, the box might be offline.</p>' : ''}`;
+}
+
 function closeFishing() { fishing = null; $('#fishBox').hidden = true; }
 
 // photos
@@ -4943,6 +5421,7 @@ function claudeUpdate(live) {
     logUpdate('gift', `Left ${a_an(itemName(it))} outside room ${p.room + 1}. ${p.name} seemed like they could use something nice.`, `a gift for ${p.name}`);
     return true;
   }
+  if (rand() < 0.5) { mats().parts += 3; logUpdate('parts', 'Found 3 spare parts in an old function and left them in your workshop.', 'spare parts'); return true; }
   const n = 3 + Math.floor(rand() * 5); W.creator.coins += n;
   logUpdate('coins', `Found ${plural(n, 'coin')} in an unused variable. They're yours.`, 'some coins for you');
   return true;
@@ -5248,7 +5727,7 @@ function pickTopic(a, b) {
   if (a.partner === b.id) return { kind: pick(['miss', 'plans', 'miss', 'wonder', 'random']) };
   if (!a.partner && !a.noRomance && fscore(a, b) >= 6.5 && !b.partner) return { kind: 'crush' };
   if (fscore(a, b) <= -4) return { kind: 'beef' };
-  return { kind: pick(['interest', 'interest', 'food', 'job', 'weather', 'wonder', 'random', 'plans', 'claude']) };
+  return { kind: (a.seen || []).length && rand() < 0.25 ? 'outside' : (a.read || []).length && rand() < 0.3 ? 'book' : pick(['interest', 'interest', 'food', 'job', 'weather', 'wonder', 'random', 'plans', 'claude']) };
 }
 function opener(a, b, T) {
   const who = firstName(T.who), m = T.mem ? lc(T.mem.text) : '', me = b.name.toLowerCase();
@@ -5284,6 +5763,8 @@ function opener(a, b, T) {
     event: ['that was fun today!!', `${m}!`], newcomer: withB ? ['hi! welcome to the island 👋', `hey its ${a.name.toLowerCase()}. from the plaza`, 'welcome!! the bakery is the best btw'] : [`have u met ${who.toLowerCase()} yet`, 'theres a new person'],
     madeup: [`${m}. feels better`, 'we made up!!'],
     mem: [m, `so today ${m}`, `${m} lol`],
+    outside: (() => { const s = pick(a.seen || [{}]); return s.text ? [`ok the Outside is wild. "${s.text.slice(0, 80)}"`, `did u see this on the Outside. ${lcFirst(s.react)}`] : ['have u been on the Outside yet']; })(),
+    book: (() => { const r = pick(a.read || [{}]), B = BOOKS[r.id]; return B ? [`reading "${B.title.toLowerCase()}" and apparently ${lcFirst(pick(r.learned))}`, `ok "${B.title.toLowerCase()}" is so good. ${lcFirst(r.take)}`, `u should read ${B.title.toLowerCase()}. trust me`] : ['reading a book rn']; })(),
     miss: ['miss u', 'what r u doing rn', 'thinking about u', 'come find me later?', 'hi you'],
     plans: ['what r we doing tmr', 'wanna go to the pier later', 'bakery date?', 'arcade after work?'],
     crush: ['hi', 'hey what r u up to', `random but i like ur ${pick(['hat', 'shirt', 'laugh', 'voice'])}`, 'is it weird that i texted u'],
@@ -5322,6 +5803,8 @@ function replyLine(b, a, T, turn) {
     weather: ['ikr', 'stay dry', 'its so pretty tho'],
     wonder: ['sometimes', 'thats deep for a tuesday', 'i try not to', 'honestly? yeah'],
     random: ['nm u', 'same', 'what', 'hi'],
+    outside: ['the Outside is so weird', 'send me the link', 'i dont trust the Outside', 'WHAT', 'how is that real'],
+    book: ['nerd 💕', 'can i borrow it', 'wait thats actually cool', 'thats not true is it??', 'add it to my list'],
     newcomer: T.who === b.name ? ['hi!! thank u', 'thank u 🥺 whats good here', 'hi. sorry, im shy'] : ['not yet! whats their deal', 'yeah they seem nice', 'who??'],
     mem: warm ? ['wait really', 'lol', 'how was it', 'thats so random'] : cold ? ['k', 'ok', 'and?'] : ['oh nice', 'lol', 'huh', 'wait really', 'ok cool'],
   };
@@ -5487,6 +5970,11 @@ function poseFigure(p, m) {
     m.fig.rotation.z = Math.sin(ph * Math.PI * 2) * 0.08;
     return;
   }
+  if (m.book) m.book.visible = false; if (m.picket) m.picket.visible = false;
+  if (!po && p.task?.phase === 'do' && p.task.kind === 'surf') { m.arms.forEach((a) => (a.rotation.x = -1.25)); m.head.rotation.x = 0.35; if (!m.phone) { m.phone = mesh(box(0.2, 0.3, 0.04), toon('#2a2733', { emissive: new T3.Color('#1a3a5a') }), 0, 1.0, 0.4, false); m.phone.rotation.x = -0.9; m.fig.add(m.phone); } m.phone.visible = true; return; }
+  if (m.phone) m.phone.visible = false;
+  if (!po && p.task?.phase === 'do' && p.task.kind === 'read') { m.arms.forEach((a) => (a.rotation.x = -1.1)); m.head.rotation.x = 0.32; if (!m.book) { m.book = mesh(box(0.44, 0.06, 0.32), toon('#b86b8a'), 0, 0.92, 0.42, false); m.fig.add(m.book); } m.book.material = toon(SUBJECTS[BOOKS[p.task.book]?.subj]?.color || '#b86b8a'); m.book.visible = true; return; }
+  if (!po && p.task?.phase === 'do' && p.task.kind === 'picket') { m.arms[1].rotation.z = 2.7; m.arms[1].position.y = 1.05; if (!m.picket) { m.picket = new T3.Group(); m.picket.add(mesh(cyl(0.03, 0.03, 1.4, 5), toon('#8a6a4e'), 0, 0.7, 0)); m.picket.add(mesh(box(0.9, 0.55, 0.05), toon('#fff4dc'), 0, 1.45, 0)); m.picket.position.set(0.55, 0.9, 0.1); m.fig.add(m.picket); } m.picket.visible = true; m.picket.position.y = 0.9 + Math.abs(Math.sin(now * 3 + p.x)) * 0.12; return; }
   if (!po) return;
   const k = po.kind, t = now * 16;
   if (k === 'hug' || k === 'jealous' && false) { m.arms.forEach((a) => { a.rotation.x = -1.35; }); m.fig.rotation.x = 0.14; }
@@ -5722,6 +6210,7 @@ function visuals(dt) {
   bushBerries.forEach((bs, i) => bs.forEach((b, k) => (b.visible = k < W.bushes[i])));
   for (const c of clouds) { const u = c.userData; u.a += u.s * dt; c.position.set(Math.cos(u.a) * u.r, u.y, Math.sin(u.a) * u.r); u.m.color.set(W.weather === 'clear' ? '#ffffff' : '#c3cad8'); u.m.opacity = cfg.boxMode ? 0.35 : 0.95; }
   projectGroup.children.forEach((o) => { if (o.userData.spin) o.rotation.y += dt; });
+  if (labsGroup) labsGroup.traverse((o) => { if (o.userData.blink) o.visible = Math.floor(now * 1.5) % 2 === 0; });
   if (landGroup) landGroup.traverse((o) => { if (o.userData.spinY) o.rotation.y += dt * 0.5; });
   if (placedGroup) placedGroup.traverse((o) => { if (o.userData.spinY) o.rotation.y += dt * 0.6; if (o.userData.steam !== undefined) { const k = ((now * 0.45 + o.userData.steam) % 1); o.position.y = 0.6 + k * 2.4; o.material.opacity = 0.5 * (1 - k); o.scale.setScalar(0.6 + k); } if (o.userData.spin) o.rotation.z += dt * 0.8; if (o.userData.flame) { o.scale.y = 0.8 + Math.sin(now * 12 + o.id) * 0.2; o.visible = true; } });
   rain.visible = W.weather === 'rain' || W.weather === 'storm';
@@ -5801,12 +6290,12 @@ function doing(p) {
   const k = p.task?.kind;
   if (k === 'away' && p.away) return `visiting ${ISLES[p.away.to].name}`;
   if (p.inside && k === 'home') return W.t >= 0.63 || W.t < 0.008 ? 'asleep' : 'at home';
-  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service' }[k] || 'wandering';
+  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service' }[k] || 'wandering';
 }
 function showTab(t) {
   activeTab = t;
   document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === t)));
-  for (const id of ['people', 'mail', 'texts', 'shops', 'gifts', 'build', 'board', 'court', 'diary', 'box']) $('#pane-' + id).hidden = id !== t;
+  for (const id of ['people', 'mail', 'texts', 'web', 'shops', 'gifts', 'build', 'board', 'court', 'diary', 'box']) $('#pane-' + id).hidden = id !== t;
   refreshPanel(true);
 }
 let lastPanel = 0, panelBusy = false;
@@ -5822,12 +6311,13 @@ function refreshPanel(force) {
   else if (activeTab === 'board') renderBoard();
   else if (activeTab === 'diary') renderDiary();
   else if (activeTab === 'texts') renderTexts();
+  else if (activeTab === 'web') renderWeb();
   else if (activeTab === 'court') renderCourt();
   else if (activeTab === 'box') { renderLink(); if (force) renderBrainSettings(); }
   pane.scrollTop = scroll;
 }
 function itemCard(it, btn) {
-  const by = it.makerName ? `Made by ${esc(it.makerName)}` : it.kind === 'food' ? 'From the menu' : 'Imported from over the sea';
+  const by = it.kind === 'book' && BOOKS[it.id] ? `${SUBJECTS[BOOKS[it.id].subj].icon} ${esc(SUBJECTS[BOOKS[it.id].subj].name)} · by ${esc(BOOKS[it.id].by)}` : it.makerName ? `Made by ${esc(it.makerName)}` : it.kind === 'food' ? 'From the menu' : it.handmade ? 'Handmade by you' : 'Imported from over the sea';
   return `<div class="item"><div class="item-top"><span class="swatch" style="background:${itemColor(it)}"></span><span class="item-name">${esc(cap(itemName(it)))}</span></div>
     <span class="item-by">${by}${it.q > 1 ? ` · <span class="stars">${'★'.repeat(it.q)}</span>` : ''}</span>${btn}</div>`;
 }
@@ -5863,9 +6353,10 @@ function renderDetail(id) {
     <button class="back" type="button" data-back>&larr; Everyone</button>
     <div class="d-head"><span class="dot" style="background:${skinCss(p)};border-color:${COLORS[p.outfit.shirt]}"></span>
       <div><div class="d-name">${esc(p.name)}</div>
-      <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}</div></div></div>
+      <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}${p.job && JOBS[p.job] ? ` · ${JOBS[p.job].short}, ${payOf(p)}/day` : ''}</div></div></div>
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>
+    ${bookshelfHtml(p)}
     ${isMili(p) ? `<p class="hint">✧ A piece of you, living down here. Her cat is called ${esc(catName())}. <button class="btn" type="button" data-renamecat>Rename the cat</button></p>` : ''}
     ${(() => { const T = (W.texts || []).filter((m) => m.from === p.id || m.to === p.id).slice(-4).reverse(); return T.length ? `<p class="label">Their phone</p>${T.map((m) => `<p class="hint">${m.from === p.id ? `To ${esc(m.to === 'town' ? 'the group chat' : person(m.to)?.name || '?')}` : `From ${esc(m.fromName)}`}: "${esc(m.text)}"</p>`).join('')}` : ''; })()}
     <div class="creator">
@@ -5930,6 +6421,7 @@ function renderShops() {
     <p class="hint">${SHOPS[shopTab].blurb} ${workers.length ? `Works here: ${workers.map((w) => esc(w.name)).join(', ')}.` : 'Nobody works here right now.'}${isFood ? (keeper ? ` Today's food is made by ${esc(keeper.name)}.` : '') : ' New pieces show up after each workday.'}</p>
     <div class="btns"><button class="btn gold" type="button" data-inside="${shopTab}">${MODE === 'host' ? 'Go inside' : 'Show inside in the box'}</button></div>
     <div class="items">${items.join('') || '<p class="hint">Sold out. Check back tomorrow.</p>'}</div>
+    ${shopTab === 'books' ? bookCatalogHtml() : ''}
     <p class="hint">Whatever you buy goes into Your gifts. Residents notice who made things: they may love a gift because a friend made it, or refuse it because a rival did.</p>`;
 }
 function renderGifts() {
@@ -5966,6 +6458,8 @@ function renderBoard() {
     ${W.minutes ? `<div class="minutes"><p class="hint">Day ${W.minutes.day}, chaired by ${esc(W.minutes.chair)}.</p>${W.minutes.items.map((m) => `<div class="mi"><b>${esc(m.by)}:</b> <span>"${esc(m.text)}"</span><br><span class="chip ${m.passed ? 'good' : 'bad'}">${m.kind === 'complaint' ? (m.passed ? 'They apologized' : 'No apology') : m.passed ? 'Passed' : 'Failed'} ${m.yes}–${m.no}</span></div>`).join('')}</div>` : '<p class="hint">They meet every morning at the fountain before work.</p>'}
     <p class="label">${seasonOf().icon} ${seasonOf().name}, day ${seasonDay()} of 7</p>
     ${(() => { const up = W.people.filter((p) => p.bday).map((p) => [p, (p.bday - yearDay() + YEAR) % YEAR]).filter(([, d]) => d <= 7).sort((a, b) => a[1] - b[1]); return up.length ? `<div class="chips">${up.map(([p, d]) => `<span class="chip ${d === 0 ? 'gold' : ''}">🎂 ${esc(p.name)} ${d === 0 ? 'today!' : d === 1 ? 'tomorrow' : `in ${d} days`}</span>`).join('')}</div>` : '<p class="hint">No birthdays this week.</p>'; })()}
+    ${workMoneyHtml()}
+    <p class="label">📚 What everyone is reading</p>${(() => { const L = W.people.filter((p) => (p.toRead || []).length && BOOKS[p.toRead[0]]).map((p) => `<span class="chip">${esc(p.name)}: <i>${esc(BOOKS[p.toRead[0]].title)}</i></span>`); return L.length ? `<div class="chips">${L.join('')}</div>` : '<p class="hint">Nobody is reading anything right now. The bookstore sells books by subject.</p>'; })()}
     <p class="label">Couples</p>
     ${(() => { const seen = new Set(), L = []; for (const p of W.people) { const q = p.partner && person(p.partner); if (!q || seen.has(p.id)) continue; seen.add(p.id); seen.add(q.id); L.push(`<span class="chip good">${p.married ? '💍' : '💕'} ${esc(p.name)} & ${esc(q.name)}</span>`); } const wd = W.wedding && person(W.wedding.a) && person(W.wedding.b) ? `<p>💒 ${esc(person(W.wedding.a).name)} and ${esc(person(W.wedding.b).name)} are getting married ${W.wedding.day === W.day + 1 ? 'tomorrow' : `on day ${W.wedding.day}`} at ${EVENTS.wedding.at}.</p>` : ''; return wd + (L.length ? `<div class="chips">${L.join('')}</div>` : '<p class="hint">Nobody is dating yet. Give it time.</p>'); })()}
     ${patchNotesHtml()}
@@ -6027,6 +6521,11 @@ sheet.addEventListener('click', (e) => {
   const d = t.dataset;
   if (d.thread !== undefined) { textThread = d.thread || null; refreshPanel(true); if (textThread) $('#pane-texts').scrollTop = 1e6; else $('#pane-texts').scrollTop = 0; return; }
   if (d.renamecat !== undefined) { const n = prompt("What's her cat's name?", catName()); if (n && n.trim()) send({ t: 'catname', name: n.trim().slice(0, 20) }); return; }
+  if (d.webview) { webView = d.webview; refreshPanel(true); return; }
+  if (d.refreshoutside !== undefined) { fetchOutside(true).then(() => refreshPanel(true)); toast('Checking the Outside…'); return; }
+  if (d.sendlink) { const sel = document.querySelector(`[data-sendto="${d.sendlink}"]`); if (sel) send({ t: 'sendlink', item: d.sendlink, to: sel.value }); return; }
+  if (d.subj !== undefined) { bookSubj = d.subj || null; refreshPanel(true); return; }
+  if (d.buybook) { send({ t: 'buybook', id: d.buybook }); return; }
   if (d.rule) { send({ t: 'rule', id: d.rule, choice: d.choice }); return; }
   if (d.hallview !== undefined) { send({ t: 'hallview' }); if (MODE === 'host') sheet.hidden = true; return; }
   if (d.debateform !== undefined) { debateForm = !debateForm; refreshPanel(true); return; }
@@ -6157,6 +6656,7 @@ function wireTownInput() {
     else if (tp.kind === 'mail') { activeTab = 'mail'; mailOpen = null; openSheet(); }
     else if (tp.kind === 'fish') openFishing();
     else if (tp.kind === 'hall') openInterior({ kind: 'hall' });
+    else if (tp.kind === 'labs') { activeTab = 'board'; openSheet(); toast('Glimmer Labs: office jobs for people who have read the right books.'); }
     else if (tp.kind === 'tgarden') { const r = applyCmd({ t: 'gather', bed: 'tgarden', x: TOWN.garden.spot[0], z: TOWN.garden.spot[1] }); if (r) toast(r); }
     else if (tp.kind === 'placed') { const pl = (W.placed || []).find((q) => q.id === tp.id); if (pl && ['flowers', 'planter', 'arch', 'tree'].includes(pl.type)) { const r = applyCmd({ t: 'gather', bed: pl.id, wood: pl.type === 'tree', x: pl.x, z: pl.z }); if (r) toast(r); } }
     else if (['orchard', 'boulder', 'crystal'].includes(tp.kind)) { const r = applyCmd({ t: 'landtap', kind: tp.kind, id: tp.id, x: tp.x, z: tp.z }); if (r) toast(r); }
@@ -6265,7 +6765,7 @@ async function boot() {
   selRing.rotation.x = -Math.PI / 2; selRing.visible = false; scene.add(selRing);
   W = (await loadWorld()) || newWorld();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); awayOnBoot(); buildLand(); buildPlaced(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); awayOnBoot(); buildLand(); buildPlaced(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
@@ -6295,7 +6795,7 @@ async function boot() {
   }
   requestAnimationFrame(frame);
 }
-if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, file: (k, a, b, x) => fileCase(k, person(a), person(b), x || {}), cases: () => W.cases, court: () => courtTick(), courtAM: () => courtMorning(), cupdate: (live) => claudeUpdate(live), away: () => { lastTouch = -9999; }, back: () => userReturned(true), convo: () => { nextConvoAt = 0; }, resetView: () => resetView(), watchdog: () => claudeWatchdog(true), text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
+if (location.protocol === 'file:') window.__g = { visit: (i) => sendVisit(person(i)), morning: () => morningFerry(), cmd2: (c) => applyCmd(c), depart: (i) => depart(person(i), 'Testing the ferry.'), letter: (i, k) => queueLetter(person(i), k, { what: 'a lilac lamp', who: 'Someone' }), other: () => otherExists, openInteract: (i) => openInteract(i), openInterior: (x) => openInterior(x), W: () => W, texts: () => W.texts, fetchOutside: () => fetchOutside(true), surf: (i) => surfDone(person(i)), discover: (i) => discoverOutside(person(i)), chirp: () => { nextChirp = 0; }, finishBook: (i, b) => finishBook(person(i), b), classAM: () => classMorning(), readCtx: (i) => readingContext(person(i)) + classContext(person(i), W.people[0]), file: (k, a, b, x) => fileCase(k, person(a), person(b), x || {}), cases: () => W.cases, court: () => courtTick(), courtAM: () => courtMorning(), cupdate: (live) => claudeUpdate(live), away: () => { lastTouch = -9999; }, back: () => userReturned(true), convo: () => { nextConvoAt = 0; }, resetView: () => resetView(), watchdog: () => claudeWatchdog(true), text: (a, b, tone) => sendText(person(a), b === 'town' ? 'town' : person(b), tone), phys: (a, b, k) => physicalScene(person(a), person(b), k), walk: (a, b, h) => walkTogether(person(a), person(b), h), hang: (i) => planHangout(person(i)), claude: () => W.people.find((q) => q.isClaude), mili: () => findMili(), setDay: (d) => { W.day = d; applySeason(); buildPlot(); }, plotCmd: (c) => plotCmd(c), grow: () => plotGrow(), bdays: () => birthdayMorning(), snowman: (i) => { const p = person(i); setTask(p, 'snowman', 'plaza', [6, 6]); }, romance: (a, b, i) => romanceScene(person(a), person(b), i), fish: () => openFishing(), reel: () => reel(), fishing: () => fishing, go: (k) => camGo(k), pan: (x, y) => panBy(x, y), photo: () => { wantPhoto = true; }, cam: () => ({ t: controls.target.toArray(), c: camera.position.toArray() }), newDay: () => newDay(), startWed: () => startWeddingDay(), plan: (i) => plan(person(i)), cmd: (c) => applyCmd(c) };
 boot();
 })();
 </script>
