@@ -2,3 +2,7 @@ node_modules/
 tests/out/
 *.log
 .DS_Store
+
+# built by node build.mjs; the Pages workflow builds and publishes them
+/index.html
+/version.json

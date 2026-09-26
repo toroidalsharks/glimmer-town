@@ -1,12 +1,14 @@
-# On every push: builds the game from src/ and checks that it parses.
-# Publishing depends on Settings > Pages > Source:
-#   "Deploy from a branch"  GitHub serves the committed index.html; this only checks the build
-#   "GitHub Actions"        this workflow publishes the freshly built site
+# Builds the game from src/ and publishes it to GitHub Pages.
+#   pull request   builds and checks that the script parses; nothing is published
+#   push to main   builds, checks, and publishes index.html + version.json
+# index.html and version.json are not in the repo. They only exist in the
+# published site, so this needs Settings > Pages > Source set to "GitHub Actions".
 name: Build Glimmer Town
 
 on:
   push:
     branches: [main, master]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -15,14 +17,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      pages: ${{ steps.pages.outputs.mode }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,24 +30,27 @@ jobs:
           node-version: 22
       - name: Build and check
         run: node build.mjs --check
-      - name: See how Pages is set up
-        id: pages
+      - name: Make sure Pages publishes from this workflow
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mode=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type 2>/dev/null) || mode=none
-          echo "mode=${mode:-none}" | head -n 1 >> "$GITHUB_OUTPUT"
           echo "Pages source: ${mode:-none}"
+          if [ "$mode" != "workflow" ]; then
+            echo "::error::Settings > Pages > Source must be 'GitHub Actions'. The built game is no longer committed, so 'Deploy from a branch' has nothing to serve."
+            exit 1
+          fi
       # publishes the whole repo like "deploy from a branch" would, so any other
       # pages kept here stay online; the game is the freshly built index.html
-      - if: steps.pages.outputs.mode == 'workflow'
+      - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
   deploy:
     needs: build
-    if: needs.build.outputs.pages == 'workflow'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
