@@ -38,7 +38,8 @@ function crimeBoardHtml() {
   const opts = W.people.filter((p) => adult(p) && !jailed(p)).map((p) => `<option value="${p.id}" ${det && det.id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   return `<div class="creator"><h3>🔎 Investigations</h3><p>Crimes leave clues that match real residents: the color of their clothes, hair, shoes, how tall they are, their ears. The detective finds a clue every morning. You can search the scene once a day, question each suspect once a day, and accuse whoever you think did it. Every charge goes to trial.</p>
     <div class="field"><label for="detSel">Island detective</label><select id="detSel">${opts}</select></div>
-    <div class="field"><label for="paceSel">Murders</label><select id="paceSel">${Object.entries(MURDER_PACES).map(([k, l]) => `<option value="${k}" ${(S.murderPace || 'real') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
+    <div class="field"><label for="paceSel">Murders</label><select id="paceSel">${Object.entries(MURDER_PACES).map(([k, l]) => `<option value="${k}" ${(S.murderPace || 'real') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
+    <div class="field"><label for="crimePaceSel">Other crimes</label><select id="crimePaceSel">${Object.entries(CRIME_PACES).map(([k, l]) => `<option value="${k}" ${(S.crimePace || 'week') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
     ${live.length ? live.map(crimeCard).join('') : '<p class="hint">No open cases. Suspiciously quiet.</p>'}
     ${cell.length ? `<p class="label">🔒 The cell under Glimmer Hall</p>${cell.map((p) => `<div class="note" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><b>${esc(p.name)}</b>, ${esc(p.jail.label.toLowerCase())}, ${jailLeftText(p)}</span><span class="btns" style="margin:0"><button class="btn" type="button" data-crime="visit" style="padding:3px 10px;font-size:12px">Visit</button>${p.jail.nextHearing ? `<button class="btn" type="button" data-crime="parole" data-pid="${p.id}" style="padding:3px 10px;font-size:12px">Parole hearing</button>` : ''}<button class="btn" type="button" data-crime="pardon" data-pid="${p.id}" style="padding:3px 10px;font-size:12px">Pardon</button></span></div>`).join('')}` : ''}
     ${mem.length ? `<p class="label">🕯 Remembered</p>${mem.map((m) => `<p class="note">${esc(m.name)} <span class="hint">(day ${m.born} to day ${m.died})</span></p>`).join('')}` : ''}
@@ -56,7 +57,7 @@ async function questionSuspect(C, p) {
 The Creator (the island's god-like player) is questioning you about a ${CRIME_TYPES[C.type].label.toLowerCase()}: ${C.headline}
 Your alibi: "${q.alibi}". ${guilty ? `You DID do it (you ${C.why}). Lie. Stay calm but let a little nervousness slip.` : 'You did not do it. You are hurt that anyone suspects you.'}
 In one or two short sentences, answer the Creator in your own voice. Talk only about how you feel and what kind of person you are. Do not mention any time, place, color, clothing, object or evidence, and do not name anyone except ${[p.id, ...C.suspects.filter((id) => id !== p.id), C.victim].filter(Boolean).map(nameOf).join(', ')}. Never invent facts. Reply with only JSON: {"say":"..."}`, { max: 160, temperature: 0.9 });
-      if (r?.say && factSafe(r.say, [p.id, ...C.suspects, C.victim])) q.said = String(r.say).slice(0, 220);
+      if (r?.say && factSafe(r.say, [p.id, ...C.suspects, C.victim])) q.said = fitLine(r.say, 320);
     } catch (e) {}
   }
   markDirty(); if (activeTab === 'court') refreshPanel(true);
@@ -73,6 +74,7 @@ function crimeCmd(c) {
     case 'parole': { if (!p || !jailed(p)) return ''; return paroleCut(p); }
     case 'briefing': { if (!C) return ''; return briefingCut(C); }
     case 'pace': { if (!MURDER_PACES[c.pace]) return ''; crimeState().murderPace = c.pace; markDirty(); return `Murders: ${MURDER_PACES[c.pace].toLowerCase()}.`; }
+    case 'crimepace': { if (!CRIME_PACES[c.pace]) return ''; const S = crimeState(); S.crimePace = c.pace; S.nextCrimeAt = Date.now() + crimeGap(S); markDirty(); return `Other crimes: ${CRIME_PACES[c.pace].toLowerCase()}.`; }
     case 'visit': { if (MODE === 'host') { $('#sheet').hidden = true; openInterior({ kind: 'hall' }); } return ''; }
   }
   return '';

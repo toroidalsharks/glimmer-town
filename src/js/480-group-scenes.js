@@ -174,8 +174,8 @@ ${ppl.map((p) => `- ${p.name}: ${sceneProfile(p, S)}`).join('\n')}
 Write ${n} lines of natural group conversation: they riff off each other, tease, and disagree a little. Keep each line under 18 words.${S.issue.kind === 'outside' ? ' Stick to what the news says; never invent details about real people.' : ''}
 Reply with only JSON: {"lines":[{"who":"name","say":"...","action":"one of talk, laugh, mock, shout"}],"ending":"one short narrator sentence"}`;
       const r = await llm(prompt, { model: badModels.has(brainCfg.judge) ? null : brainCfg.judge, max: up ? 900 : 450, temperature: 0.95 });
-      const lines = (r?.lines || []).map((l) => { const p = ppl.find((q) => q.name.toLowerCase() === String(l.who || '').toLowerCase()); return p && l.say ? { id: p.id, name: p.name, say: String(l.say).slice(0, 160), to: l.to ? String(l.to).slice(0, 30) : null, action: SCENE_ACTS.includes(l.action) && (l.action !== 'shove' || allowShove) ? l.action : 'talk' } : null; }).filter(Boolean);
-      if (lines.length >= 3) return { lines: lines.slice(0, 14), winner: ['A', 'B'].includes(r.winner) ? r.winner : 'none', ending: String(r.ending || '').slice(0, 200), grudges: Array.isArray(r.grudges) ? r.grudges : [], bonds: Array.isArray(r.bonds) ? r.bonds : [] };
+      const lines = (r?.lines || []).map((l) => { const p = ppl.find((q) => q.name.toLowerCase() === String(l.who || '').toLowerCase()); return p && l.say ? { id: p.id, name: p.name, say: fitLine(l.say, 240), to: l.to ? String(l.to).slice(0, 30) : null, action: SCENE_ACTS.includes(l.action) && (l.action !== 'shove' || allowShove) ? l.action : 'talk' } : null; }).filter(Boolean);
+      if (lines.length >= 3) return { lines: lines.slice(0, 14), winner: ['A', 'B'].includes(r.winner) ? r.winner : 'none', ending: fitLine(r.ending, 280), grudges: Array.isArray(r.grudges) ? r.grudges : [], bonds: Array.isArray(r.bonds) ? r.bonds : [] };
     } catch (e) {}
   }
   return scriptedScene(S, n, allowShove);

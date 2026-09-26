@@ -136,7 +136,7 @@ dlgEl.addEventListener('submit', async (e) => {
   const history = st.log.slice(-7, -1).map((l) => ({ who: l.me ? 'Creator' : p.name, text: l.text }));
   try {
     const r = await RT.sample.json(talkPrompt(p, said, history), { model: modelOf(p), fallbackKey: 'reply', cache: false });
-    const reply = String(r?.reply || '…').slice(0, 400);
+    const reply = fitLine(r?.reply || '…', 500);
     st.log.push({ me: false, text: reply });
     applyCmd({ t: 'talked', to: p.id, said, reply, feeling: clamp(Math.round(Number(r?.feeling) || 0), -2, 2), memory: String(r?.memory || '').slice(0, 200) });
     if (dlg && dlg.pid === p.id) { dlg.text = reply; }
