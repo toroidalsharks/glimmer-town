@@ -21,8 +21,24 @@ function parseLoose(text) {
   const fence = /```(?:json)?\s*([\s\S]*?)```/.exec(t);
   const body = fence ? fence[1] : t;
   const a = body.indexOf('{'), b = body.lastIndexOf('}');
-  if (a < 0 || b < a) throw { code: 'invalid_json', text: t };
-  return JSON.parse(body.slice(a, b + 1));
+  if (a < 0) throw { code: 'invalid_json', text: t };
+  try { if (b > a) return JSON.parse(body.slice(a, b + 1)); } catch (e) {}
+  const fixed = closeCutJson(body.slice(a));
+  if (!fixed) throw { code: 'invalid_json', text: t };
+  return JSON.parse(fixed);
+}
+// a reply that ran out of tokens mid-way: keep every finished item and close the brackets
+function closeCutJson(s) {
+  const stack = []; let inStr = false, esc2 = false, keep = -1, keepStack = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) { if (esc2) esc2 = false; else if (c === '\\') esc2 = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') inStr = true;
+    else if (c === '{' || c === '[') stack.push(c === '{' ? '}' : ']');
+    else if (c === '}' || c === ']') { stack.pop(); if (!stack.length) return s.slice(0, i + 1); keep = i; keepStack = stack.slice(); }
+  }
+  if (keep < 0) return null;
+  return s.slice(0, keep + 1) + keepStack.reverse().join('');
 }
 const badModels = new Set();
 async function llmOnce(model, messages, opts) {
@@ -31,7 +47,7 @@ async function llmOnce(model, messages, opts) {
     res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${brainCfg.key}`, 'Content-Type': 'application/json', 'X-Title': 'Glimmer Town' },
-      body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.95, max_tokens: Math.max(900, (opts.max || 450) * 2), reasoning: { effort: 'low', exclude: true }, usage: { include: true } }),
+      body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.95, max_tokens: Math.max(1600, (opts.max || 450) * 4), reasoning: { effort: 'low', exclude: true }, usage: { include: true } }),
     });
   } catch (e) { throw { code: 'upstream_error' }; }
   if (!res.ok) {

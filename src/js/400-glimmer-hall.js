@@ -226,6 +226,7 @@ function renderCourt() {
     ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}${townRecordHtml()}`;
   $('#detSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'detective', pid: e.target.value }));
   $('#paceSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'pace', pace: e.target.value }));
+  $('#crimePaceSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'crimepace', pace: e.target.value }));
 }
 
 function planLandmark(p) {
