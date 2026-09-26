@@ -99,6 +99,7 @@ function plan(p) {
   if (p.grow < 1) { const par = W.people.find((q) => p.parents.includes(q.name) && !q.inside); if (par && rand() < 0.6) { setTask(p, 'visit', par.path.length ? par.dest : par.at, jitter([par.x, par.z], 2), { who: par.id }); return; } }
   if (p.cr.wish && rand() < 0.15) { const [pl, sp] = strollSpot(); setTask(p, 'pray', pl, sp); return; }
   if (seasonOf().id === 'winter' && t < 0.55 && rand() < 0.07 && (W.snowmen || []).length < 8) { const [pl, sp] = strollSpot(); setTask(p, 'snowman', pl, sp); return; }
+  if (routineStroll(p)) return;
   const [pl, sp] = strollSpot();
   setTask(p, 'stroll', pl, sp);
 }

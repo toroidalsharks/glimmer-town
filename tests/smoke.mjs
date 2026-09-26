@@ -44,6 +44,8 @@ try {
 
   // 2. a murder: discovery, search, question, accuse, arrest, trial, verdict
   const real = await E(`W.people.filter(isRealish).map((p) => p.id)`);
+  // a murder needs someone who hates someone; make sure the test town has a grudge
+  await E(`(() => { const f = W.people.filter((p) => crimeAble(p) && victimAble(W.people.find((q) => q !== p && !isRealish(q) && adult(q)), true)); const a = f[0], b = W.people.find((q) => q !== a && !isRealish(q) && adult(q) && !jailed(q)); if (a && b) a.feelings[b.id] = { name: b.name, score: -8, note: 'I can not stand them.' }; })()`);
   const cid = await E('__g.murder()');
   ok(!!cid, 'a murder happens');
   await page.waitForTimeout(800);
@@ -102,6 +104,69 @@ try {
   ok(st === 'wait', 'a civil case reaches a ruling');
   await E(`cutPick('fine')`); await cutStep(20, log);
 
+  // the town record writes down the murder, its verdict and the ruling, and feeds them to the minds
+  ok(await E(`(() => { const R = W.records || []; return R.some((r) => r.kind === 'crime' && r.big) && R.some((r) => r.kind === 'verdict' && r.who.includes('${culprit}')) && R.some((r) => r.kind === 'court'); })()`), 'the town record keeps crimes, verdicts and rulings');
+  ok(await E(`(() => { const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p) && !p.partner).slice(0, 2); a.partner = b.id; b.partner = a.id; a.married = b.married = true; townRecord('married', [a.id, b.id], a.name + ' and ' + b.name + ' got married at the fountain.'); for (let i = 0; i < 20; i++) townRecord('court', [a.id], 'Filler ruling ' + i + '.'); const c = townRecordContext(a, b); a.partner = b.partner = null; a.married = b.married = false; W.records = W.records.filter((r) => !/^Filler/.test(r.text)); return /THE TOWN RECORD/.test(c) && /got married at the fountain/.test(c) && /town record/.test(townRecordHtml()); })()`), 'residents are reminded who they married, however long ago');
+  // crowds, fads and freeze-outs
+  ok(await E(`(() => {
+    const folk = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p) && !p.away && !p.visitor);
+    const [a, b, c, d, t] = folk; if (!t) return 'not enough people';
+    const set = (x, y, v) => { x.feelings[y.id] = { name: y.name, score: v, note: '' }; };
+    for (const x of folk) for (const y of folk) if (x !== y) set(x, y, 0);
+    for (const x of [a, b, c]) for (const y of [a, b, c]) if (x !== y) set(x, y, 7);
+    const cl = formCliques().find((k) => k.members.includes(a.id));
+    if (!cl || !cl.members.includes(b.id) || !cl.members.includes(c.id)) return 'no crowd';
+    const m = findMili(); if (m) { for (const x of [a, b, c]) set(x, m, -8); if (freezeCandidate(cl) === m) return 'froze out a real person'; for (const x of [a, b, c]) set(x, m, 0); }
+    for (const x of [a, b, c]) set(x, t, -7);
+    if (freezeCandidate(cl) !== t) return 'no freeze target';
+    const F = startFreeze(cl, t); if (!F || F.members.length < 2 || !socialAvoids(a, t)) return 'no freeze';
+    if (!/FREEZING OUT/.test(socialContext(person(F.members[0]), t)) || !/FROZEN OUT/.test(socialContext(t, a))) return 'minds not told';
+    const br = person(F.members[1]); set(br, t, 3); socialAfterChat(br, t); if (!F.breakers.includes(br.id)) return 'no breaking ranks';
+    const T = startTrend('phrase', a); T.adopters[b.id] = W.day; set(d, a, 5); set(d, b, 5); spreadTrend(T); if (!T.adopters[d.id]) return 'fad did not spread';
+    if (!/LATELY you keep saying/.test(socialContext(d, a))) return 'fad not in prompt';
+    if (!(W.records || []).some((r) => r.kind === 'freeze') || !/Crowds, fads/.test(socialBoardHtml())) return 'not recorded or shown';
+    return true;
+  })()`) === true, 'crowds form, fads spread, freeze-outs happen and real people are never frozen out');
+  ok(await E(`(() => { for (let i = 0; i < 3; i++) { socialNight(); socialMorning(); } return !!W.social; })()`), 'a few nights of social life run cleanly');
+  ok(await E(`(() => {
+    const folk = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p) && !p.away && !p.visitor);
+    const [a, b, c, s] = folk.slice(-4); if (!s) return 'not enough people';
+    const set = (x, y, v) => { x.feelings[y.id] = { name: y.name, score: v, note: '' }; };
+    // rumors bend as they travel, and a friend tells the subject
+    const R = rumorStart(a, b, s, '', -1); if (!R || !R.base.includes(s.name)) return 'no rumor';
+    set(b, s, 0); set(c, b, 3); set(c, s, 0); set(b, a, 2); R.knowers[b.id].v = 3;
+    for (let i = 0; i < 40 && !R.knowers[c.id]; i++) rumorAfterChat(b, c);
+    if (!R.knowers[c.id] || rumorText(R, R.knowers[c.id].v) === R.base && R.knowers[c.id].v > 0) return 'rumor did not spread';
+    if (rumorText(R, 3) === R.base) return 'rumor did not change';
+    set(c, s, 5); R.knowers[c.id].believes = true; for (let i = 0; i < 40 && !R.told; i++) rumorAfterChat(c, s);
+    if (!R.told || !s.today.some((m) => m.tag === 'rumorAboutMe')) return 'subject never heard';
+    if (!/Who knows what/.test(lifeBoardHtml())) return 'board missing rumors';
+    if (rumorStart(a, b, findMili() || { name: 'x' }, '', -1) && findMili()) return 'tracked a rumor about a real person';
+    // favors: owed, soured, repaid
+    set(a, b, 0); set(b, a, 0);
+    favorDone(a, b, 'shared a snack with you'); if (!owes(b, a) || !/YOU OWE/.test(lifeContext(b, a))) return 'favor not owed';
+    W.favors.find((f) => f.from === a.id && f.to === b.id).day = W.day - 6; favorsNight(); if (fscore(a, b) >= 0) return 'unpaid favor did not sour';
+    favorDone(b, a, 'gave you a coin'); if (owes(b, a)) return 'favor not repaid';
+    // moods rub off
+    a.mood = 0.9; b.mood = -0.9; moodAfterChat(a, b); if (!(b.mood > -0.9 && a.mood < 0.9)) return 'mood did not spread';
+    // regulars warm up
+    set(a, c, 0); W.familiar[[a.id, c.id].sort().join('|')] = 40; familiarNight(); if (!(fscore(a, c) > 0)) return 'familiar faces did not warm up';
+    a.haunts = { cafe: 30 }; if (hauntOf(a) !== 'cafe' || !/regular at/.test(lifeContext(a, null))) return 'no haunt';
+    // anniversaries and traditions
+    a.partner = b.id; b.partner = a.id; a.married = b.married = true;
+    const e = townRecord('married', [a.id, b.id], 'test wedding'); e.day = W.day - YEAR;
+    anniversaryMorning(); const ann = a.today.some((m) => m.tag === 'anniversary') && /anniversary/.test(lifeContext(a, b));
+    a.partner = b.partner = null; a.married = b.married = false; W.records = W.records.filter((r) => r !== e);
+    if (!ann) return 'no anniversary';
+    const T = startTrend('hobby', a, 'collecting sea glass'); T.won = W.day; traditionNight();
+    const d = W.traditions.find((x) => x.name === 'Sea Glass Day'); if (!d) return 'no tradition';
+    d.yd = yearDay(); d.since = W.day - 1; traditionMorning(); if (d.count !== 1 || !todayTradition()) return 'tradition day did not happen';
+    // the storyteller
+    W.story.lastBig = W.day; storyMorning(); if (W.story.mode !== 'breather') return 'no breather after something big';
+    W.story.lastBig = W.day - 9; W.records.forEach((r) => { if (r.day === W.day || r.day === W.day - 1) r.day = W.day - 9; }); drama().last = W.day - 9; storyMorning(); if (W.story.mode !== 'brewing' || drama().heat < 5) return 'quiet spell did not brew';
+    return true;
+  })()`) === true, 'rumors bend, favors are owed, moods spread, regulars warm up, anniversaries and traditions happen, the storyteller paces');
+  ok(await E(`(() => { for (let i = 0; i < 3; i++) { lifeNight(); lifeMorning(); lifeSample(); } return true; })()`), 'a few nights of town life run cleanly');
   // a trial lost to a reload gets held again, and the accused stays in custody until then
   ok(await E(`(() => { const id = __g.crime('burglary') || __g.crime('pickpocket'); const X = crimeById(id); if (!X) return 'no crime'; const A = person(X.suspects.find((q) => !jailed(person(q)))); X.status = 'charged'; X.accused = A.id; X.chargedDay = W.day - 1; trialsQueued.delete(X.id); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); const realTrial = crimeTrialNow; crimeTrialNow = (Y) => trialsQueued.add(Y.id); custodyCheck(false); crimeTrialNow = realTrial; const held = jailed(A) && A.jail.remand && trialsQueued.has(X.id); crimeVerdict(X, { def: A.id, jury: [] }, 'innocent', true); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); return held && !jailed(A) && X.status !== 'charged'; })()`) === true, 'lost trials come back, and not guilty means free');
   // letters: at most two a night, no exact repeats, and you can page through them
@@ -126,6 +191,7 @@ try {
   await page.waitForFunction(() => window.__g && window.__g.ev('typeof W !== "undefined" && W.people.length > 0'), null, { timeout: 60000 });
   const after = await E(`JSON.stringify([W.day, W.people.length, jailedPeople().map((p) => p.id)])`);
   ok(before === after, 'the town survives a reload');
+  ok(await E(`(W.records || []).some((r) => r.kind === 'verdict')`), 'the town record survives a reload');
 } catch (e) {
   console.log(' FAIL  the test itself crashed: ' + e.message); failed++;
 }
