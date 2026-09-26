@@ -88,7 +88,8 @@ function declutterTags() {
       y = Math.max(y, m.sy - 70);
       placed.push({ x: m.sx, y, w, h });
     }
-    m.offY = (m.offY ?? 0) + ((y - m.sy) - (m.offY ?? 0)) * 0.25;
+    const was = Number.isFinite(m.offY) ? m.offY : 0;
+    m.offY = was + ((y - m.sy) - was) * 0.25;
     m.tag.style.transform = `translate(${m.sx}px, ${m.sy + m.offY}px) translate(-50%, -100%) scale(${m.tsc.toFixed(3)})`;
     m.tag.style.transformOrigin = '50% 100%';
     m.tag.style.zIndex = String(Math.round(m.sy));

@@ -70,7 +70,7 @@ function visuals(dt) {
     tag.style.display = show ? '' : 'none';
     if (!show) continue;
     vec.set(p.x, m.root.position.y + 2.55 * m.root.scale.x + (p.outfit.hat ? 0.4 : 0), p.z).project(camera);
-    if (vec.z > 1) { tag.style.display = 'none'; continue; }
+    if (!(vec.z <= 1) || !Number.isFinite(vec.x) || !Number.isFinite(vec.y)) { tag.style.display = 'none'; continue; }
     m.sx = (vec.x * 0.5 + 0.5) * w; m.sy = (-vec.y * 0.5 + 0.5) * h;
     const b = p.bubble && p.bubble.until > now ? p.bubble.text : '';
     if (m.tagBub.textContent !== b) m.tagBub.textContent = b;
