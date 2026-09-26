@@ -68,7 +68,7 @@ async function romanceScene(a, b, intent) {
         remember(a, `I confessed to ${b.name} and they said yes. We're dating now.`, 3, 'couple', b.name);
         remember(b, `${a.name} confessed to me and I said yes. We're dating now.`, 3, 'couple', a.name);
         for (const q of W.people) if (q !== a && q !== b && rand() < 0.6) remember(q, `I heard ${a.name} and ${b.name} are dating now.`, 1, 'gossipLove', a.name);
-        diary(`💕 <b>${esc(a.name)}</b> confessed to <b>${esc(b.name)}</b>, and they said yes! They're dating now.`);
+        diary(`💕 <b>${esc(a.name)}</b> confessed to <b>${esc(b.name)}</b>, and they said yes! They're dating now.`); townRecord('dating', [a.id, b.id], `${a.name} asked ${b.name} out and they said yes. They started dating.`);
         queueLetter(a, 'dating', { who: b.name });
       } else {
         emote(a, '💔', 5); feel(a, b, -1, true); a.heartbreakDay = W.day; Sound.paper();
@@ -91,7 +91,7 @@ async function romanceScene(a, b, intent) {
         addJoy(a, 40); addJoy(b, 40);
         remember(a, `I asked ${b.name} to marry me. They said yes! The wedding is tomorrow.`, 3, 'engaged', b.name);
         remember(b, `${a.name} asked me to marry them and I said yes. The wedding is tomorrow.`, 3, 'engaged', a.name);
-        diary(`💍 <b>${esc(a.name)}</b> proposed to <b>${esc(b.name)}</b>. They said yes! The wedding is tomorrow at the fountain.`); engageCut(a, b, l1, l2);
+        diary(`💍 <b>${esc(a.name)}</b> proposed to <b>${esc(b.name)}</b>. They said yes! The wedding is tomorrow at the fountain.`); townRecord('engaged', [a.id, b.id], `${a.name} proposed to ${b.name} and they said yes. They got engaged.`); engageCut(a, b, l1, l2);
         queueLetter(b, 'engaged', { who: a.name });
       } else {
         feel(a, b, -0.5, true);
@@ -103,14 +103,14 @@ async function romanceScene(a, b, intent) {
       await say(a, l1);
       const l2 = await romLine(b, a, `${a.name} just broke up with you: "${l1}". React honestly.`, fb >= 4 ? pick(['…Oh. Okay.', "Wait, what? Why?", "I didn't see that coming."]) : pick(['Honestly? Fine.', 'Yeah. I felt it too.']));
       await say(b, l2);
-      if (a.married) { emote(a, '💔', 5); emote(b, '💔', 5); a.separated = b.separated = true; remember(a, `I told ${b.name} I want a divorce.`, 3, 'breakup', b.name); remember(b, `${a.name} wants a divorce.`, 3, 'heartbreak', a.name); diary(`💔 <b>${esc(a.name)}</b> told <b>${esc(b.name)}</b> they want a divorce. It's going to Glimmer Hall.`); divorceAskCut(a, b, l1, l2); fileCase('divorce', a, b); return; }
+      if (a.married) { emote(a, '💔', 5); emote(b, '💔', 5); a.separated = b.separated = true; remember(a, `I told ${b.name} I want a divorce.`, 3, 'breakup', b.name); remember(b, `${a.name} wants a divorce.`, 3, 'heartbreak', a.name); diary(`💔 <b>${esc(a.name)}</b> told <b>${esc(b.name)}</b> they want a divorce. It's going to Glimmer Hall.`); townRecord('separated', [a.id, b.id], `${a.name} told ${b.name} they want a divorce. It went to Glimmer Hall.`); divorceAskCut(a, b, l1, l2); fileCase('divorce', a, b); return; }
       emote(a, '💔', 5); emote(b, '💔', 5);
       a.partner = b.partner = null; const wasMarried = a.married; a.married = b.married = false;
       a.exes = [...(a.exes || []), b.name].slice(-5); b.exes = [...(b.exes || []), a.name].slice(-5);
       feel(b, a, fb >= 4 ? -3 : -1, true); b.heartbreakDay = W.day;
       remember(a, `I broke up with ${b.name}.`, 3, 'breakup', b.name);
       remember(b, `${a.name} broke up with me.`, 3, 'heartbreak', a.name);
-      diary(`💔 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> ${wasMarried ? 'split up' : 'broke up'}.`);
+      diary(`💔 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> ${wasMarried ? 'split up' : 'broke up'}.`); townRecord('breakup', [a.id, b.id], `${a.name} broke up with ${b.name}.`);
       for (const q of W.people) if (q !== a && q !== b && rand() < 0.6) remember(q, `I heard ${a.name} and ${b.name} broke up.`, 1, 'gossipLove', a.name);
     }
   } finally {
@@ -143,7 +143,7 @@ function weddingFrame(dt) {
       remember(a, `I married ${b.name} today at the fountain.`, 3, 'married', b.name);
       remember(b, `I married ${a.name} today at the fountain.`, 3, 'married', a.name);
       bubble(a, pick(['I do!', 'I do. Forever.']), 3.5); setTimeout(() => bubble(b, pick(['I do too!', 'I do.']), 3.5), 1800);
-      diary(`💒 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got married at the fountain! Everyone threw petals.`); weddingCut(a, b);
+      diary(`💒 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got married at the fountain! Everyone threw petals.`); townRecord('married', [a.id, b.id], `${a.name} and ${b.name} got married at the fountain.`); weddingCut(a, b);
       markDirty();
     }
   }

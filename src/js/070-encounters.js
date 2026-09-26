@@ -5,11 +5,11 @@ function emote(p, ch, secs = 2.4) { p.emote = { ch, until: now + secs }; }
 function bubble(p, text, secs, sky = false) { p.bubble = { text, until: now + secs, sky }; if (text && text !== '…' && MODE === 'host' && controls && !offlineSim) { try { if (hearable(p)) Sound.voice(p, text); } catch (e) {} } }
 function applyAction(a, b, action) {
   if (action === 'share_food') {
-    if (a.hunger < 0.8) { a.hunger = clamp(a.hunger + 0.12, 0, 1); b.hunger = clamp(b.hunger - 0.25, 0, 1); return { text: `${a.name} shared a snack with ${b.name}`, kind: 1 }; }
+    if (a.hunger < 0.8) { a.hunger = clamp(a.hunger + 0.12, 0, 1); b.hunger = clamp(b.hunger - 0.25, 0, 1); favorDone(a, b, 'shared a snack with you'); return { text: `${a.name} shared a snack with ${b.name}`, kind: 1 }; }
     return { text: `${a.name} wanted to share but had nothing`, kind: 0 };
   }
   if (action === 'give_coin') {
-    if (a.coins > 0) { a.coins--; b.coins++; emote(b, '✦'); return { text: `${a.name} gave ${b.name} a coin`, kind: 1 }; }
+    if (a.coins > 0) { a.coins--; b.coins++; emote(b, '✦'); favorDone(a, b, 'gave you a coin'); return { text: `${a.name} gave ${b.name} a coin`, kind: 1 }; }
     return { text: `${a.name} reached for a coin but had none`, kind: 0 };
   }
   if (action === 'tease') { emote(b, '!'); return { text: `${a.name} teased ${b.name}`, kind: -1 }; }
@@ -42,7 +42,7 @@ async function encounter(a, b) {
   spaceOut(a, b);
   if (aiReady() && aiBusy < 2) { if (intent) { a.makeup = null; a.befriend = null; a.confront = null; } await aiEncounter(a, b, intent); }
   else await ruleEncounter(a, b);
-  afterChat(a, b); goalAfterEncounter(a, b, intent);
+  afterChat(a, b); goalAfterEncounter(a, b, intent); socialAfterChat(a, b); lifeAfterChat(a, b);
 }
 async function ruleEncounter(a, b) {
   a.state = b.state = 'talk';

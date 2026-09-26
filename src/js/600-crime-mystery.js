@@ -213,6 +213,7 @@ function crimeDiscover(C) {
   if (C.tier === 0) { revealClue(C, null, true); diary(`💌 <b>A secret admirer</b>: ${esc(C.headline)}`); admirerFoundCut(C); markDirty(); return; }
   for (let i = 0; i < (C.tier >= 2 ? 2 : 1); i++) revealClue(C, null, true);
   diary(`${K.icon} <b>${K.label}</b>: ${esc(C.headline)}`);
+  { const e = townRecord('crime', [C.victim], `${K.label}: ${C.headline}`); if (e && C.tier >= 2) e.big = true; }
   for (const q of W.people) if (adult(q) && q.id !== C.culprit && rand() < (C.tier >= 2 ? 0.8 : 0.4)) remember(q, `Heard about the ${K.label.toLowerCase()}: ${C.headline}`, C.tier >= 2 ? 2 : 1, 'crimeNews');
   if (C.tier >= 2) { notifyCreator?.('news', pick(W.people.filter((q) => adult(q) && q.id !== C.culprit)), `${K.label} on the island: ${C.headline}`, null, { key: 'crime:' + C.id }).catch?.(() => {}); crimeScene(C); discoverCut(C); }
   markDirty();
@@ -343,6 +344,7 @@ function murderMorning(C) {
   griefFor({ id: C.victim, name: C.victimName }, C);
   for (let i = 0; i < 2; i++) revealClue(C, null, true);
   diary(`🔪 <b>Murder.</b> ${esc(C.headline)}`);
+  { const e = townRecord('crime', [C.victim, C.victimPartner], `Murder: ${C.headline}`); if (e) e.big = true; }
   const det = detectiveOf();
   notifyCreator?.('bad', det || pick(W.people), `There has been a murder on ${ISL.name}. ${C.headline}`, `${C.victimName} is dead. Someone did this. Please come to the island.`, { key: 'murder:' + C.id }).catch?.(() => {});
   crimeScene(C); discoverCut(C);
@@ -465,6 +467,7 @@ function crimeVerdict(C, T, k, silent) {
     L.push(pline(A.id, pick(['Thank you. Thank you.', 'I TOLD you!', 'Can I go home now?']), null, { emote: '✨' }));
     C.status = C.clues.some((c) => !c.found) ? 'open' : 'cold'; C.accused = null; C.acquitted = [...(C.acquitted || []), A.id]; endRemand(A);
     remember(A, `I was found not guilty of ${K.label.toLowerCase()}. Everyone still looks at me funny.`, 3, 'acquitted');
+    townRecord('acquitted', [A.id, C.victim], `${A.name} was found not guilty of ${K.label.toLowerCase()}${!C.byCreator && C.jury ? ` (jury ${C.jury})` : ' by the Creator'}. The case is still open.`);
   }
   L.push(jline('Court is adjourned!', 'gavel'));
   diary(`⚖ Verdict in <b>The Town v. ${esc(A.name)}</b> (${esc(K.label.toLowerCase())})${C.jury ? `, jury ${C.jury}` : C.byCreator ? ', ruled by the Creator' : ''}: <b>${guilty ? 'GUILTY' : 'NOT GUILTY'}</b>${guilty && C.sentence ? `. ${esc(C.sentence)}.` : '.'}`);
@@ -485,6 +488,7 @@ function reopenWrong(C) {
   const inn = person(C.convicted); if (inn && jailed(inn)) releaseFromJail(inn, 'exonerated');
   if (inn && typeof compensateWrong === 'function') compensateWrong(inn, C);
   C.status = 'open'; C.wrong = false; C.convicted = null; C.acquitted = [...(C.acquitted || []), inn?.id].filter(Boolean);
+  if (inn) townRecord('exonerated', [inn.id, C.victim], `New evidence cleared ${inn.name} of the ${CRIME_TYPES[C.type].label.toLowerCase()}. They were innocent, and the case was reopened.`);
   diary(`🆕 New evidence in the ${esc(CRIME_TYPES[C.type].label.toLowerCase())} case. <b>${esc(inn?.name || 'The convicted resident')}</b> was innocent.`);
   const g = person(C.culprit); if (g && crimeAble(g)) setTimeout(() => chargeCrime(C, g.id, detectiveOf(), false), 1500);
 }
