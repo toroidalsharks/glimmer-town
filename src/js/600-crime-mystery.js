@@ -255,14 +255,12 @@ function crimeNight() {
   const MY = S.murderYear[yr];
   if (murderDue(S, MY) && W.people.filter(crimeAble).length >= 6 && !openCrimes().some((C) => C.type === 'murder')) { if (commitMurder()) murderCommitted(S, MY); }
   const ppl = W.people.filter(adult).length; if (ppl < 5) return;
-  if (W.day - S.lastSerious >= 5 && rand() < 0.16) {
-    const types = Object.keys(CRIME_TYPES).filter((k) => CRIME_TYPES[k].tier === 2);
-    for (let i = 0; i < 4; i++) { const C = commitCrime(pick(types)); if (C) { C.pending = true; break; } }
-  } else if (W.day - (S.lastMystery ?? -9) >= 6 && !openCrimes().some((C) => C.tier === 0) && rand() < 0.12) { const C = commitCrime('admirer'); if (C) C.pending = true;
-  } else if (W.day - S.lastPetty >= 2 && rand() < 0.25) {
-    const types = Object.keys(CRIME_TYPES).filter((k) => CRIME_TYPES[k].tier === 1);
-    for (let i = 0; i < 3; i++) { const C = commitCrime(pick(types)); if (C) { C.pending = true; break; } }
-  }
+  // everyday crimes run on the real calendar too (crimeDue, 635)
+  if (crimeDue(S)) {
+    const tier = W.day - S.lastSerious >= 5 && rand() < 0.4 ? 2 : 1;
+    const types = Object.keys(CRIME_TYPES).filter((k) => CRIME_TYPES[k].tier === tier);
+    for (let i = 0; i < 4; i++) { const C = commitCrime(pick(types)); if (C) { C.pending = true; crimeCommitted(S); break; } }
+  } else if (W.day - (S.lastMystery ?? -9) >= 6 && !openCrimes().some((C) => C.tier === 0) && rand() < 0.12) { const C = commitCrime('admirer'); if (C) C.pending = true; }
 }
 function crimeMorning() {
   const S = crimeState();
@@ -435,7 +433,7 @@ defClose: the defense's closing.
 prosClose: the prosecutor's closing.
 Reply with only JSON: {"prosOpen":"...","defOpen":"...","plea":"...","defClose":"...","prosClose":"..."}`, { model: badModels.has(brainCfg.judge) ? null : brainCfg.judge, max: 500, temperature: 0.7 });
     const fl = {};
-    for (const k of ['prosOpen', 'defOpen', 'plea', 'defClose', 'prosClose']) { const t = String(r?.[k] || '').replace(/\s+/g, ' ').trim().slice(0, 220); if (t && factSafe(t, allowed)) fl[k] = t; }
+    for (const k of ['prosOpen', 'defOpen', 'plea', 'defClose', 'prosClose']) { const t = fitLine(r?.[k], 360); if (t && factSafe(t, allowed)) fl[k] = t; }
     return crimeLines(C, T, fl);
   } catch (e) { return null; }
 }

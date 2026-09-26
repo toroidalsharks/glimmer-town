@@ -12,6 +12,11 @@ function murderDue(S, MY) {
   return S.nextMurderAt != null && Date.now() >= S.nextMurderAt;
 }
 function murderCommitted(S, MY) { MY.done = true; } // commitMurder itself sets the next real-world date
+const CRIME_PACES = { week: 'About once a real week', days: 'Every few real days', day: 'About once a real day', month: 'About once a real month', never: 'Never' };
+const CRIME_PACE_MS = { week: 7 * 864e5, days: 3 * 864e5, day: 864e5, month: 30 * 864e5 };
+function crimeGap(S) { return (CRIME_PACE_MS[S.crimePace || 'week'] || CRIME_PACE_MS.week) * (0.6 + rand() * 0.8); }
+function crimeDue(S) { return (S.crimePace || 'week') !== 'never' && S.nextCrimeAt != null && Date.now() >= S.nextCrimeAt; }
+function crimeCommitted(S) { S.nextCrimeAt = Date.now() + crimeGap(S); }
 const listNames = (a) => (a.length <= 1 ? a[0] || 'nobody' : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 
 // ---- who works the case ----
@@ -103,6 +108,8 @@ function maybeAutoBriefing(C) {
 function crimeClarityBoot() {
   const S = crimeState();
   S.murderPace = S.murderPace || 'real';
+  S.crimePace = S.crimePace || 'week';
+  if (S.nextCrimeAt == null) S.nextCrimeAt = Date.now() + crimeGap(S) * rand();
   if (S.nextMurderAt == null) {
     const had = S.list.some((C) => C.type === 'murder');
     S.nextMurderAt = Date.now() + (had ? YEAR_MS : (30 + rand() * 300) * 864e5);
@@ -113,6 +120,8 @@ function crimeClarityBoot() {
     C.clues = withDebunks(C, C.clues);
     for (const c of C.clues) if (c.found && c.debunks) { const t = C.clues.find((x) => x.id === c.debunks); if (t) t.ruledOut = true; }
   }
-  W.added = W.added || {}; if (W.added.caseClarity) return; W.added.caseClarity = true;
+  W.added = W.added || {};
+  if (!W.added.crimePace1) { W.added.crimePace1 = true; if (typeof logUpdate === 'function') logUpdate('build', 'Crimes were happening almost every day. Now thefts, vandalism and the other everyday crimes happen about once a real week, and you can change that in the Court tab. Long lines in court and in group scenes also stopped getting cut off in the middle.', 'rarer crimes'); }
+  if (W.added.caseClarity) return; W.added.caseClarity = true;
   if (typeof logUpdate === 'function') logUpdate('build', 'Murders were happening once a game year, which is only a couple of hours in real life. Now there\'s about one murder per real year (you can change that in the Court tab). If the detective is too upset to work a case, someone else steps in as acting detective. Misleading clues now get a follow-up that rules them out, every clue says how far to trust it, and you can call the detective for a briefing that walks through the whole case.', 'clearer cases');
 }

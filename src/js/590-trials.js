@@ -146,7 +146,7 @@ function aiToLines(raw, cast) {
   if (!Array.isArray(raw)) return null;
   const out = [];
   for (const l of raw.slice(0, 32)) {
-    const who = String(l.who || '').trim(), say = String(l.say || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (!say) continue;
+    const who = String(l.who || '').trim(), say = fitLine(l.say, 320); if (!say) continue;
     const fx = ['objection', 'holdit', 'takethat', 'gasp', 'gavel', 'shock'].includes(l.fx) ? l.fx : null;
     if (/^judge|hoot/i.test(who)) out.push(jline(say, fx));
     else if (/^(gallery|crowd|everyone)/i.test(who)) out.push({ who: 'crowd', text: say, fx: fx || 'gasp' });
