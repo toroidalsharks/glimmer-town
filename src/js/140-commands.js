@@ -72,8 +72,9 @@ function applyCmd(c) {
       const res = giftCoins(p, n); bubble(p, res.line, 4, true); emote(p, '✦', 3); markDirty();
       return res.text;
     }
+    case 'sponsor': return sponsorCmd(c);
     case 'chip': {
-      const n = clamp(Math.floor(c.n) || 0, 1, 50);
+      const n = clamp(Math.floor(c.n) || 0, 1, 999);
       if (!W.project) return 'There is no project right now.'; if (C.coins < n) return 'You don\'t have enough coins.';
       C.coins -= n; W.project.raised += n;
       for (const p of W.people) { if (p.cr.score > -2) creatorShift(p, 0.3); remember(p, `Someone said the Creator chipped in ${plural(n, 'coin')} for ${PROJECTS[W.project.id].name}.`, 1, 'creatorHelp'); }
