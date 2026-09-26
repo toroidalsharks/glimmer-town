@@ -363,7 +363,7 @@ function toast(text) { const t = $('#toast'); t.textContent = text; t.style.opac
 
 // settings
 function syncSettingsUI() { ['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'music', 'sfx', 'voices', 'cute', 'cutscenes'].forEach((k) => ($('#' + k).checked = cfg[k] !== false && !!cfg[k])); $('#dayLen').value = String(cfg.daySec); $('#volume').value = String(cfg.volume ?? 0.7); }
-['music', 'sfx', 'voices'].forEach((k) => $('#' + k).addEventListener('change', (e) => { cfg[k] = e.target.checked; savePrefs(); Sound.levels(); }));
+['music', 'sfx', 'voices'].forEach((k) => $('#' + k).addEventListener('change', (e) => { cfg[k] = e.target.checked; savePrefs(); Sound.unlock(); Sound.levels(); }));
 $('#volume').addEventListener('input', (e) => { cfg.volume = Number(e.target.value); savePrefs(); Sound.levels(); });
 ['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'cutscenes'].forEach((k) => $('#' + k).addEventListener('change', (e) => { if (MODE === 'remote') send({ t: 'set', key: k, value: e.target.checked }); else { cfg[k] = e.target.checked; savePrefs(); applyLook(); } }));
 $('#dayLen').addEventListener('change', (e) => { const v = Number(e.target.value); if (MODE === 'remote') send({ t: 'set', key: 'daySec', value: v }); else { cfg.daySec = v; savePrefs(); } });
