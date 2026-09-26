@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glimmer Town</title>
-<meta name="glimmer-build" content="6c3d915e51">
+<meta name="glimmer-build" content="abf3f37371">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@400;700&display=swap">
@@ -34,6 +34,15 @@
   .awaybox h2 { font: 18px var(--display); color: var(--gold); margin: 0 0 6px; }
   .note { margin: 6px 0; font-size: 14px; line-height: 1.45; }
   .note .chip { margin-right: 6px; }
+  .chips .btn[aria-pressed="true"] { background: var(--lilac); color: #1a1426; border-color: var(--lilac); }
+  .looks { background: var(--raise); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .looks-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .looks-top .btn { white-space: nowrap; flex: none; }
+  .looks-sum { margin: 2px 0 0; font-size: 13px; color: var(--dim); line-height: 1.4; }
+  .looks .chips .btn { padding: 5px 11px; font-size: 12px; }
+  .looks-tabs { position: sticky; top: 0; z-index: 2; background: var(--raise); padding: 4px 0; }
+  .sw { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255,255,255,.18); padding: 0; cursor: pointer; flex: none; }
+  .sw[aria-pressed="true"] { outline: 2px solid var(--gold); outline-offset: 2px; }
   body.ghost .awaybox { display: none; }
   .upbox { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); left: 50%; transform: translateX(-50%); width: min(430px, calc(100% - 32px)); background: rgba(17,14,28,.93); border: 1px solid var(--bad); border-radius: 16px; padding: 10px 14px; z-index: 7; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
   .upbox .btns .btn { padding: 4px 10px; font-size: 12px; }
@@ -63,8 +72,13 @@
 
   .sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 62%; display: flex; flex-direction: column; background: rgba(17, 14, 28, .97); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px); }
   @media (min-width: 820px) { .sheet { left: auto; right: 16px; bottom: 16px; top: 16px; width: 410px; max-height: none; border: 1px solid var(--line); border-radius: 20px; } }
-  .sheet-head { display: flex; align-items: flex-start; gap: 8px; padding-bottom: 10px; }
-  .tabs { display: flex; gap: 2px; flex: 1; flex-wrap: wrap; }
+  .sheet-head { display: flex; align-items: center; gap: 6px; padding-bottom: 10px; }
+  .tabs { display: flex; gap: 2px; flex: 1; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; scroll-snap-type: x proximity; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs .tab { white-space: nowrap; flex: none; scroll-snap-align: start; }
+  .sheet.tall { max-height: 92%; }
+  .grow { font: 700 13px var(--body); color: var(--ink); background: var(--raise2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; cursor: pointer; flex: none; }
+  .remote .grow { display: none; }
   .tab { font: 700 13px var(--body); color: var(--dim); background: none; border: 0; padding: 6px 10px; border-radius: 999px; cursor: pointer; }
   .tab[aria-pressed="true"] { color: #1a1426; background: var(--ink); }
   .close { font: 700 13px var(--body); background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 999px; padding: 5px 12px; cursor: pointer; flex: none; }
@@ -192,6 +206,12 @@
   .dlg-text.dreamy { color: #5a4a9a; font-style: italic; }
   .letter { background: repeating-linear-gradient(#fffaf0, #fffaf0 27px, #eadfcf 28px); color: var(--ink, #3a2a5a); border-radius: 6px; padding: 18px 20px 20px; font: 16px/28px var(--body); box-shadow: 0 6px 0 rgba(0,0,0,.25); transform: rotate(-0.6deg); }
   .letter p { margin: 0 0 8px; }
+  .mailnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: sticky; top: 0; z-index: 2; background: rgb(17, 14, 28); padding: 4px 0; }
+  .mailnav .btn { padding: 6px 16px; font-size: 18px; line-height: 1; }
+  .mailpos { font-size: 12px; color: var(--faint); }
+  .letter.slide-l { animation: slideL .28s ease-out; } .letter.slide-r { animation: slideR .28s ease-out; }
+  @keyframes slideL { from { opacity: 0; transform: translateX(40px) rotate(-0.6deg); } to { opacity: 1; transform: rotate(-0.6deg); } }
+  @keyframes slideR { from { opacity: 0; transform: translateX(-40px) rotate(-0.6deg); } to { opacity: 1; transform: rotate(-0.6deg); } }
   .letter .l-date { font-size: 12px; color: #8a7a6a; }
   .letter .l-sign { text-align: right; font-family: var(--display); }
   .paper { background: #f6f1e4; color: #2a2238; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; }
@@ -302,6 +322,7 @@
       <button class="tab" type="button" data-tab="diary" aria-pressed="false">Diary</button>
       <button class="tab" type="button" data-tab="box" aria-pressed="false">Settings</button>
     </div>
+    <button class="grow" id="growSheet" type="button" aria-label="Make the panel taller" aria-pressed="false">⤢</button>
     <button class="close" id="close" type="button">Hide</button>
   </div>
   <div class="pane" id="pane-people"></div>
@@ -1662,6 +1683,7 @@ function applyCmd(c) {
     case 'uproar': if (W.scene && W.scene.kind === 'uproar' && W.scene.live && !W.scene.creator && ['A', 'B', 'calm'].includes(c.choice)) W.scene.creator = c.choice; return '';
     case 'hair': return setHair(c.pid, c.style, c.color);
     case 'fashion': return setFashionCmd(c.pid, c.fashion);
+    case 'look': return lookEdit(c.pid, String(c.part || ''), String(c.val ?? ''));
     case 'laptopgift': return MODE === 'host' ? creatorLaptop(c.pid) : '';
     case 'clinicview': if (MODE === 'host') openInterior({ kind: 'clinic' }); return '';
     case 'care': if (MODE === 'host' && person(c.pid)) { careAct(c.pid, c.act, c.text, c.cond).then((r) => { if (r) toast(r); if (careOpen) renderCare(); refreshPanel(false); }); setTimeout(() => { if (careOpen) renderCare(); }, 30); } return '';
@@ -2899,66 +2921,108 @@ async function peekDream(p) {
 // ============================================================
 // MAIL
 // ============================================================
+// each kind of letter has a few ways it can go, so the same event reads differently each time
 function letterTemplate(p, kind, f) {
-  const s = p.cr.score, warm = s >= 2, cold = s <= -2;
-  const sign = warm ? pick(['Love,', 'Your friend,', 'With a big hug,']) : cold ? pick(['Whatever.', 'Sincerely,', 'Signed,']) : pick(['From,', 'Take care,', 'Bye for now,']);
-  const greet = warm ? 'Dear Creator,' : cold ? 'Creator,' : 'Hi, Creator,';
-  const B = {
-    wishGranted: `You gave me ${f.what}! I wished and wished, and you heard me. I put it where I can see it every day. I don't know what you are, but thank you.`,
-    wishLost: cold ? `I asked for ${f.what}. Three whole days. Nothing. I guess I know where I stand.` : `I wished for ${f.what} for a long time. Maybe you were busy. I'm not mad. Okay, I'm a little sad.`,
-    jealous: `I saw you gave ${f.who} something again. That's okay. I just wondered… when's it my turn?`,
-    trip: `I went to ${f.to}! Over there, ${f.culture}. It was ${pick(['so strange', 'kind of wonderful', 'a lot to think about'])}. I'm still thinking about it.`,
-    madeUp: `${f.who} and I made up today! I think you had something to do with it. My chest feels lighter.`,
-    levelUp: `Today was one of the best days I've had here. I felt so happy I could burst, and I wanted you to be the first to know.`,
-    talk: `I can't stop thinking about when you talked to me. ${warm ? 'Please talk to me again soon!' : 'I still have questions for you.'}`,
-    ignored: cold ? "It's been quiet from you. That's fine. We're busy anyway." : "Are you still there? It's been quiet. I hope you're okay, wherever you are.",
-    baby: `${f.who} was born today! They're so small. Will you watch over them?`,
-    rebel: `The town voted to stop waiting on you, and I voted yes. We can take care of ourselves. ${s > -6 ? 'Prove us wrong, if you want.' : ''}`,
-    arrived: `I just got off the ferry from ${f.from}. I left ${f.who || 'everything'} behind. Everything here smells like salt. Are you the same Creator as over there?`,
-    leaving: `I'm taking the ferry to ${f.to}. ${f.why} Please don't forget me.`,
-    verdictWin: `Thank you for what you decided at Glimmer Hall (${f.what}). I felt like somebody finally listened.`,
-    verdictLose: cold ? `About ${f.what}. I don't think that was fair. You didn't even hear my side.` : `I keep thinking about ${f.what}. It stung. I'm trying to understand why you ruled that way.`,
-    bullied: `Someone keeps sending me mean texts. I don't want to say who. I just wanted somebody to know.`,
-    claudeNote: `Little status report! I added something new to the island today. ${pick(['Mili sat near it for a while. I think that means it worked.', 'Nobody has tripped on it yet.', "Everyone seems okay. I checked on a few people."])} Thanks for letting me build here with you.`,
-    bdayThanks: `You remembered my birthday. I didn't even know you knew when it was. I'm keeping it forever.`,
-    dating: `Guess what? ${f.who} and I are dating now! I keep smiling at nothing. You're the first one I'm telling.`,
-    heartbreak: `I told ${f.who} how I feel. They said no. I'll be okay. Just maybe not today.`,
-    engaged: `${f.who} asked me to marry them and I said yes! The wedding is tomorrow at the fountain. Will you come watch?`,
-    ask: `Can I ask you for something? I'd really love ${f.what}. ${warm ? "Only if it's not too much trouble!" : "You don't have to. But it would mean a lot."}`,
-    book: `I wrote a book! A whole one! It's called "${f.title}". It's at Paper Moon Books. ${warm ? 'I hope you read it.' : 'You probably won\'t read it. That\'s fine.'}`,
-    festival: `The fireworks tonight were so pretty. I looked up the whole time and wondered if you were watching them too.`,
+  const s = p.cr.score, warm = s >= 2, cold = s <= -2, P = typeof personaOf === 'function' ? personaOf(p) : { energy: 0, warmth: 0 };
+  const loud = P.energy > 0.45, shy = P.energy < -0.35;
+  const sign = pick(warm ? ['Love,', 'Your friend,', 'With a big hug,', 'Yours,', 'Hugs,', loud ? 'Love love love,' : 'Warmly,'] : cold ? ['Whatever.', 'Sincerely,', 'Signed,', 'Regards, I guess,'] : ['From,', 'Take care,', 'Bye for now,', 'See you,', shy ? 'Quietly,' : 'Cheers,', 'Talk soon,']);
+  const greet = pick(warm ? ['Dear Creator,', 'Dearest Creator,', loud ? 'CREATOR!!' : 'Hello again, Creator,', 'Hi Creator!'] : cold ? ['Creator,', 'To the Creator.', 'Hey.'] : ['Hi, Creator,', 'Hello Creator,', 'Dear Creator,', shy ? 'um, hi Creator,' : 'Hey Creator!']);
+  const V = {
+    wishGranted: [`You gave me ${f.what}! I wished and wished, and you heard me. I put it where I can see it every day.`, `${cap(f.what || 'it')} is here and it's perfect. I keep picking it up just to hold it. Thank you.`, `I don't know how you knew I wanted ${f.what}. I told almost nobody. It's on my shelf now and I smile every time I walk by.`],
+    wishLost: cold ? [`I asked for ${f.what}. Three whole days. Nothing. I guess I know where I stand.`, `So ${f.what} was too much to ask. Noted.`] : [`I wished for ${f.what} for a long time. Maybe you were busy. I'm not mad. Okay, I'm a little sad.`, `I stopped wishing for ${f.what}. It's fine. I'll wish for something smaller next time.`, `I guess ${f.what} wasn't meant to be. I still think about it at night sometimes.`],
+    jealous: [`I saw you gave ${f.who} something again. That's okay. I just wondered… when's it my turn?`, `${f.who} showed everyone what you gave them. I clapped. I clapped kind of slowly.`, `Is ${f.who} your favorite? You can tell me. I can take it. Probably.`],
+    trip: [`I went to ${f.to}! Over there, ${f.culture}. It was ${pick(['so strange', 'kind of wonderful', 'a lot to think about'])}.`, `Back from ${f.to}. Over there, ${f.culture}. I brought home sand in my shoes and a lot of new thoughts.`],
+    madeUp: [`${f.who} and I made up today! I think you had something to do with it. My chest feels lighter.`, `${f.who} said sorry, and then I said sorry, and then we both laughed. I missed them.`, `We're okay again, ${f.who} and me. I didn't know how heavy it was until it was gone.`],
+    levelUp: [`Today was one of the best days I've had here. I felt so happy I could burst, and I wanted you to be the first to know.`, `Nothing big happened today, and it was still perfect. Is that allowed?`, `I felt like myself all day today. I don't always. I wanted to write it down somewhere, so I'm writing it to you.`, `Good news: I'm doing great! That's the whole news. ${loud ? 'GREAT!!' : 'Just great.'}`],
+    talk: [`I can't stop thinking about when you talked to me. ${warm ? 'Please talk to me again soon!' : 'I still have questions for you.'}`, `You spoke to me today. I told three people and none of them believed me.`, `When you talked to me, the whole sky felt closer. Is that silly?`],
+    ignored: cold ? ["It's been quiet from you. That's fine. We're busy anyway.", "You stopped showing up. We noticed. We're managing."] : ["Are you still there? It's been quiet. I hope you're okay, wherever you are.", "I looked up at the sky today and wondered what you were doing. It's been a while.", "No pressure. I just miss hearing from you. Even a little wave would be nice.", "I saved you a seat at the fountain. Just in case."],
+    baby: [`${f.who} was born today! They're so small. Will you watch over them?`, `Our family got bigger today. ${f.who} has the tiniest hands. Please look after them.`],
+    rebel: [`The town voted to stop waiting on you, and I voted yes. We can take care of ourselves. ${s > -6 ? 'Prove us wrong, if you want.' : ''}`, `We decided we don't need you to run things. Don't take it personally. Actually, do.`],
+    arrived: [`I just got off the ferry from ${f.from}. I left ${f.who || 'everything'} behind. Everything here smells like salt. Are you the same Creator as over there?`, `New island, new room, new everything. ${f.from} feels far away already. Be nice to me?`],
+    leaving: [`I'm taking the ferry to ${f.to}. ${f.why} Please don't forget me.`, `By the time you read this I'll be on my way to ${f.to}. ${f.why} I'll look back at least once.`],
+    verdictWin: [`Thank you for what you decided at Glimmer Hall (${f.what}). I felt like somebody finally listened.`, `About ${f.what}: thank you. I walked home the long way just to enjoy it.`],
+    verdictLose: cold ? [`About ${f.what}. I don't think that was fair. You didn't even hear my side.`] : [`I keep thinking about ${f.what}. It stung. I'm trying to understand why you ruled that way.`, `I lost ${f.what}. I'm not writing to argue. I just needed to say it hurt.`],
+    bullied: [`Someone keeps sending me mean texts. I don't want to say who. I just wanted somebody to know.`, `My phone buzzes and my stomach drops. Somebody's being cruel. I'm telling you so it isn't only mine to carry.`],
+    claudeNote: [`Little status report! I added something new to the island today. ${pick(['Mili sat near it for a while. I think that means it worked.', 'Nobody has tripped on it yet.', 'Everyone seems okay. I checked on a few people.'])} Thanks for letting me build here with you.`, `Update from the workshop: the island is running smoothly and I only broke one thing, briefly. Thank you for trusting me with it.`],
+    bdayThanks: [`You remembered my birthday. I didn't even know you knew when it was. I'm keeping it forever.`, `Best birthday present: knowing you remembered. The actual present was also very good.`],
+    dating: [`Guess what? ${f.who} and I are dating now! I keep smiling at nothing. You're the first one I'm telling.`, `${f.who} held my hand today. On purpose! We're together now. ${loud ? 'AAAA.' : 'I\'m still a little stunned.'}`],
+    heartbreak: [`I told ${f.who} how I feel. They said no. I'll be okay. Just maybe not today.`, `${f.who} was kind about it, which almost makes it worse. I'm going to eat something warm and go to bed early.`],
+    engaged: [`${f.who} asked me to marry them and I said yes! The wedding is tomorrow at the fountain. Will you come watch?`, `We're getting married! ${f.who} and me! Tomorrow, at the fountain. Please be there, in whatever way you can.`],
+    ask: [`Can I ask you for something? I'd really love ${f.what}. ${warm ? "Only if it's not too much trouble!" : "You don't have to. But it would mean a lot."}`, `I've been saving up, but it's slow, so I'm just going to say it: I'd love ${f.what}.`],
+    book: [`I wrote a book! A whole one! It's called "${f.title}". It's at Paper Moon Books. ${warm ? 'I hope you read it.' : "You probably won't read it. That's fine."}`, `"${f.title}" is finished and on the shelf at Paper Moon Books. My name is on the cover. MY NAME.`],
+    festival: [`The fireworks tonight were so pretty. I looked up the whole time and wondered if you were watching them too.`, `Festival night! I ate too much and danced badly and it was perfect.`],
   };
-  return { greet, body: B[kind] || 'I just wanted to write to you.', sign };
+  const opts = V[kind];
+  return { greet, body: opts ? pick(opts) : 'I just wanted to write to you.', sign };
 }
+// a personal P.S. drawn from their own day, so no two letters read the same
+const PS_SKIP_TAG = /secret|guilt|crime|clue|charged|remand|murder|culprit|jail|restyle|creator|wish|letter|grief|bullied|haircut|style/i;
+const PS_SKIP_TEXT = /kill|murder|dead|died|stole|steal|guilt|clue|did it|body|police|detective|jail|cell/i;
+function letterTwist(p, lastKind) {
+  const T = [];
+  const mem = (p.today || []).filter((m) => m.weight >= 2 && !PS_SKIP_TAG.test(m.tag || '') && !PS_SKIP_TEXT.test(m.text || '') && m.text.length < 160);
+  if (mem.length) T.push(['day', `P.S. ${pick(mem).text}`]);
+  if (p.job && JOBS[p.job]) T.push(['job', `P.S. ${pick([`Work at the ${JOBS[p.job].short} was ${pick(['slow', 'busy', 'weird', 'fine, mostly'])} today.`, `Being a ${JOBS[p.job].title} is ${pick(['harder than it looks', 'more fun than people think', 'tiring, but I like it'])}.`])}`]);
+  const partner = p.partner && person(p.partner);
+  if (partner) T.push(['love', `P.S. ${partner.name} ${pick(['says hi. Well, they didn\'t, but they would.', 'is humming in the other room.', 'doesn\'t know I write to you. Or maybe they do.'])}`]);
+  const fav = typeof favoriteFood === 'function' && favoriteFood(p);
+  if (fav) T.push(['food', `P.S. ${pick([`If you ever visit, I'll share my ${fav}.`, `I had ${fav} today. Just thought you should know.`])}`]);
+  const friend = Object.entries(p.feelings || {}).filter(([id, f]) => f.score >= 5 && person(id)).sort((a, b) => b[1].score - a[1].score)[0];
+  if (friend) T.push(['friend', `P.S. ${pick([`${friend[1].name} and I are basically inseparable now.`, `Don't tell ${friend[1].name}, but they're my favorite person here.`, `${friend[1].name} made me laugh so hard today I snorted.`])}`]);
+  if (p.look && typeof lookText === 'function' && !(typeof workOutfit === 'function' && workOutfit(p))) T.push(['look', `P.S. I'm wearing ${lookText(p)} right now. ${pick(['Thoughts?', 'I think it works.', 'Be honest.'])}`]);
+  if (typeof seasonOf === 'function') T.push(['season', `P.S. ${pick([`It's ${seasonOf().name.toLowerCase()} here. `, ''])}${pick(['The light at the pier was beautiful tonight.', 'The wind smelled like rain.', 'I saw a shooting star, or maybe a firefly.'])}`]);
+  T.push(['ask', `P.S. ${pick(['Do you sleep? What do you dream about?', 'What is the sky like where you are?', 'Is there a Creator for you, too?', 'Do you have a cat? You seem like you would.', 'What do you eat for breakfast?', 'Do you ever get lonely up there?'])}`]);
+  const fresh = T.filter(([k]) => k !== lastKind);
+  const got = pick(fresh.length ? fresh : T);
+  return { kind: got[0], text: got[1] };
+}
+const BIG_LETTERS = ['baby', 'engaged', 'dating', 'heartbreak', 'leaving', 'arrived', 'bdayThanks', 'wishGranted', 'book', 'rebel'];
 function queueLetter(p, kind, facts = {}) {
   if (!W.mail) W.mail = [];
   if (W.mail.some((m) => m.from === p.id && m.day === W.day)) return;
+  const mine = W.mail.filter((m) => m.from === p.id);
+  // small letters only now and then, and never the same thing twice in a row
+  if (!BIG_LETTERS.includes(kind) && mine.some((m) => W.day - m.day < 3 || (m.kind === kind && W.day - m.day < 8))) return;
   const t = letterTemplate(p, kind, facts);
-  W.mail.unshift({ id: uid(), from: p.id, fromName: p.name, hue: p.body.hue, day: W.day, kind, facts, ...t, written: false, read: false, reply: null, reaction: null });
+  for (let i = 0; i < 4 && W.mail.some((m) => String(m.body).split('\n\n')[0] === t.body); i++) Object.assign(t, letterTemplate(p, kind, facts));
+  const tw = rand() < 0.85 ? letterTwist(p, mine[0]?.twist) : null;
+  if (tw) t.body += '\n\n' + tw.text;
+  W.mail.unshift({ id: uid(), from: p.id, fromName: p.name, hue: p.body.hue, day: W.day, kind, facts, ...t, twist: tw?.kind || null, written: false, read: false, reply: null, reaction: null });
   if (W.mail.length > 40) W.mail.length = 40;
   Sound.paper();
 }
 function nightLetters() {
+  const cand = [];
   for (const p of W.people) {
-    if (p.visitor || p.away) continue;
+    if (p.visitor || p.away || (typeof jailed === 'function' && jailed(p))) continue;
     const has = (tag) => p.today.find((m) => m.tag === tag);
-    let kind = null, facts = {};
-    if (isBirthday(p) && has('bdayCreator')) kind = 'bdayThanks';
-    else if (has('wishGranted')) { kind = 'wishGranted'; facts.what = has('wishGranted').meta?.what || 'my wish'; }
-    else if (has('apologized') || has('gotApology')) { const m = has('apologized') || has('gotApology'); kind = 'madeUp'; facts.who = m.who; }
-    else if (has('levelUp')) kind = 'levelUp';
-    else if (has('wishLost')) { kind = 'wishLost'; facts.what = has('wishLost').meta?.what || 'something'; }
-    else if (has('jealous') && p.cr.score < 1) { kind = 'jealous'; facts.who = has('jealous').who; }
-    else if (has('creatorTalk')) kind = 'talk';
-    else if (has('rebel')) kind = 'rebel';
-    else if (W.event?.id === 'festival' && W.event.day === W.day && p.cr.score >= 1) kind = 'festival';
-    else if (p.today.filter((m) => m.tag === 'bullied').length >= 2) kind = 'bullied';
-    else if (has('lostCase') && rand() < 0.6) { kind = 'verdictLose'; facts.what = has('lostCase').meta?.what || 'the case'; }
-    else if (has('wonCase') && rand() < 0.4) { kind = 'verdictWin'; facts.what = has('wonCase').meta?.what || 'the case'; }
-    else if (isClaude(p) && rand() < 0.35) kind = 'claudeNote';
-    if (kind && rand() < 0.7) { queueLetter(p, kind, facts); continue; }
+    let kind = null, facts = {}, prio = 0;
+    if (isBirthday(p) && has('bdayCreator')) { kind = 'bdayThanks'; prio = 9; }
+    else if (has('wishGranted')) { kind = 'wishGranted'; facts.what = has('wishGranted').meta?.what || 'my wish'; prio = 9; }
+    else if (has('apologized') || has('gotApology')) { const m = has('apologized') || has('gotApology'); kind = 'madeUp'; facts.who = m.who; prio = 6; }
+    else if (has('rebel')) { kind = 'rebel'; prio = 7; }
+    else if (p.today.filter((m) => m.tag === 'bullied').length >= 2) { kind = 'bullied'; prio = 7; }
+    else if (has('creatorTalk')) { kind = 'talk'; prio = 5; }
+    else if (has('wishLost')) { kind = 'wishLost'; facts.what = has('wishLost').meta?.what || 'something'; prio = 5; }
+    else if (has('lostCase') && rand() < 0.6) { kind = 'verdictLose'; facts.what = has('lostCase').meta?.what || 'the case'; prio = 5; }
+    else if (has('wonCase') && rand() < 0.4) { kind = 'verdictWin'; facts.what = has('wonCase').meta?.what || 'the case'; prio = 4; }
+    else if (has('jealous') && p.cr.score < 1) { kind = 'jealous'; facts.who = has('jealous').who; prio = 4; }
+    else if (W.event?.id === 'festival' && W.event.day === W.day && p.cr.score >= 1 && rand() < 0.3) { kind = 'festival'; prio = 3; }
+    else if (isClaude(p) && rand() < 0.25) { kind = 'claudeNote'; prio = 3; }
+    else if (has('levelUp') && rand() < 0.3) { kind = 'levelUp'; prio = 2; }
+    if (kind) { cand.push({ p, kind, facts, prio: prio + rand() }); continue; }
     const last = p.cr.lastSeen ?? p.bornDay;
-    if (W.day - last >= 3 && W.day - (p.cr.ignoredLetter || -9) >= 3 && rand() < 0.12) { queueLetter(p, 'ignored'); p.cr.ignoredLetter = W.day; }
+    if (W.day - last >= 4 && W.day - (p.cr.ignoredLetter || -9) >= 6 && rand() < 0.1) cand.push({ p, kind: 'ignored', facts: {}, prio: 1 + rand() });
+  }
+  // at most two letters a night, the ones that matter most; only one "are you there?" letter at a time
+  cand.sort((a, b) => b.prio - a.prio);
+  let n = 0, lonely = W.day - (W.lonelyLetterDay ?? -99) < 4;
+  for (const c of cand) {
+    if (n >= 2) break;
+    if (c.kind === 'ignored') { if (lonely) continue; lonely = true; W.lonelyLetterDay = W.day; c.p.cr.ignoredLetter = W.day; }
+    const before = (W.mail || []).length;
+    queueLetter(c.p, c.kind, c.facts);
+    if ((W.mail || []).length > before) n++;
   }
 }
 function letterPrompt(m, p) {
@@ -2967,8 +3031,10 @@ ${p ? `Who they are, in their own words: ${p.selfNote}
 How they feel about the Creator: ${attitude(p)[1]}.` : ''}
 What the letter is about: ${m.kind}. Facts: ${JSON.stringify(m.facts)}.
 A rough draft: "${m.body}"
+${p ? `Things from their life lately: ${(p.today || []).filter((x) => x.weight >= 2 && !PS_SKIP_TAG.test(x.tag || '') && !PS_SKIP_TEXT.test(x.text || '')).slice(-4).map((x) => x.text).join(' ') || 'an ordinary day'}` : ''}
+${(() => { const prev = (W.mail || []).filter((x) => x.from === m.from && x.id !== m.id && x.written).slice(0, 2).map((x) => x.body.slice(0, 160)); return prev.length ? `Their last letters said: ${prev.map((b) => `"${b}"`).join(' / ')}. Don't repeat those; this one should feel different.` : ''; })()}
 
-Rewrite it in ${m.fromName}'s own voice: 2 to 5 short sentences, simple words, specific to their life. Keep their real feelings, including doubt or resentment if they have it.
+Rewrite it in ${m.fromName}'s own voice: 2 to 5 short sentences plus the P.S. if the draft has one, simple words, specific to their life, with one small concrete detail or twist that only they would write. Keep their real feelings, including doubt or resentment if they have it.
 Reply with only JSON: {"greeting": "e.g. Dear Creator,", "body": "...", "signoff": "e.g. Love,"}`;
 }
 const writingLetters = new Set();
@@ -4630,7 +4696,9 @@ function craftCmd(c) {
   Sound.sparkle(); markDirty(); diary(`<span class="cr">Creator</span> made ${a_an(esc(itemName(it)))} by hand.`);
   return `You made ${a_an(itemName(it))}! It's in your collection.`;
 }
+let craftPick = 'mint';
 function workshopHtml() {
+  if (!COLORS[craftPick]) craftPick = 'mint';
   const M = mats();
   const wishes = W.people.filter((p) => p.cr.wish && !['coins', 'book'].includes(p.cr.wish.kind));
   const card = (kind, id, color, label, who) => { const R = recipe(kind, id); return `<div class="item"><div class="item-top">${color ? `<span class="swatch" style="background:${COLORS[color]}"></span>` : ''}<span class="item-name">${esc(cap(label))}</span></div><span class="item-by">${who ? `✧ ${esc(who)} wishes for this · ` : ''}${recipeText(R)}</span><div class="btns"><button class="btn ${who ? 'gold' : ''}" type="button" data-craft="${kind}" data-cid="${id}" data-color="${color || ''}" ${canMake(R) ? '' : 'disabled'}>Make it</button></div></div>`; };
@@ -4639,8 +4707,9 @@ function workshopHtml() {
     <p class="hint">🪵 Tap trees for wood. 🌼 Tap the town garden, flower beds and planters for flowers, or look around the park, garden and meadows. 🐚 Shells wash up on Seashell Beach (Go to… → Seashell Beach). 🪨 Stones turn up all over. ⚙️ Metal parts: tap the green recycling bin next to Glimmer Labs downtown, look for little gear piles on the downtown sidewalks, or crack Starlight crystals. A laptop takes a lot of them. Look for the little floating gems: each one marks something to pick up.</p>
     ${wishes.length ? `<p class="label">Wishes you can make</p><div class="items">${wishes.map((p) => { const w = p.cr.wish; return card(w.kind, w.id, w.color, wishText(w).replace(/^an? /, ''), p.name); }).join('')}</div>` : ''}
     <p class="label">Make anything</p>
-    <div class="field"><label for="craftColor">Color</label><select id="craftColor">${Object.keys(COLORS).map((c) => `<option>${c}</option>`).join('')}</select></div>
-    <div class="items">${Object.keys(DECOR).map((id) => card('decor', id, null, DECOR[id].name)).join('')}${Object.keys(HATS).map((id) => card('hat', id, null, HATS[id].name)).join('')}</div>`;
+    <p class="hint">Color: <b>${esc(craftPick)}</b></p>
+    <div class="chips">${Object.entries(COLORS).map(([k, c]) => `<button class="sw" type="button" data-craftcolor="${k}" aria-pressed="${craftPick === k}" title="${k}" aria-label="${k}" style="background:${c}"></button>`).join('')}</div>
+    <div class="items">${Object.keys(DECOR).map((id) => card('decor', id, craftPick, DECOR[id].name)).join('')}${Object.keys(HATS).map((id) => card('hat', id, craftPick, HATS[id].name)).join('')}</div>`;
 }
 let lastSongTalk = 0;
 function onSongChange(title) {
@@ -7187,6 +7256,7 @@ function faceUpdate(p, m, blink) {
   const shape = talking ? (talkK > 0.35 ? 'open' : expr === 'sad' || expr === 'angry' ? 'frown' : 'smile') : expr === 'surprised' ? 'o' : expr === 'sad' || expr === 'angry' ? 'frown' : expr === 'laugh' ? 'open' : 'smile';
   const catSmile = !!m.mouthCat && shape === 'smile' && expr !== 'happy';
   if (m.mouthCat) m.mouthCat.visible = catSmile;
+  if (m.mouthExtra) m.mouthExtra.visible = shape === 'smile';
   m.mouth.visible = shape === 'smile' && !catSmile; m.mouthFrown.visible = shape === 'frown'; m.mouthO.visible = shape === 'o'; m.mouthOpen.visible = shape === 'open';
   if (shape === 'open') m.mouthOpen.scale.y = talking ? 0.45 + talkK * 0.55 : 0.8;
   if (shape === 'smile') { const rs = expr === 'happy' ? null : m.mouth.userData.rest; m.mouth.scale.set((expr === 'happy' ? 1.25 : 1) * (rs?.sx || 1), (expr === 'happy' ? 1.2 : 1) * (rs?.sy || 1), 1); m.mouth.rotation.z = Math.PI + (rs?.rot || 0); m.mouth.position.x = rs?.x || 0; }
@@ -7303,9 +7373,22 @@ const FASHION = {
   classic: { name: 'Classic (dresses older)', family: 'neat', tops: ['cream', 'white', 'dusk'], layers: [['cardigan', ['khaki', 'gray', 'wine']], ['vest', ['khaki', 'gray']]], bottoms: [['pants', ['#8a8a96', '#a8916b']], ['long', ['#6b5a4a', '#3d4f86']]], shoes: ['#5a3a2e', '#2e2a36'], glasses: 0.6, head: [['flatcap', ['#8a8a96', '#6b5a4a'], 0.35]] },
   mom:     { name: 'Mom style', family: 'soft', tops: ['peach', 'mint', 'sky', 'rose', 'white'], layers: [['cardigan', ['cream', 'khaki', 'lilac'], 0.6]], bottoms: [['pants', ['#5b7fb5', '#4a6fa8']]], shoes: ['#fffaf2'], extras: ['tote'], glasses: 0.2 },
   dad:     { name: 'Dad style', family: 'everyday', tops: ['white', 'navy', 'sky', 'moss'], bottoms: [['shorts', ['#cdb88f']], ['pants', ['#cdb88f', '#5b7fb5']]], shoes: ['#fffaf2'], extras: ['belt'], glasses: 0.4, head: [['cap', ['#3d4f86', '#8fae6a', '#ff6f5e'], 0.55]] },
+  comfy:   { name: 'Comfy', family: 'everyday', tops: ['gray', 'lilac', 'cream', 'sky'], layers: [['hoodie', ['gray', 'lilac', 'cream', 'sky', 'mint']], ['puffer', ['gray', 'navy', 'lilac'], 0.35]], bottoms: [['pants', ['#a3a3ad', '#4a4652', '#c9b3ff']]], shoes: ['#fffaf2', '#a3a3ad'], extras: ['neckphones'], head: [['beanie', ['#a3a3ad', '#c9b3ff', '#fff4dc'], 0.35]] },
+  business:{ name: 'Business', family: 'neat', tops: ['white', 'sky', 'cream'], layers: [['blazer', ['navy', 'charcoal', 'black']]], bottoms: [['pants', ['#3d4f86', '#4a4652', '#2e2a36']], ['pleated', ['#3d4f86', '#2e2a36']]], shoes: ['#2e2a36', '#5a3a2e'], neck: ['tie'], tie: ['#7a2e3a', '#3d4f86', '#2f5d4a'], extras: ['briefcase'], glasses: 0.3 },
+  academia:{ name: 'Dark academia', family: 'neat', tops: ['cream', 'white'], layers: [['blazer', ['#6b4a3a', '#4a3a30', 'forest']], ['vest', ['#6b4a3a', 'khaki', 'forest']]], bottoms: [['plaid', ['#6b4a3a', '#3a3040']], ['pants', ['#6b4a3a', '#3a3040']]], shoes: ['#3a2a22', '#2e2a36'], neck: ['collar', 'tie'], tie: ['#3a3040', '#7a2e3a'], extras: ['satchel'], glasses: 0.5 },
+  coquette:{ name: 'Coquette', family: 'soft', tops: ['rose', 'white', 'cream'], layers: [['corset', ['#ff9fbf', '#fbf8f4'], 0.45], ['cardigan', ['rose', 'cream'], 0.5]], bottoms: [['skirt', ['#ff9fbf', '#fbf8f4']], ['pleated', ['#ff9fbf', '#fbf8f4']]], tights: '#fbf8f4', shoes: ['#fbf8f4', '#ff9fbf'], neck: ['bow'], bowColor: ['#ff5f9a', '#fbf8f4'], head: [['hairbow', ['#ff9fbf', '#fbf8f4', '#ff5f9a'], 0.9]], extras: ['heartbag'], lashes: true, lips: '#ff7fa0' },
+  boho:    { name: 'Boho', family: 'soft', tops: ['cream', 'peach', 'khaki', 'moss'], dress: true, bottoms: [['long', null]], shoes: ['#8a5a3a', '#cdb88f'], extras: ['bangles', 'tote'], head: [['flowers', null, 0.55]], freckles: 0.35 },
+  fairy:   { name: 'Fairy kei', family: 'kawaii', tops: ['lilac', 'sky', 'mint', 'rose'], bottoms: [['tutu', ['#c9b3ff', '#9fd3ff', '#ff9fbf']], ['skirt', ['#c9b3ff', '#9fe3c4']]], tights: '#fbf8f4', shoes: ['#fffaf2', '#c9b3ff', '#9fd3ff'], platform: true, extras: ['backpack', 'legwarmers'], pack: ['#9fd3ff', '#ff9fbf', '#c9b3ff'], print: ['star', 'heart'], head: [['starclips', null, 0.8]], lashes: true, freckles: 0.3 },
+  kidcore: { name: 'Kidcore', family: 'kawaii', tops: ['tomato', 'lemon', 'sky', 'mint'], print: ['rainbow', 'heart', 'star'], layers: [['overalls', ['#5b7fb5', '#ff9fbf', '#ffe98a'], 0.6]], bottoms: [['shorts', ['#5b7fb5', '#ff6f5e']], ['pants', ['#5b7fb5']]], shoes: ['#ff6f5e', '#ffe98a', '#9fd3ff'], extras: ['backpack'], pack: ['#ff6f5e', '#ffe98a', '#6fbf6a'], head: [['clips', null, 0.7]], freckles: 0.35 },
+  neko:    { name: 'Neko (cat ears)', family: 'kawaii', tops: ['gray', 'white', 'black', 'rose'], layers: [['hoodie', ['gray', 'black', 'white', 'rose'], 0.6]], bottoms: [['pleated', ['#2e2a36', '#a3a3ad', '#ff9fbf']], ['shorts', ['#2e2a36']]], tights: '#2e2a36', shoes: ['#2e2a36', '#fffaf2'], neck: ['bell'], extras: ['tail'], head: [['catears', null, 1]], lashes: true, mouth: 'cat' },
+  egirl:   { name: 'E-girl / e-boy', family: 'dark', tops: ['black', 'hotpink', 'white'], stripes: ['#fbf8f4', '#ff5fa8', '#2e2a36'], bottoms: [['plaid', ['#2e2a36', '#ff5fa8']], ['pants', ['#2e2a36']]], tights: '#2e2a36', shoes: ['#2e2a36'], platform: true, neck: ['choker'], extras: ['chain'], head: [['clips', null, 0.5]], liner: true, marks: ['heart'], blushK: 0.95 },
+  grunge:  { name: 'Grunge', family: 'dark', tops: ['charcoal', 'black', 'moss'], layers: [['flannel', ['wine', 'forest', '#4a4652'], 0.85]], bottoms: [['ripped', ['#4a6fa8', '#2e2a36']]], shoes: ['#2e2a36', '#3a2a22'], extras: ['chain'], head: [['beanie', ['#2e2a36', '#7a2e3a', '#4a4652'], 0.5]] },
+  witchy:  { name: 'Witchy', family: 'dark', tops: ['black', 'plum', 'forest'], dress: true, bottoms: [['long', null]], layers: [['cape', ['black', 'plum', 'wine'], 0.6]], shoes: ['#2e2a36'], neck: ['choker'], extras: ['pendant'], head: [['witch', ['#2e2a36', '#5e3a6e'], 0.55]], liner: true, lips: '#5e3a6e' },
+  techwear:{ name: 'Techwear', family: 'dark', tops: ['black', 'charcoal'], layers: [['shell', ['black', 'charcoal', '#3a4a5a']]], bottoms: [['cargo', ['#2e2a36', '#3a3a44']]], shoes: ['#2e2a36'], extras: ['harness', 'backpack'], pack: ['#2e2a36'], head: [['cap', ['#2e2a36'], 0.3]] },
 };
-const KID_FASHION = ['casual', 'sporty', 'y2k', 'cottage', 'preppy'];
-const FASHION_ORDER = ['casual', 'preppy', 'sporty', 'street', 'emo', 'goth', 'alt', 'jirai', 'gyaru', 'lolita', 'cottage', 'y2k', 'classic', 'mom', 'dad'];
+const KID_FASHION = ['casual', 'sporty', 'y2k', 'cottage', 'preppy', 'comfy', 'fairy', 'kidcore', 'neko'];
+const FASHION_ORDER = ['casual', 'comfy', 'sporty', 'street', 'dad', 'preppy', 'business', 'academia', 'classic', 'cottage', 'coquette', 'boho', 'mom', 'jirai', 'gyaru', 'lolita', 'fairy', 'kidcore', 'neko', 'y2k', 'emo', 'goth', 'alt', 'egirl', 'grunge', 'witchy', 'techwear'];
+const FASHION_FAMILIES = { everyday: 'Everyday', neat: 'Neat', soft: 'Soft', kawaii: 'Kawaii', dark: 'Dark' };
 const isParent = (p) => W.people.some((q) => q !== p && (q.parents || []).includes(p.name));
 function fashionWeights(p) {
   const P = personaOf(p), par = isParent(p);
@@ -7315,6 +7398,11 @@ function fashionWeights(p) {
     jirai: 0.1 + P.cute * 0.7 + P.edge * 0.5 - P.age * 0.8, gyaru: 0.1 + P.energy * 0.8 + P.cute * 0.5 + P.warmth * 0.3 - P.age * 0.8, lolita: 0.1 + P.cute * 0.8 + P.order * 0.5 - P.energy * 0.3,
     cottage: 0.3 + P.warmth * 0.6 + P.cute * 0.3 - P.edge * 0.5, y2k: 0.2 + P.energy * 0.6 - P.age * 0.9, classic: 0.1 + P.age * 1.4 + P.order * 0.3,
     mom: par ? 0.9 + P.warmth * 0.5 + P.age * 0.5 : 0.04 + P.age * 0.25, dad: par ? 0.9 - P.energy * 0.2 + P.age * 0.5 : 0.04 + P.age * 0.25,
+    comfy: 0.3 - P.energy * 0.6 + P.warmth * 0.2, business: 0.08 + P.order * 0.8 + P.age * 0.5 - P.edge * 0.4, academia: 0.1 + P.order * 0.5 - P.energy * 0.4 + P.edge * 0.25,
+    coquette: 0.08 + P.cute * 0.7 + P.warmth * 0.3 - P.edge * 0.4, boho: 0.12 + P.warmth * 0.4 - P.order * 0.4 + P.age * 0.2,
+    fairy: 0.08 + P.cute * 0.8 + P.energy * 0.3 - P.edge * 0.4 - P.age * 0.5, kidcore: 0.08 + P.energy * 0.6 + P.cute * 0.5 - P.age * 0.9, neko: 0.1 + P.cute * 0.6 + P.edge * 0.25 - P.warmth * 0.15,
+    egirl: 0.08 + P.edge * 0.6 + P.cute * 0.4 - P.age * 0.9, grunge: 0.1 + P.edge * 0.7 - P.order * 0.6, witchy: 0.1 + P.edge * 0.6 - P.energy * 0.3 + P.age * 0.2 - P.cute * 0.2,
+    techwear: 0.08 + P.edge * 0.5 + P.order * 0.5 - P.warmth * 0.4 - P.cute * 0.4,
   };
   if (p.grow < 1) for (const k of Object.keys(w)) if (!KID_FASHION.includes(k)) w[k] = 0;
   for (const k of Object.keys(w)) w[k] = Math.max(k === 'casual' ? 0.3 : 0, w[k]);
@@ -7341,6 +7429,9 @@ function dressFor(p, fashion) {
   d.bowColor = F.bowColor ? pk(F.bowColor) : null;
   d.head = null; for (const [k, cols, ch] of F.head || []) if (r() < ch) { d.head = k; d.headColor = cols ? pk(cols) : null; }
   d.glasses = r() < (F.glasses || 0) + Math.max(0, personaOf(p).order - 0.6) * 0.5;
+  d.tieColor = F.tie ? pk(F.tie) : null;
+  d.pack = F.pack ? pk(F.pack) : null;
+  d.print = F.print && r() < 0.75 ? pk(F.print) : null;
   return d;
 }
 function lookOf(p) {
@@ -7349,7 +7440,7 @@ function lookOf(p) {
 }
 function setFashion(p, fashion, quiet) {
   if (!FASHION[fashion]) return;
-  const d = dressFor(p, fashion); p.look = { ...d, face: faceFor(p, fashion) };
+  const d = dressFor(p, fashion); p.look = { ...d, face: faceFor(p, fashion), rev: (p.look?.rev || 0) + 1 };
   // the style's colors go into their wardrobe and taste, so morning outfits stay in style
   if (d.top && COLORS[d.top]) {
     if (!p.wardrobe.shirts.includes(d.top)) p.wardrobe.shirts.push(d.top);
@@ -7362,14 +7453,21 @@ function setFashion(p, fashion, quiet) {
 }
 // ---- faces that fit the vibe ----
 function faceFor(p, fashion) {
-  const P = personaOf(p), F = FASHION[fashion] || {}, r = seededRand(hashStr('face:' + p.id));
-  const eyes = P.edge > 0.35 && P.warmth < 0.1 ? 'sharp' : P.energy < -0.45 ? 'sleepy' : P.cute > 0.35 && P.energy > -0.1 ? 'sparkle' : P.order > 0.45 && P.energy < 0 ? 'dot' : 'round';
-  const mouth = P.cute > 0.5 && P.energy > 0.25 ? 'cat' : P.edge > 0.35 && P.energy > 0 ? 'smirk' : P.warmth < -0.3 && P.energy < 0.2 ? 'flat' : 'smile';
-  return {
-    eyes, mouth, brow: P.warmth < -0.4 ? 0.14 : P.energy < -0.4 && P.warmth > 0 ? -0.14 : 0, browThick: P.edge > 0.4 ? 1.4 : P.cute > 0.4 ? 0.8 : 1,
-    lashes: !!F.lashes || (P.cute > 0.45 && r() < 0.6), liner: !!F.liner, underEye: !!F.underEye, lips: F.lips || null,
-    freckles: r() < (F.freckles || 0.12), blush: P.warmth > 0.3 ? 0.75 : P.warmth < -0.3 ? 0.3 : 0.55,
+  const P = personaOf(p), F = FASHION[fashion] || {}, r = seededRand(hashStr('face:' + p.id)), real = isRealish(p);
+  const eyes = P.cute > 0.6 && P.energy > 0.3 ? 'starry' : P.edge > 0.35 && P.cute > 0.2 ? 'cat' : P.edge > 0.35 && P.warmth < 0.1 ? 'sharp' : P.energy < -0.45 ? 'sleepy'
+    : P.cute > 0.35 && P.energy > -0.1 ? 'sparkle' : P.warmth > 0.45 && P.energy < 0 ? 'droopy' : P.order > 0.45 && P.energy < 0 ? 'dot' : P.energy > 0.55 ? 'wide' : r() < 0.15 ? 'tiny' : 'round';
+  const mouth = F.mouth || (P.cute > 0.5 && P.energy > 0.25 ? 'cat' : P.edge > 0.3 && P.cute > 0.2 && r() < 0.5 ? 'fang' : P.edge > 0.35 && P.energy > 0 ? 'smirk'
+    : P.energy > 0.5 && P.warmth > 0.2 ? 'grin' : P.warmth < -0.3 && P.energy < 0.2 ? 'flat' : P.energy < -0.3 && P.cute > 0 ? 'small' : 'smile');
+  const pkR = (a) => a[Math.floor(r() * a.length) % a.length];
+  const tint = r() < 0.3 && !real ? pkR(F.family === 'dark' ? ['violet', 'red', 'gold'] : F.family === 'kawaii' ? ['pink', 'violet', 'blue'] : ['brown', 'blue', 'green', 'gold']) : 'dark';
+  const marks = [...(F.marks || [])]; if (!real && r() < 0.1) marks.push('mole');
+  const base = {
+    eyes, mouth, eyeColor: tint, brow: P.warmth < -0.4 ? 0.14 : P.energy < -0.4 && P.warmth > 0 ? -0.14 : 0, browThick: P.edge > 0.4 ? 1.4 : P.cute > 0.4 ? 0.8 : 1,
+    lashes: !!F.lashes || (P.cute > 0.45 && r() < 0.6), liner: !!F.liner && p.grow >= 1, underEye: !!F.underEye && p.grow >= 1, lips: p.grow >= 1 ? F.lips || null : null,
+    freckles: r() < (F.freckles || 0.12), blush: F.blushK || (P.warmth > 0.3 ? 0.75 : P.warmth < -0.3 ? 0.3 : 0.55), marks,
   };
+  // anything the Creator picked by hand stays, whatever style they wear next
+  return { ...base, ...(p.body?.faceMods || {}) };
 }
 
 // ---- work uniforms ----
@@ -7404,17 +7502,21 @@ const lawOutfit = (p) => (typeof jailed === 'function' && jailed(p) ? 'jumpsuit'
 const workOutfit = (p) => (lawOutfit(p) ? LAW_OUTFITS[lawOutfit(p)] : inUniform(p) ? UNIFORMS[p.job] : null);
 
 // ---- words, for the minds and the panels ----
-const BOTTOM_WORDS = { pants: 'pants', shorts: 'shorts', skirt: 'a mini skirt', pleated: 'a pleated skirt', long: 'a long skirt', bell: 'a frilly bell skirt' };
-const LAYER_WORDS = { vest: 'a sweater vest', cardigan: 'a cardigan', track: 'a track jacket', hoodie: 'a hoodie', blazer: 'a blazer' };
+const BOTTOM_WORDS = { pants: 'pants', shorts: 'shorts', skirt: 'a mini skirt', pleated: 'a pleated skirt', long: 'a long skirt', bell: 'a frilly bell skirt', cargo: 'cargo pants', ripped: 'ripped jeans', tutu: 'a puffy tutu skirt', plaid: 'a plaid skirt' };
+const LAYER_WORDS = { vest: 'a sweater vest', cardigan: 'a cardigan', track: 'a track jacket', hoodie: 'a hoodie', blazer: 'a blazer', flannel: 'an open flannel shirt', puffer: 'a puffy jacket', shell: 'a black tech jacket', corset: 'a laced corset top', cape: 'a long cape', overalls: 'overalls' };
+const HEAD_WORDS = { beret: 'a beret', cap: 'a cap', flatcap: 'a flat cap', straw: 'a straw hat', bucket: 'a bucket hat', beanie: 'a beanie', witch: 'a pointy witch hat', catears: 'cat ears', flowers: 'a flower crown', headbow: 'a big lace bow', hairbow: 'a ribbon bow in their hair', sidebow: 'a bow clip', clips: 'hair clips', starclips: 'star clips', headphones: 'headphones' };
+const EXTRA_WORDS = { tail: 'a cat tail', backpack: 'a backpack', satchel: 'a leather satchel', heartbag: 'a heart-shaped purse', briefcase: 'a briefcase', bangles: 'bangles', harness: 'a strap harness', legwarmers: 'leg warmers', neckphones: 'headphones around their neck', hoops: 'hoop earrings' };
 function lookText(p) {
   const L = lookOf(p), F = FASHION[L.fashion];
   const law = lawOutfit(p); if (law) return `an ${LAW_OUTFITS[law].label}${typeof onProbation === 'function' && onProbation(p) ? ' and an ankle monitor' : ''}`;
   if (inUniform(p)) return `their ${JOBS[p.job].short} uniform (${UNIFORMS[p.job].label})${typeof onProbation === 'function' && onProbation(p) ? ' and an ankle monitor' : ''}`;
-  const bits = [`${a_an(p.outfit.shirt)} ${L.fashion === 'lolita' || L.fashion === 'cottage' ? 'dress' : 'top'}`];
+  const bits = [`${a_an(p.outfit.shirt)} ${F.dress ? 'dress' : 'top'}${L.print === 'heart' ? ' with a heart on it' : L.print === 'star' ? ' with a star on it' : L.print === 'rainbow' ? ' with rainbow stripes' : L.stripes ? ' with stripes' : ''}`];
   if (L.layer && LAYER_WORDS[L.layer]) bits.push(LAYER_WORDS[L.layer]);
   if (!(F.dress)) bits.push(BOTTOM_WORDS[L.bottom] || 'pants');
   if (L.platform) bits.push('platform shoes');
-  if (L.glasses) bits.push('glasses');
+  if (L.head && HEAD_WORDS[L.head] && !p.outfit.hat) bits.push(HEAD_WORDS[L.head]);
+  for (const e of L.extras || []) if (EXTRA_WORDS[e]) bits.push(EXTRA_WORDS[e]);
+  if (L.glasses) bits.push(L.glasses === 'shades' ? 'sunglasses' : 'glasses');
   if (typeof onProbation === 'function' && onProbation(p)) bits.push('an ankle monitor');
   return `a ${F.name.replace(/ \(.*\)/, '').toLowerCase()} look: ${bits.join(', ')}`;
 }
@@ -7429,6 +7531,7 @@ function styleRemark(me, them, score) {
   if (!me.look || !them.look || them.grow < 1 && me.grow < 1) return null;
   if (inUniform(them)) return rand() < 0.4 ? { say: pick([`The ${JOBS[them.job].short} uniform suits you.`, 'Are you on your way to work?', 'You look so official right now.']), feeling: 1 } : null;
   const P = personaOf(me), kin = styleKin(me, them), F = FASHION[them.look.fashion], name = F.name.replace(/ \(.*\)/, '').toLowerCase();
+  if (them.look.head === 'catears' && !them.outfit.hat && rand() < 0.35) return P.warmth > -0.2 ? { say: pick(['Are those cat ears? I love them.', 'Okay, the ears are adorable.', 'Do they twitch? They look like they should twitch.']), feeling: 1, compliment: true } : { say: pick(['Nice ears. Very normal.', 'Are you going to meow at me now?']), feeling: 0, action: 'tease' };
   if (kin === 1) return { say: pick([`Okay, your ${name} outfit today? Perfect.`, 'We match again. Great minds.', `Where did you get that? I need it.`]), feeling: 2, compliment: true };
   if (kin === 0.5 && score >= 0) return { say: pick(['Your outfit is really cute today.', 'I love how you dress.', 'That look is so you.']), feeling: 1, compliment: true };
   const old = FASHION[me.look.fashion].family === 'neat' || ['mom', 'dad', 'classic'].includes(me.look.fashion);
@@ -7451,10 +7554,15 @@ function dressLook(p, f) {
   const bottom = U && ['overalls', 'coverall'].includes(U.layer?.[0]) ? 'pants' : L.bottom;
   const bColor = U && ['overalls', 'coverall'].includes(U.layer?.[0]) ? U.layer[1] : F.dress ? shirtC : L.bottomColor || '#4a4652';
   const tights = L.tights === 'skin' || !L.tights ? skin : lookMat(L.tights);
-  const legMat = bottom === 'pants' ? lookMat(bColor) : bottom === 'shorts' ? skin : tights;
+  const pantsLike = ['pants', 'cargo', 'ripped'].includes(bottom);
+  const legMat = pantsLike ? lookMat(bColor) : bottom === 'shorts' ? skin : tights;
   f.legs.forEach((l) => (l.material = legMat));
   const bm = lookMat(bColor);
-  if (bottom === 'shorts') for (const l of f.legs) add(l, mesh(cyl(0.145, 0.16, 0.2, 12), bm, 0, 0.1, 0));
+  if (bottom === 'cargo') f.legs.forEach((l, i) => add(l, mesh(box(0.07, 0.14, 0.15), bm, (i ? 1 : -1) * 0.12, 0.02, 0)));
+  else if (bottom === 'ripped') f.legs.forEach((l, i) => { const rip = add(l, mesh(box(0.11, 0.045, 0.02), skin, 0, -0.02 + i * 0.05, 0.118, false)); rip.rotation.z = i ? 0.2 : -0.15; });
+  else if (bottom === 'tutu') { add(f.fig, mesh(cyl(0.38, 0.6, 0.14, 18), bm, 0, 0.4, 0)); add(f.fig, mesh(cyl(0.42, 0.66, 0.12, 18), lookMat('#fbf8f4'), 0, 0.3, 0)); }
+  else if (bottom === 'plaid') { add(f.fig, mesh(cyl(0.37, 0.52, 0.3, 12), bm, 0, 0.34, 0)); for (const [y, r, c] of [[0.27, 0.49, '#fbf8f4'], [0.39, 0.43, '#1e1a24']]) { const t = mesh(new T3.TorusGeometry(r, 0.014, 4, 18), toon(c), 0, y, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); } }
+  else if (bottom === 'shorts') for (const l of f.legs) add(l, mesh(cyl(0.145, 0.16, 0.2, 12), bm, 0, 0.1, 0));
   else if (bottom === 'skirt') add(f.fig, mesh(cyl(0.37, 0.5, 0.26, 20), bm, 0, 0.36, 0));
   else if (bottom === 'pleated') { const s = mesh(cyl(0.37, 0.52, 0.3, 12), bm, 0, 0.34, 0); add(f.fig, s); }
   else if (bottom === 'long') add(f.fig, mesh(cyl(0.37, 0.56, 0.46, 20), bm, 0, 0.24, 0));
@@ -7495,20 +7603,44 @@ function dressLook(p, f) {
     }
     case 'overalls': { add(f.fig, mesh(box(0.42, 0.34, 0.035), lm, 0, 0.72, 0.39)); for (const s of [-1, 1]) add(f.fig, mesh(box(0.06, 0.34, 0.03), lm, s * 0.15, 0.98, 0.34)); add(f.fig, mesh(cyl(0.39, 0.39, 0.22, 18), lm, 0, 0.48, 0)); break; }
     case 'hivis': { shell(); for (const y of [0.62, 0.86]) { const b = mesh(new T3.TorusGeometry(0.41, 0.03, 5, 22), toon('#d9dde6'), 0, y, 0); b.rotation.x = Math.PI / 2; add(f.fig, b); } break; }
+    case 'flannel': {
+      shell(); frontStrip(0.13, vinyl(shirtC, { kind: 'cloth' })); sleeves = lm;
+      const dk = toon(new T3.Color(COLORS[lc] || lc).multiplyScalar(0.5).getStyle()), lt = toon(new T3.Color(COLORS[lc] || lc).lerp(new T3.Color('#ffffff'), 0.35).getStyle());
+      for (const [y, m] of [[0.56, dk], [0.72, lt], [0.88, dk]]) { const t = mesh(new T3.TorusGeometry(0.408, 0.014, 4, 22), m, 0, y, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); }
+      for (const a of f.arms) add(a, mesh(cyl(0.107, 0.107, 0.03, 10), dk, 0, 0, 0, false));
+      break;
+    }
+    case 'puffer': { shell(0.45); sleeves = lm; const dk = toon(new T3.Color(COLORS[lc] || lc).multiplyScalar(0.8).getStyle()); for (const y of [0.56, 0.76, 0.96]) { const t = mesh(new T3.TorusGeometry(0.45, 0.022, 4, 22), dk, 0, y, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); } add(f.fig, mesh(cyl(0.3, 0.33, 0.14, 16), lm, 0, 1.06, 0)); break; }
+    case 'shell': { shell(0.415); sleeves = lm; add(f.fig, mesh(cyl(0.27, 0.3, 0.16, 16), lm, 0, 1.05, 0)); add(f.fig, mesh(box(0.025, 0.6, 0.02), toon('#9aa0ac'), 0, 0.72, 0.42, false)); break; }
+    case 'corset': { add(f.fig, mesh(cyl(0.395, 0.39, 0.3, 18), lm, 0, 0.6, 0)); const lace = toon(lc === '#fbf8f4' ? '#ff9fbf' : '#fbf8f4'); for (let i = 0; i < 3; i++) for (const s of [-1, 1]) { const x = mesh(box(0.1, 0.018, 0.02), lace, 0, 0.5 + i * 0.09, 0.4, false); x.rotation.z = s * 0.5; add(f.fig, x); } break; }
+    case 'cape': {
+      const cm = cachedMat('cape:' + lc, () => makeToon({ color: COLORS[lc] || lc, gradientMap: gradMap, side: T3.DoubleSide }));
+      add(f.fig, mesh(new T3.CylinderGeometry(0.42, 0.66, 0.78, 18, 1, true, Math.PI / 2, Math.PI), cm, 0, 0.6, -0.02));
+      add(f.fig, mesh(new T3.TorusGeometry(0.27, 0.05, 6, 16), lm, 0, 1.0, 0)).rotation.x = Math.PI / 2;
+      add(f.fig, mesh(sph(0.04, 8, 6), toon('#ffd36b'), 0, 0.98, 0.3, false));
+      break;
+    }
   }
   const armMat = sleeves || vinyl(shirtC, { kind: 'cloth' });
   f.arms.forEach((a) => (a.material = armMat)); f.body.material = vinyl(shirtC, { kind: 'cloth' });
   if (!U && L.stripes) for (const y of [0.52, 0.68, 0.84]) { const t = mesh(new T3.TorusGeometry(0.382, 0.03, 5, 24), lookMat(L.stripes), 0, y, 0); t.rotation.x = Math.PI / 2; add(f.fig, t); }
+  // a print on the shirt, when nothing covers the chest
+  if (!U && L.print && (!layer || layer === 'cape')) {
+    if (L.print === 'rainbow') ['#ff6f5e', '#ffb347', '#ffe98a', '#6fbf6a', '#7fb3ff'].forEach((c, i) => { const t = mesh(new T3.TorusGeometry(0.383, 0.02, 4, 24), toon(c), 0, 0.88 - i * 0.045, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); });
+    else if (L.print === 'heart') add(f.fig, heartMesh(shirtC === COLORS.hotpink || shirtC === COLORS.rose ? '#fbf8f4' : '#ff5f8f', 0.8, 0, 0.8, 0.385));
+    else if (L.print === 'star') { const st = starMesh('#ffd36b', 0.09); st.position.set(0, 0.8, 0.39); add(f.fig, st); }
+  }
   // neck and chest
   const neck = U ? U.neck || [] : L.neck || [];
   for (const n of neck) {
     if (n === 'collar') for (const s of [-1, 1]) { const c = mesh(sph(0.09, 10, 6), toon('#fbf8f4'), s * 0.09, 1.0, 0.33, false); c.scale.set(1.3, 0.45, 0.5); c.rotation.z = s * -0.4; add(f.fig, c); }
     if (n === 'bow') { const bc = L.bowColor || (F.dress ? '#fbf8f4' : '#ff5f9a'); for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.06, 0.12, 8), toon(bc), s * 0.06, 0.96, 0.38, false); w.rotation.z = s * Math.PI / 2; add(f.fig, w); } add(f.fig, mesh(sph(0.03, 6, 5), toon(bc), 0, 0.96, 0.39, false)); }
-    if (n === 'tie') { const tc = U?.tie || '#7a2e3a'; add(f.fig, mesh(box(0.07, 0.3, 0.03), toon(tc), 0, 0.8, 0.405, false)); add(f.fig, mesh(sph(0.035, 6, 5), toon(tc), 0, 0.96, 0.39, false)); }
+    if (n === 'tie') { const tc = U?.tie || L.tieColor || '#7a2e3a'; add(f.fig, mesh(box(0.07, 0.3, 0.03), toon(tc), 0, 0.8, 0.405, false)); add(f.fig, mesh(sph(0.035, 6, 5), toon(tc), 0, 0.96, 0.39, false)); }
     if (n === 'choker') { const c = mesh(new T3.TorusGeometry(0.17, 0.025, 5, 14, Math.PI), toon('#1e1a24'), 0, 1.02, 0.3, false); c.rotation.z = Math.PI; c.rotation.x = 0.5; add(f.fig, c); add(f.fig, mesh(new T3.OctahedronGeometry(0.035, 0), toon('#d9dde6'), 0, 0.84, 0.39, false)); }
     if (n === 'badge') add(f.fig, mesh(box(0.1, 0.07, 0.02), toon('#fbf8f4'), 0.16, 0.9, 0.41, false));
     if (n === 'lanyard') { const ly = mesh(new T3.TorusGeometry(0.16, 0.012, 4, 12, Math.PI), toon('#5a7fd8'), 0, 0.92, 0.37, false); ly.rotation.z = Math.PI; add(f.fig, ly); add(f.fig, mesh(box(0.1, 0.13, 0.02), toon('#fbf8f4'), 0, 0.72, 0.41, false)); }
     if (n === 'stetho') { const st = mesh(new T3.TorusGeometry(0.17, 0.02, 5, 14, Math.PI), toon('#4a4652'), 0, 0.94, 0.37, false); st.rotation.z = Math.PI; add(f.fig, st); add(f.fig, mesh(cyl(0.045, 0.045, 0.02, 10), toon('#cfd3dc'), 0.12, 0.72, 0.41, false)).rotation.x = Math.PI / 2; }
+    if (n === 'bell') { const c = mesh(new T3.TorusGeometry(0.2, 0.03, 5, 16, Math.PI), toon('#ff5f8f'), 0, 1.0, 0.24, false); c.rotation.z = Math.PI; c.rotation.x = 0.55; add(f.fig, c); add(f.fig, mesh(sph(0.045, 8, 6), toon('#ffd36b', { emissive: new T3.Color('#6a4a10') }), 0, 0.9, 0.4, false)); }
     if (n === 'tape') for (const s of [-1, 1]) add(f.fig, mesh(box(0.05, 0.4, 0.02), toon('#ffd23f'), s * 0.12, 0.8, 0.41, false));
   }
   const extras = U ? [] : L.extras || [];
@@ -7519,6 +7651,18 @@ function dressLook(p, f) {
     if (e === 'wristbands') for (const a of f.arms) add(a, mesh(cyl(0.105, 0.105, 0.07, 10), toon('#ff3355'), 0, -0.14, 0, false));
     if (e === 'hoops') for (const s of [-1, 1]) { const h = mesh(new T3.TorusGeometry(0.07, 0.014, 5, 14), toon('#ffd36b'), s * 0.6, -0.2, 0.02, false); h.rotation.y = Math.PI / 2; add(f.head, h); }
     if (e === 'tote') add(f.arms[1], mesh(box(0.2, 0.22, 0.06), lookMat('#cdb88f'), 0.05, -0.3, 0.1));
+    if (e === 'backpack') { const pm = lookMat(L.pack || '#9fd3ff'); add(f.fig, mesh(box(0.44, 0.46, 0.2), pm, 0, 0.78, -0.46)); add(f.fig, mesh(box(0.3, 0.16, 0.08), pm, 0, 0.66, -0.58)); for (const s of [-1, 1]) add(f.fig, mesh(box(0.05, 0.46, 0.03), pm, s * 0.17, 0.8, 0.39, false)); }
+    if (e === 'satchel') { add(f.fig, mesh(box(0.26, 0.2, 0.08), lookMat('#6b4a3a'), 0.4, 0.4, 0.12)); const st = mesh(new T3.TorusGeometry(0.46, 0.016, 4, 24), toon('#4a3a30'), 0.02, 0.7, 0, false); st.rotation.set(Math.PI / 2, 0.75, 0); add(f.fig, st); }
+    if (e === 'heartbag') { add(f.arms[1], heartMesh('#ff5f8f', 0.9, 0.02, -0.34, 0.12)); }
+    if (e === 'briefcase') { add(f.arms[1], mesh(box(0.32, 0.24, 0.08), lookMat('#3a2a22'), 0.04, -0.4, 0.08)); add(f.arms[1], mesh(box(0.1, 0.03, 0.03), toon('#d9dde6'), 0.04, -0.26, 0.08, false)); }
+    if (e === 'bangles') for (const a of f.arms) for (let i = 0; i < 2; i++) { const b = mesh(new T3.TorusGeometry(0.11, 0.016, 4, 12), toon(i ? '#ffd36b' : '#d9a55a'), 0, -0.1 - i * 0.05, 0, false); b.rotation.x = Math.PI / 2; add(a, b); }
+    if (e === 'harness') { for (const s of [-1, 1]) { const st = mesh(box(0.045, 0.6, 0.03), toon('#1e1a24'), 0, 0.76, 0.41, false); st.rotation.z = s * 0.5; add(f.fig, st); } add(f.fig, mesh(box(0.1, 0.1, 0.04), toon('#9aa0ac'), 0, 0.76, 0.43, false)); }
+    if (e === 'legwarmers') for (const l of f.legs) add(l, mesh(cyl(0.155, 0.17, 0.17, 12), lookMat(L.pack || '#ff9fbf'), 0, -0.08, 0));
+    if (e === 'neckphones') { const ph = mesh(new T3.TorusGeometry(0.28, 0.035, 5, 16, Math.PI), toon('#2e2a36'), 0, 1.02, 0.02, false); ph.rotation.x = Math.PI / 2 + 0.25; ph.rotation.z = Math.PI; add(f.fig, ph); for (const s of [-1, 1]) add(f.fig, mesh(cyl(0.09, 0.09, 0.07, 12), toon('#ff9fbf'), s * 0.27, 0.99, 0.1, false)).rotation.z = Math.PI / 2; }
+    if (e === 'tail') {
+      const tc = lookMat(L.headColor || HAIR_COLORS[hairOf(p).color] || '#2e2a36');
+      [[0, 0.42, -0.4, 0.09], [0.05, 0.5, -0.56, 0.085], [0.12, 0.64, -0.68, 0.08], [0.18, 0.8, -0.72, 0.075], [0.2, 0.95, -0.66, 0.07]].forEach(([x, y, z, r]) => add(f.fig, mesh(sph(r, 8, 6), tc, x, y, z)));
+    }
   }
   // shoes
   if (f.shoes) for (const s of f.shoes) { s.material = vinyl(L.shoe || '#fffaf2'); if (L.platform) add(s, mesh(box(0.26, 0.09, 0.3), toon('#2e2a36'), 0, -0.07, 0, false)); }
@@ -7526,14 +7670,26 @@ function dressLook(p, f) {
   const bought = !!p.outfit.hat;
   if (f.hat) f.hat.visible = !(U && U.head);
   const headK = U ? U.head?.[0] : bought ? null : L.head, headC = U ? U.head?.[1] : L.headColor;
-  if (headK) add(f.head, headMeshFor(headK, headC, F));
-  if (!U && L.head === 'clips' || !U && L.head === 'sidebow') { /* hair accessories sit next to a bought hat too */ if (bought) add(f.head, headMeshFor(L.head, L.headColor, F)); }
-  if (U?.glasses || (!U && L.glasses)) add(f.head, glassesMesh(p));
+  if (headK) add(f.head, headMeshFor(headK, headC, F, p));
+  if (!U && bought && HAIR_ACCESSORIES.includes(L.head)) add(f.head, headMeshFor(L.head, L.headColor, F, p)); // hair accessories sit next to a bought hat too
+  if (U?.glasses || (!U && L.glasses)) add(f.head, glassesMesh(p, U?.glasses ? 'round' : L.glasses));
   if (typeof onProbation === 'function' && onProbation(p) && f.legs?.[0]) { add(f.legs[0], mesh(cyl(0.135, 0.135, 0.07, 10), toon('#1e1a24'), 0, -0.1, 0, false)); add(f.legs[0], mesh(box(0.09, 0.07, 0.06), toon('#1e1a24'), 0, -0.1, 0.13, false)); add(f.legs[0], mesh(sph(0.018, 5, 4), toon('#6fff8f', { emissive: new T3.Color('#1f8f3f') }), 0, -0.08, 0.165, false)); }
   faceLook(p, f, add);
   return f;
 }
-function headMeshFor(k, color, F) {
+const HAIR_ACCESSORIES = ['clips', 'sidebow', 'starclips', 'hairbow', 'catears'];
+function heartMesh(color, k = 1, x = 0, y = 0, z = 0) {
+  const g = new T3.Group(), m = toon(color);
+  for (const s of [-1, 1]) g.add(mesh(sph(0.045, 8, 6), m, s * 0.035, 0.02, 0, false));
+  const tip = mesh(new T3.ConeGeometry(0.068, 0.08, 4), m, 0, -0.035, 0, false); tip.rotation.z = Math.PI; g.add(tip);
+  g.scale.set(k, k, k * 0.5); g.position.set(x, y, z); return g;
+}
+function starMesh(color, r = 0.06) {
+  const g = new T3.Group(), m = toon(color, { emissive: new T3.Color(color).multiplyScalar(0.25) });
+  for (const rot of [0, Math.PI / 4]) { const o = mesh(new T3.OctahedronGeometry(r, 0), m, 0, 0, 0, false); o.scale.set(0.55, 1.2, 0.3); o.rotation.z = rot; g.add(o); const o2 = o.clone(); o2.rotation.z = rot + Math.PI / 2; g.add(o2); }
+  return g;
+}
+function headMeshFor(k, color, F, p) {
   const g = new T3.Group(), c = (x) => toon(x);
   switch (k) {
     case 'beret': { const b = mesh(sph(0.5, 16, 8), c(color || '#3d4f86'), 0.08, 0.62, -0.02); b.scale.set(1, 0.32, 1); g.add(b); break; }
@@ -7548,34 +7704,67 @@ function headMeshFor(k, color, F) {
     case 'goggles': { const band = mesh(new T3.TorusGeometry(0.63, 0.035, 5, 22), c('#2e2a36'), 0, 0.38, 0); band.rotation.x = Math.PI / 2 - 0.2; g.add(band); for (const s of [-1, 1]) { const l = mesh(cyl(0.12, 0.12, 0.08, 14), toon('#9fd3ff', { transparent: true, opacity: 0.8 }), s * 0.17, 0.45, 0.52, false); l.rotation.x = Math.PI / 2 - 0.4; g.add(l); } break; }
     case 'headbow': { const bc = color || '#fbf8f4'; for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.2, 0.34, 10), c(bc), s * 0.2, 0.66, 0.08); w.rotation.z = s * Math.PI / 2; g.add(w); } g.add(mesh(sph(0.09, 8, 6), c(bc), 0, 0.66, 0.08)); { const lace = mesh(new T3.TorusGeometry(0.62, 0.03, 5, 20, Math.PI), c('#fbf8f4'), 0, 0.24, 0.02); lace.rotation.y = Math.PI / 2; lace.rotation.z = Math.PI / 2; g.add(lace); } break; }
     case 'sidebow': { const bc = color || '#2e2a36'; for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.11, 0.2, 8), c(bc), 0.46 + s * 0.11, 0.46, 0.22); w.rotation.z = s * Math.PI / 2; g.add(w); } g.add(mesh(sph(0.05, 6, 5), c(bc), 0.46, 0.46, 0.22)); break; }
+    case 'beanie': { const bc = color || '#a3a3ad'; g.add(mesh(new T3.SphereGeometry(0.665, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2), c(bc), 0, 0.2, -0.02)); g.add(mesh(cyl(0.675, 0.675, 0.16, 20), c(new T3.Color(bc).multiplyScalar(0.85).getStyle()), 0, 0.26, -0.02)); g.add(mesh(sph(0.13, 10, 8), c('#fbf8f4'), 0, 0.9, -0.05)); break; }
+    case 'witch': { const wc = color || '#2e2a36'; g.add(mesh(cyl(0.9, 0.9, 0.05, 22), c(wc), 0, 0.5, 0)); const cone = mesh(new T3.ConeGeometry(0.46, 1.1, 16), c(wc), 0.06, 1.05, -0.02); cone.rotation.z = -0.22; g.add(cone); g.add(mesh(cyl(0.47, 0.47, 0.1, 16), c('#b98adf'), 0, 0.57, 0)); break; }
+    case 'catears': {
+      const ec = color || HAIR_COLORS[hairOf(p).color] || '#2e2a36';
+      const band = mesh(new T3.TorusGeometry(0.68, 0.024, 5, 20, Math.PI), c(ec), 0, 0.02, 0.04); g.add(band);
+      for (const s of [-1, 1]) { const e = mesh(new T3.ConeGeometry(0.2, 0.42, 4), c(ec), s * 0.37, 0.72, 0.02); e.rotation.z = -s * 0.42; e.rotation.y = Math.PI / 4; e.scale.z = 0.6; g.add(e); const inner = mesh(new T3.ConeGeometry(0.1, 0.24, 4), c('#ffb3c7'), s * 0.355, 0.69, 0.09, false); inner.rotation.z = -s * 0.42; inner.rotation.y = Math.PI / 4; inner.scale.z = 0.5; g.add(inner); }
+      break;
+    }
+    case 'flowers': { const big = p && ['curly', 'spiky', 'bun'].includes(hairOf(p).style), R = big ? 0.66 : 0.56, Y = big ? 0.56 : 0.44; for (let i = 0; i < 9; i++) { const a = -Math.PI * 0.55 + (i / 8) * Math.PI * 1.1, x = Math.sin(a) * R, z = Math.cos(a) * R - 0.04; g.add(mesh(sph(0.095, 8, 6), c(['#ffffff', '#ffe98a', '#ff9fbf', '#c9b3ff', '#ffb38a'][i % 5]), x, Y, z)); if (i % 2) g.add(mesh(sph(0.055, 6, 5), c('#7cc86a'), x * 1.04, Y - 0.07, z * 1.04, false)); } break; }
+    case 'hairbow': { const bc = color || '#ff9fbf'; for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.15, 0.28, 10), c(bc), s * 0.15, 0.28, -0.6); w.rotation.z = s * Math.PI / 2; g.add(w); const t = mesh(box(0.06, 0.3, 0.03), c(bc), s * 0.07, 0.06, -0.62, false); t.rotation.z = s * 0.25; g.add(t); } g.add(mesh(sph(0.07, 8, 6), c(bc), 0, 0.28, -0.62)); break; }
+    case 'starclips': [[0.3, 0.42, 0.42, '#ffd36b'], [0.42, 0.3, 0.38, '#c9b3ff'], [-0.34, 0.4, 0.4, '#9fd3ff']].forEach(([x, y, z, col]) => { const s = starMesh(col, 0.07); s.position.set(x, y, z); g.add(s); }); break;
+    case 'headphones': { const hc = color || '#2e2a36'; g.add(mesh(new T3.TorusGeometry(0.67, 0.05, 6, 20, Math.PI), c(hc), 0, 0.05, 0)); for (const s of [-1, 1]) { const e = mesh(cyl(0.19, 0.19, 0.14, 14), c('#ff9fbf'), s * 0.66, 0.02, 0); e.rotation.z = Math.PI / 2; g.add(e); } break; }
     case 'clips': for (let i = 0; i < 3; i++) g.add(mesh(box(0.1, 0.04, 0.04), c(['#ff9fbf', '#9fd3ff', '#ffe98a'][i]), 0.24 + i * 0.07, 0.5 - i * 0.07, 0.4 - i * 0.04, false)); break;
   }
   return g;
 }
-function glassesMesh(p) {
+function glassesMesh(p, style) {
   const g = new T3.Group(), gap = 0.12 + p.body.eyeGap * 0.45, m = toon('#3a3040');
   const surf = (x, y, r = 0.62) => Math.sqrt(Math.max(0.01, r * r - x * x - y * y));
   for (const s of [-1, 1]) { const ring = mesh(new T3.TorusGeometry(0.105, 0.016, 5, 16), m, s * gap, 0.05, surf(s * gap, 0.05) + 0.05, false); ring.rotation.y = s * 0.15; g.add(ring); }
+  if (style === 'shades') for (const s of [-1, 1]) { const lens = mesh(new T3.CircleGeometry(0.1, 14), cachedMat('shadesLens', () => new T3.MeshBasicMaterial({ color: 0x1e1a24, transparent: true, opacity: 0.85 })), s * gap, 0.05, surf(s * gap, 0.05) + 0.048, false); lens.rotation.y = s * 0.15; g.add(lens); }
   g.add(mesh(box(Math.max(0.04, gap * 2 - 0.2), 0.02, 0.02), m, 0, 0.08, surf(0, 0.08) + 0.03, false));
   return g;
 }
+const EYE_SHAPES = { round: ['Round', 1, 1, 0], sparkle: ['Sparkly', 1.2, 1.12, 0], starry: ['Starry', 1.2, 1.12, 0], sleepy: ['Sleepy', 1.1, 0.62, 0], sharp: ['Sharp', 1.15, 0.85, 0.22], cat: ['Cat', 0.8, 1.25, 0.32], droopy: ['Droopy', 1.1, 0.8, -0.25], wide: ['Wide', 1.35, 1.2, 0], tiny: ['Tiny', 0.62, 0.62, 0], dot: ['Dot', 0.78, 0.72, 0] };
+const EYE_COLORS = { dark: '#241a34', brown: '#6b3f26', blue: '#2f64c8', green: '#2f7a4e', violet: '#6a3fc8', pink: '#d8408a', gold: '#b88a1a', red: '#a82838' };
+const MOUTHS = { smile: 'Smile', cat: 'Cat', smirk: 'Smirk', grin: 'Grin', small: 'Small', fang: 'Fang', blep: 'Tongue out', flat: 'Flat' };
+const FACE_MARKS = { lashes: 'Lashes', liner: 'Eyeliner', underEye: 'Pink under-eyes', freckles: 'Freckles', mole: 'Beauty mark', heart: 'Heart sticker', stars: 'Star stickers', bandaid: 'Bandage', lipring: 'Lip ring', nosestud: 'Nose stud' };
 function faceLook(p, f, add) {
   const FC = lookOf(p).face || faceFor(p, lookOf(p).fashion); if (!f.eyes || !f.head) return;
   const gap = 0.12 + p.body.eyeGap * 0.45, surf = (x, y, r = 0.62) => Math.sqrt(Math.max(0.01, r * r - x * x - y * y));
-  const dark = toon('#241a34');
-  const shapes = { round: [1, 1, 0], sleepy: [1.1, 0.62, 0], sharp: [1.15, 0.85, 0.22], sparkle: [1.2, 1.12, 0], dot: [0.78, 0.72, 0] };
-  const [kx, ky, rot] = shapes[FC.eyes] || shapes.round;
-  f.eyes.forEach((e, i) => { const s = i ? 1 : -1; e.scale.x = kx; e.userData.ky = ky; e.rotation.z = -s * rot; });
-  if (FC.eyes === 'sparkle' && f.shines) for (const sh of f.shines) add(f.head, mesh(sph(0.014, 6, 5), toon('#ffffff', { emissive: new T3.Color('#ffffff') }), sh.position.x - 0.045, sh.position.y - 0.06, sh.position.z - 0.005, false));
-  if (FC.eyes === 'sleepy') for (const s of [-1, 1]) { const lid = mesh(new T3.TorusGeometry(0.07, 0.014, 5, 10, Math.PI), dark, s * gap, 0.1, surf(s * gap, 0.1) + 0.02, false); add(f.head, lid); }
+  const dark = toon('#241a34'), marks = FC.marks || [];
+  const [, kx, ky, rot] = EYE_SHAPES[FC.eyes] || EYE_SHAPES.round;
+  const eyeM = vinyl(EYE_COLORS[FC.eyeColor] || EYE_COLORS.dark);
+  f.eyes.forEach((e, i) => { const s = i ? 1 : -1; e.scale.x = kx; e.userData.ky = ky; e.rotation.z = -s * rot; e.material = eyeM; });
+  if ((FC.eyes === 'sparkle' || FC.eyes === 'starry') && f.shines) for (const sh of f.shines) add(f.head, mesh(sph(0.014, 6, 5), toon('#ffffff', { emissive: new T3.Color('#ffffff') }), sh.position.x - 0.045, sh.position.y - 0.06, sh.position.z - 0.005, false));
+  if (FC.eyes === 'starry' && f.shines) for (const sh of f.shines) { const st = starMesh('#ffffff', 0.032); st.position.set(sh.position.x - 0.03, sh.position.y - 0.035, sh.position.z + 0.004); add(f.head, st); }
+  if (FC.eyes === 'sleepy' || FC.eyes === 'droopy') for (const s of [-1, 1]) { const lid = mesh(new T3.TorusGeometry(0.07, 0.014, 5, 10, Math.PI), dark, s * gap, FC.eyes === 'droopy' ? 0.13 : 0.1, surf(s * gap, 0.1) + 0.02, false); if (FC.eyes === 'droopy') lid.rotation.z = s * 0.3; add(f.head, lid); }
   if (FC.lashes) for (const s of [-1, 1]) for (let i = 0; i < 2; i++) { const l = mesh(new T3.ConeGeometry(0.014, 0.07, 4), dark, s * (gap + 0.05 + i * 0.028), 0.15 - i * 0.025, surf(s * (gap + 0.06), 0.14) + 0.02, false); l.rotation.z = -s * (0.6 + i * 0.35); add(f.head, l); }
   if (FC.liner) for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.02, 0.1, 4), dark, s * (gap + 0.085), 0.09, surf(s * (gap + 0.085), 0.09) + 0.015, false); w.rotation.z = -s * 1.15; add(f.head, w); }
-  if (FC.underEye) for (const s of [-1, 1]) { const u = mesh(new T3.CircleGeometry(0.075, 12), new T3.MeshBasicMaterial({ color: 0xff6f93, transparent: true, opacity: 0.6 }), s * gap, -0.06, surf(s * gap, -0.06) + 0.012, false); u.scale.set(1.35, 0.55, 1); u.rotation.y = s * 0.2; add(f.head, u); }
+  if (FC.underEye) for (const s of [-1, 1]) { const u = mesh(new T3.CircleGeometry(0.075, 12), cachedMat('underEye', () => new T3.MeshBasicMaterial({ color: 0xff6f93, transparent: true, opacity: 0.6 })), s * gap, -0.06, surf(s * gap, -0.06) + 0.012, false); u.scale.set(1.35, 0.55, 1); u.rotation.y = s * 0.2; add(f.head, u); }
   if (FC.freckles) for (const s of [-1, 1]) for (const [dx, dy] of [[0.1, -0.05], [0.16, -0.02], [0.13, -0.1]]) add(f.head, mesh(sph(0.012, 5, 4), toon('#b0704a'), s * (gap + dx), dy, surf(s * (gap + dx), dy) + 0.004, false));
+  // little marks and stickers
+  const onFace = (o, x, y, lift = 0.01) => { o.position.set(x, y, surf(x, y) + lift); o.lookAt(o.position.clone().multiplyScalar(2)); add(f.head, o); return o; };
+  if (marks.includes('mole')) onFace(mesh(sph(0.017, 6, 5), toon('#3a2430'), 0, 0, 0, false), gap + 0.08, -0.16, 0.003);
+  if (marks.includes('heart')) onFace(heartMesh('#ff5f8f', 0.55), -(gap + 0.13), -0.08);
+  if (marks.includes('stars')) { onFace(starMesh('#ffd36b', 0.042), gap + 0.1, -0.07); onFace(starMesh('#ffd36b', 0.03), gap + 0.18, -0.12); }
+  if (marks.includes('bandaid')) { const b = onFace(mesh(box(0.17, 0.065, 0.014), toon('#f2c9a0'), 0, 0, 0, false), gap + 0.13, 0.03); b.rotateZ(-0.5); b.add(mesh(box(0.05, 0.045, 0.01), toon('#e0a880'), 0, 0, 0.006, false)); }
+  if (marks.includes('lipring')) { const r = onFace(mesh(new T3.TorusGeometry(0.03, 0.009, 5, 12), toon('#d9dde6'), 0, 0, 0, false), 0.075, -0.19, 0.008); r.rotateX(Math.PI / 2); }
+  if (marks.includes('nosestud')) onFace(mesh(sph(0.012, 6, 5), toon('#d9dde6', { emissive: new T3.Color('#555') }), 0, 0, 0, false), 0.04, -0.03, 0.004);
   f.head.traverse((c) => { if (c.geometry?.type === 'CircleGeometry' && c.material?.color?.getHex() === 0xff8fb0) c.material.opacity = FC.blush; });
-  if (FC.lips) { const lm = toon(FC.lips); for (const m of [f.mouth, f.mouthFrown, f.mouthO]) if (m) m.material = lm; }
-  f.mouth.userData.rest = FC.mouth === 'flat' ? { sx: 1.1, sy: 0.25 } : FC.mouth === 'smirk' ? { rot: 0.35, x: 0.03 } : null;
-  if (FC.mouth === 'cat') { const cm = new T3.Group(); for (const s of [-1, 1]) { const a = mesh(new T3.TorusGeometry(0.035, 0.014, 5, 10, Math.PI), f.mouth.material, s * 0.035, -0.12, surf(s * 0.035, -0.12) + 0.01, false); a.rotation.z = Math.PI; cm.add(a); } add(f.head, cm); f.mouthCat = cm; } else f.mouthCat = null;
+  // lipstick, or back to the plain mouth
+  if (!f.mouthBase) f.mouthBase = f.mouth.material;
+  const lipM = FC.lips ? toon(FC.lips) : f.mouthBase;
+  for (const m of [f.mouth, f.mouthFrown, f.mouthO]) if (m) m.material = lipM;
+  const RESTS = { flat: { sx: 1.1, sy: 0.25 }, smirk: { rot: 0.35, x: 0.03 }, grin: { sx: 1.4, sy: 1.25 }, small: { sx: 0.62, sy: 0.75 } };
+  f.mouth.userData.rest = RESTS[FC.mouth] || null;
+  if (FC.mouth === 'cat') { const cm = new T3.Group(); for (const s of [-1, 1]) { const a = mesh(new T3.TorusGeometry(0.035, 0.014, 5, 10, Math.PI), lipM, s * 0.035, -0.12, surf(s * 0.035, -0.12) + 0.01, false); a.rotation.z = Math.PI; cm.add(a); } add(f.head, cm); f.mouthCat = cm; } else f.mouthCat = null;
+  f.mouthExtra = null;
+  if (FC.mouth === 'fang') { const t = mesh(new T3.ConeGeometry(0.018, 0.045, 4), toon('#ffffff'), 0.035, -0.17, surf(0.035, -0.17) + 0.012, false); t.rotation.z = Math.PI; f.mouthExtra = add(f.head, t); }
+  if (FC.mouth === 'blep') { const t = mesh(sph(0.032, 8, 6), toon('#ff7f9f'), 0.012, -0.175, surf(0.012, -0.175) + 0.004, false); t.scale.set(1, 1.2, 0.5); f.mouthExtra = add(f.head, t); }
   if (f.brows) f.brows.forEach((b) => { b.userData.base = FC.brow; b.scale.y = FC.browThick; });
 }
 // rebuild a resident's clothes on their live 3D model
@@ -7587,12 +7776,13 @@ function restyleLook(p) {
   dressLook(p, m); m.lookKey = lookKey(p);
   if (typeof interior !== 'undefined' && interior) interior.dirty = true;
 }
-const lookKey = (p) => `${p.look?.fashion}|${inUniform(p) ? p.job : ''}|${lawOutfit(p) || ''}|${typeof onProbation === 'function' && onProbation(p) ? 'P' : ''}|${p.outfit.shirt}|${p.outfit.hat ? p.outfit.hat.id : ''}`;
+const lookKey = (p) => `${p.look?.fashion}|${p.look?.rev || 0}|${inUniform(p) ? p.job : ''}|${lawOutfit(p) || ''}|${typeof onProbation === 'function' && onProbation(p) ? 'P' : ''}|${p.outfit.shirt}|${p.outfit.hat ? p.outfit.hat.id : ''}`;
 function lookFrame(p, m) { if (m.lookParts && m.lookKey !== lookKey(p)) restyleLook(p); }
 
 // friends rub off on each other: now and then someone starts dressing like a close friend
 function styleDrift(p) {
-  if (isRealish(p) || p.grow < 1 || rand() > 0.012) return;
+  if (isRealish(p) || p.grow < 1 || p.look?.byCreator) return;
+  if (rand() > 0.012) { if (typeof styleWhim === 'function') styleWhim(p); return; }
   const friends = Object.entries(p.feelings).filter(([id, f]) => f.score >= 6 && person(id)?.look).map(([id]) => person(id));
   const fr = friends.find((q) => q.look.fashion !== p.look?.fashion && (p.grow < 1 ? KID_FASHION.includes(q.look.fashion) : true));
   if (!fr) return;
@@ -7600,15 +7790,10 @@ function styleDrift(p) {
   remember(p, `I started dressing more like ${fr.name}. ${FASHION[fr.look.fashion].name.replace(/ \(.*\)/, '')} suits me.`, 2, 'style', fr.name);
   diary(`👗 <b>${esc(p.name)}</b> started dressing ${esc(FASHION[fr.look.fashion].name.replace(/ \(.*\)/, '').toLowerCase())}, like <b>${esc(fr.name)}</b>.`);
 }
-function fashionEditorHtml(p) {
-  const L = lookOf(p);
-  return `<details class="note"><summary>👗 ${esc(p.name)}'s style: ${esc(FASHION[L.fashion].name)} · ${esc(vibeWords(p).join(', '))}</summary>
-    <div class="chips" style="margin-top:6px">${FASHION_ORDER.filter((k) => p.grow >= 1 || KID_FASHION.includes(k)).map((k) => `<button class="btn" type="button" data-fashion="${p.id}" data-fstyle="${k}" aria-pressed="${L.fashion === k}" style="padding:3px 10px;font-size:12px">${esc(FASHION[k].name)}</button>`).join('')}</div></details>`;
-}
 function setFashionCmd(pid, fashion) {
   const p = person(pid); if (!p || !FASHION[fashion]) return '';
   if (p.grow < 1 && !KID_FASHION.includes(fashion)) return '';
-  setFashion(p, fashion);
+  setFashion(p, fashion); p.look.byCreator = true;
   if (!p.today.some((m) => m.tag === 'restyle')) { remember(p, `The Creator changed my style to ${FASHION[fashion].name.replace(/ \(.*\)/, '').toLowerCase()}.`, 2, 'restyle'); if (!p.inside) bubble(p, pick(['Wait, I love this.', 'Is this me now?', 'Okay, new me!']), 2.6); }
   markDirty(); return '';
 }
@@ -7617,6 +7802,193 @@ function fashionBoot() {
   for (const p of W.people) { personaOf(p); lookOf(p); }
   if (W.added.fashion1) return; W.added.fashion1 = true;
   if (typeof logUpdate === 'function') logUpdate('build', 'Everyone has their own style now. Some residents are goth or emo, some are jirai kei, gyaru or lolita, some are preppy, sporty or cottagecore, and a few dress like somebody\'s mom or dad. Their faces fit who they are too: sleepy eyes, sharp eyes, sparkly eyes, lashes, eyeliner, freckles. They change into uniforms for work, notice each other\'s outfits, and sometimes start dressing like their best friends. You can change anyone\'s style from their card.', 'styles, faces and uniforms');
+}
+// ============================================================
+// LOOK STUDIO: change anyone's style, clothes, hair and face from their
+// card, piece by piece; residents sometimes change a piece themselves
+// ============================================================
+const LOOK_LAYERS = ['cardigan', 'vest', 'hoodie', 'track', 'blazer', 'flannel', 'puffer', 'shell', 'corset', 'cape', 'overalls'];
+const LOOK_BOTTOMS = ['pants', 'cargo', 'ripped', 'shorts', 'skirt', 'pleated', 'plaid', 'tutu', 'long', 'bell'];
+const LOOK_HEADS = ['cap', 'beanie', 'beret', 'flatcap', 'straw', 'bucket', 'witch', 'catears', 'flowers', 'headbow', 'hairbow', 'sidebow', 'clips', 'starclips', 'headphones'];
+const HEAD_COLORED = ['cap', 'beanie', 'beret', 'flatcap', 'bucket', 'witch', 'catears', 'hairbow', 'headbow', 'sidebow', 'headphones'];
+const LOOK_EXTRAS = ['backpack', 'tote', 'satchel', 'heartbag', 'briefcase', 'belt', 'chain', 'pendant', 'bangles', 'wristbands', 'hoops', 'harness', 'tail', 'legwarmers', 'neckphones'];
+const LOOK_NECKS = ['collar', 'bow', 'tie', 'choker', 'bell'];
+const LOOK_PALETTE = ['#2e2a36', '#4a4652', '#a3a3ad', '#fbf8f4', '#fff4dc', '#cdb88f', '#6b4a3a', '#7a2e3a', '#b8323f', '#ff6f5e', '#ffb347', '#ffe98a', '#8fae6a', '#2f5d4a', '#9fe3c4', '#9fd3ff', '#5b7fb5', '#3d4f86', '#c9b3ff', '#5e3a6e', '#ff9fbf', '#ff5fa8'];
+const LOOK_TIGHTS = { skin: 'Bare legs', '#2e2a36': 'Black tights', '#fbf8f4': 'White tights', '#ff9fbf': 'Pink tights', '#c9b3ff': 'Lilac tights' };
+const LIP_COLORS = ['#ff7fa0', '#ff5f8f', '#b8323f', '#5e3a6e', '#c98a6a', '#2e2a36'];
+const SKIN_TONES = [[28, 45, 82], [27, 50, 70], [24, 45, 56], [22, 40, 42], [20, 35, 30], [0, 70, 78], [35, 75, 76], [55, 70, 78], [100, 55, 76], [160, 55, 76], [200, 70, 78], [240, 60, 80], [280, 60, 80], [320, 65, 80]];
+const EAR_CHOICES = ['none', 'round', 'pointy', 'cat', 'antenna', 'sprout'];
+const KID_BLOCKED = ['corset', 'harness', 'briefcase', 'lipring', 'nosestud', 'liner', 'lips', 'underEye'];
+const LOOK_LABELS = {
+  cardigan: 'Cardigan', vest: 'Sweater vest', hoodie: 'Hoodie', track: 'Track jacket', blazer: 'Blazer', flannel: 'Flannel', puffer: 'Puffer', shell: 'Tech jacket', corset: 'Corset', cape: 'Cape', overalls: 'Overalls',
+  pants: 'Pants', cargo: 'Cargo pants', ripped: 'Ripped jeans', shorts: 'Shorts', skirt: 'Mini skirt', pleated: 'Pleated skirt', plaid: 'Plaid skirt', tutu: 'Tutu', long: 'Long skirt', bell: 'Frilly skirt',
+  cap: 'Cap', beanie: 'Beanie', beret: 'Beret', flatcap: 'Flat cap', straw: 'Straw hat', bucket: 'Bucket hat', witch: 'Witch hat', catears: 'Cat ears', flowers: 'Flower crown', headbow: 'Lace bow', hairbow: 'Ribbon', sidebow: 'Bow clip', clips: 'Hair clips', starclips: 'Star clips', headphones: 'Headphones',
+  backpack: 'Backpack', tote: 'Tote', satchel: 'Satchel', heartbag: 'Heart purse', briefcase: 'Briefcase', belt: 'Studded belt', chain: 'Wallet chain', pendant: 'Pendant', bangles: 'Bangles', wristbands: 'Wristbands', hoops: 'Hoop earrings', harness: 'Harness', tail: 'Cat tail', legwarmers: 'Leg warmers', neckphones: 'Neck headphones',
+  collar: 'Collar', bow: 'Bow', tie: 'Tie', choker: 'Choker', bell: 'Bell collar',
+};
+let lookOpen = null, lookTab = 'style';
+
+// ---- the panel ----
+const lookBtn = (pid, part, val, label, on) => `<button class="btn" type="button" data-look="${pid}" data-part="${part}" data-val="${esc(String(val))}" aria-pressed="${!!on}">${esc(label)}</button>`;
+const lookSw = (pid, part, val, css, on, title) => `<button class="sw" type="button" data-look="${pid}" data-part="${part}" data-val="${esc(String(val))}" aria-pressed="${!!on}" title="${esc(title || '')}" aria-label="${esc(title || val)}" style="background:${css}"></button>`;
+const lookRow = (label, inner) => `<p class="label">${label}</p><div class="chips">${inner}</div>`;
+const kidOk = (p, k) => p.grow >= 1 || !KID_BLOCKED.includes(k);
+function lookSummary(p) {
+  const L = lookOf(p), h = hairOf(p);
+  return `${FASHION[L.fashion].name} · ${HAIR_STYLES[h.style].toLowerCase()} ${h.color} hair · ${vibeWords(p).join(', ')}`;
+}
+function lookStudioHtml(p) {
+  if (!p.body) return '';
+  const open = lookOpen === p.id;
+  let h = `<div class="looks"><div class="looks-top"><div><p class="label">Their look</p><p class="looks-sum">${esc(lookSummary(p))}</p></div>
+    <button class="btn ${open ? '' : 'gold'}" type="button" data-lookopen="${p.id}" aria-expanded="${open}">${open ? 'Done' : '👗 Change look'}</button></div>`;
+  if (!open) return h + '</div>';
+  h += `<div class="chips looks-tabs">${[['style', 'Style'], ['outfit', 'Clothes'], ['hair', 'Hair'], ['face', 'Face']].map(([k, n]) => `<button class="btn" type="button" data-looktab="${k}" aria-pressed="${lookTab === k}">${n}</button>`).join('')}</div>`;
+  if (!cuteOn()) h += `<p class="hint">The cute look is switched off in Settings, so clothes and faces won't show in the box until it's back on.</p>`;
+  if (workOutfit(p)) h += `<p class="hint">${esc(p.name)} is in ${jailed(p) ? 'a jumpsuit' : 'a work uniform'} right now. Your changes show once they change back.</p>`;
+  h += lookTab === 'outfit' ? lookOutfitHtml(p) : lookTab === 'hair' ? lookHairHtml(p) : lookTab === 'face' ? lookFaceHtml(p) : lookStyleHtml(p);
+  return h + '</div>';
+}
+function lookStyleHtml(p) {
+  const L = lookOf(p);
+  let h = `<div class="chips">${lookBtn(p.id, 'fit', 1, '✨ Something that suits them', false)}${lookBtn(p.id, 'random', 1, '🎲 Surprise me', false)}</div>`;
+  for (const [fam, name] of Object.entries(FASHION_FAMILIES)) {
+    const ks = FASHION_ORDER.filter((k) => FASHION[k].family === fam && (p.grow >= 1 || KID_FASHION.includes(k)));
+    if (ks.length) h += lookRow(name, ks.map((k) => lookBtn(p.id, 'style', k, FASHION[k].name, L.fashion === k)).join(''));
+  }
+  return h + `<p class="hint">Picking a style dresses them in a fresh outfit for it. Fine-tune the pieces under Clothes. Faces you change stay put.</p>`;
+}
+function lookOutfitHtml(p) {
+  const L = lookOf(p), F = FASHION[L.fashion], pid = p.id;
+  const sws = (part, cur) => LOOK_PALETTE.map((c) => lookSw(pid, part, c, c, cur === c, c)).join('');
+  let h = lookRow(F.dress ? 'Dress' : 'Top', Object.entries(COLORS).map(([k, c]) => lookSw(pid, 'top', k, c, p.outfit.shirt === k, k)).join(''));
+  h += lookRow('Print', ['none', 'heart', 'star', 'rainbow'].map((k) => lookBtn(pid, 'print', k, k === 'none' ? 'Plain' : cap(k), (L.print || 'none') === k)).join('') + lookBtn(pid, 'stripes', 1, 'Stripes', !!L.stripes));
+  h += lookRow('Layer', lookBtn(pid, 'layer', 'none', 'None', !L.layer) + LOOK_LAYERS.filter((k) => kidOk(p, k)).map((k) => lookBtn(pid, 'layer', k, LOOK_LABELS[k], L.layer === k)).join(''));
+  if (L.layer) h += `<div class="chips">${sws('layerColor', L.layerColor)}</div>`;
+  h += lookRow(F.dress ? 'Skirt shape' : 'Bottoms', LOOK_BOTTOMS.map((k) => lookBtn(pid, 'bottom', k, LOOK_LABELS[k], L.bottom === k)).join(''));
+  if (!F.dress) h += `<div class="chips">${sws('bottomColor', L.bottomColor)}</div>`;
+  if (!['pants', 'cargo', 'ripped'].includes(L.bottom)) h += lookRow('Legs', Object.entries(LOOK_TIGHTS).map(([k, n]) => lookBtn(pid, 'tights', k, n, (L.tights || 'skin') === k)).join(''));
+  h += lookRow('Shoes', sws('shoe', L.shoe) + lookBtn(pid, 'platform', 1, 'Platforms', !!L.platform));
+  h += lookRow('On their head', lookBtn(pid, 'head', 'none', 'Nothing', !L.head) + LOOK_HEADS.map((k) => lookBtn(pid, 'head', k, LOOK_LABELS[k], L.head === k)).join(''));
+  if (HEAD_COLORED.includes(L.head)) h += `<div class="chips">${sws('headColor', L.headColor)}</div>`;
+  if (p.outfit.hat) h += `<p class="hint">They're wearing ${esc(a_an(hatText(p.outfit.hat)))} you gave them, which sits where a hat would. Clips, bows and cat ears still show.</p>`;
+  h += lookRow('Glasses', [['none', 'None'], ['round', 'Glasses'], ['shades', 'Sunglasses']].map(([k, n]) => lookBtn(pid, 'glasses', k, n, k === 'none' ? !L.glasses : k === 'shades' ? L.glasses === 'shades' : L.glasses === true)).join(''));
+  h += lookRow('Neck', LOOK_NECKS.map((k) => lookBtn(pid, 'neck', k, LOOK_LABELS[k], (L.neck || []).includes(k))).join(''));
+  h += lookRow('Extras', LOOK_EXTRAS.filter((k) => kidOk(p, k)).map((k) => lookBtn(pid, 'extra', k, LOOK_LABELS[k], (L.extras || []).includes(k))).join(''));
+  if ((L.extras || []).some((e) => e === 'backpack' || e === 'legwarmers')) h += lookRow('Backpack and leg warmer color', sws('pack', L.pack));
+  return h;
+}
+function lookHairHtml(p) {
+  const hr = hairOf(p);
+  return lookRow('Haircut', Object.entries(HAIR_STYLES).map(([k, n]) => `<button class="btn" type="button" data-hair="${p.id}" data-style="${k}" aria-pressed="${hr.style === k}">${esc(n)}</button>`).join(''))
+    + lookRow('Hair color', Object.entries(HAIR_COLORS).map(([k, c]) => `<button class="sw" type="button" data-hair="${p.id}" data-hcolor="${k}" aria-pressed="${hr.color === k}" title="${k}" aria-label="${k}" style="background:${c}"></button>`).join(''));
+}
+function lookFaceHtml(p) {
+  const FC = lookOf(p).face, pid = p.id, marks = FC.marks || [];
+  let h = lookRow('Eyes', Object.entries(EYE_SHAPES).map(([k, v]) => lookBtn(pid, 'eyes', k, v[0], FC.eyes === k)).join(''));
+  h += lookRow('Eye color', Object.entries(EYE_COLORS).map(([k, c]) => lookSw(pid, 'eyeColor', k, c, (FC.eyeColor || 'dark') === k, k)).join(''));
+  h += lookRow('Mouth', Object.entries(MOUTHS).map(([k, n]) => lookBtn(pid, 'mouth', k, n, FC.mouth === k)).join(''));
+  h += lookRow('Brows', [['-0.14', 'Soft'], ['0', 'Plain'], ['0.14', 'Stern']].map(([v, n]) => lookBtn(pid, 'brow', v, n, Math.abs((FC.brow || 0) - Number(v)) < 0.01)).join('') + [['0.7', 'Thin'], ['1', 'Medium'], ['1.4', 'Thick']].map(([v, n]) => lookBtn(pid, 'browThick', v, n, Math.abs((FC.browThick || 1) - Number(v)) < 0.01)).join(''));
+  h += lookRow('Blush', [['0', 'None'], ['0.55', 'Soft'], ['0.9', 'Rosy']].map(([v, n]) => lookBtn(pid, 'blush', v, n, Math.abs((FC.blush ?? 0.55) - Number(v)) < 0.12)).join(''));
+  if (p.grow >= 1) h += lookRow('Lips', lookBtn(pid, 'lips', 'none', 'Natural', !FC.lips) + LIP_COLORS.map((c) => lookSw(pid, 'lips', c, c, FC.lips === c, c)).join(''));
+  h += lookRow('Makeup and marks', Object.entries(FACE_MARKS).filter(([k]) => kidOk(p, k)).map(([k, n]) => lookBtn(pid, 'mark', k, n, ['lashes', 'liner', 'underEye', 'freckles'].includes(k) ? !!FC[k] : marks.includes(k))).join(''));
+  h += lookRow('Skin', SKIN_TONES.map(([hu, s, l], i) => lookSw(pid, 'skin', i, `hsl(${hu}, ${s}%, ${l}%)`, Math.round(p.body.hue) === hu && (p.body.sat ?? 70) === s && (p.body.light ?? 78) === l, 'skin tone')).join(''));
+  if (!isClaude(p)) h += lookRow('Ears', EAR_CHOICES.map((k) => lookBtn(pid, 'ears', k, k === 'none' ? 'Just a head' : cap(k), (p.body.ears || 'none') === k)).join(''));
+  return h + `<div class="chips">${lookBtn(pid, 'resetface', 1, 'Back to their natural face', false)}</div>`;
+}
+
+// ---- the command ----
+function rebuildKin(p) {
+  if (MODE !== 'host') return;
+  const m = meshes.get(p.id); if (!m) return;
+  scene.remove(m.root); m.tag.remove(); meshes.delete(p.id); buildKin(p);
+}
+function lookEdit(pid, part, val) {
+  const p = person(pid); if (!p || !p.body) return '';
+  const L = lookOf(p), kid = p.grow < 1, pal = LOOK_PALETTE.includes(val);
+  if (kid && KID_BLOCKED.includes(val)) return '';
+  const mods = { ...(p.body.faceMods || {}) }, toggle = (arr, k) => (arr.includes(k) ? arr.filter((x) => x !== k) : [...arr, k]);
+  let kind = 'clothes', rebuild = false;
+  switch (part) {
+    case 'style': if (!FASHION[val] || (kid && !KID_FASHION.includes(val))) return ''; setFashion(p, val, true); kind = 'style'; break;
+    case 'fit': setFashion(p, pickFashion(p), true); kind = 'style'; break;
+    case 'random': { const opts = FASHION_ORDER.filter((k) => (!kid || KID_FASHION.includes(k)) && k !== L.fashion); setFashion(p, pick(opts), true); kind = 'style'; break; }
+    case 'top': if (!COLORS[val]) return ''; p.outfit.shirt = val; if (!p.wardrobe.shirts.includes(val)) p.wardrobe.shirts.push(val); break;
+    case 'print': if (!['none', 'heart', 'star', 'rainbow'].includes(val)) return ''; L.print = val === 'none' ? null : val; break;
+    case 'stripes': L.stripes = L.stripes ? null : '#fbf8f4'; break;
+    case 'layer': if (val !== 'none' && !LOOK_LAYERS.includes(val)) return ''; L.layer = val === 'none' ? null : val; if (L.layer && !L.layerColor) L.layerColor = '#5b7fb5'; break;
+    case 'layerColor': if (!pal) return ''; L.layerColor = val; break;
+    case 'bottom': if (!LOOK_BOTTOMS.includes(val)) return ''; L.bottom = val; if (!L.bottomColor) L.bottomColor = '#4a4652'; break;
+    case 'bottomColor': if (!pal) return ''; L.bottomColor = val; break;
+    case 'tights': if (!LOOK_TIGHTS[val]) return ''; L.tights = val; break;
+    case 'shoe': if (!pal) return ''; L.shoe = val; hairOf(p).shoe = val; break;
+    case 'platform': L.platform = !L.platform; break;
+    case 'head': if (val !== 'none' && !LOOK_HEADS.includes(val)) return ''; L.head = val === 'none' ? null : val; break;
+    case 'headColor': if (!pal) return ''; L.headColor = val; break;
+    case 'glasses': if (!['none', 'round', 'shades'].includes(val)) return ''; L.glasses = val === 'none' ? false : val === 'round' ? true : 'shades'; break;
+    case 'neck': if (!LOOK_NECKS.includes(val)) return ''; L.neck = toggle(L.neck || [], val); break;
+    case 'extra': if (!LOOK_EXTRAS.includes(val)) return ''; L.extras = toggle(L.extras || [], val); if (val === 'backpack' && !L.pack) L.pack = '#9fd3ff'; break;
+    case 'pack': if (!pal) return ''; L.pack = val; break;
+    case 'eyes': if (!EYE_SHAPES[val]) return ''; mods.eyes = val; kind = 'face'; break;
+    case 'eyeColor': if (!EYE_COLORS[val]) return ''; mods.eyeColor = val; kind = 'face'; break;
+    case 'mouth': if (!MOUTHS[val]) return ''; mods.mouth = val; kind = 'face'; break;
+    case 'brow': if (!['-0.14', '0', '0.14'].includes(val)) return ''; mods.brow = Number(val); kind = 'face'; break;
+    case 'browThick': if (!['0.7', '1', '1.4'].includes(val)) return ''; mods.browThick = Number(val); kind = 'face'; break;
+    case 'blush': if (!['0', '0.55', '0.9'].includes(val)) return ''; mods.blush = Number(val); kind = 'face'; break;
+    case 'lips': if (kid || (val !== 'none' && !LIP_COLORS.includes(val))) return ''; mods.lips = val === 'none' ? null : val; kind = 'face'; break;
+    case 'mark': {
+      if (!FACE_MARKS[val]) return '';
+      if (['lashes', 'liner', 'underEye', 'freckles'].includes(val)) mods[val] = !L.face?.[val];
+      else mods.marks = toggle(L.face?.marks || [], val);
+      kind = 'face'; break;
+    }
+    case 'resetface': delete p.body.faceMods; L.face = faceFor(p, L.fashion); kind = 'face'; break;
+    case 'skin': { const t = SKIN_TONES[Number(val)]; if (!t) return ''; [p.body.hue, p.body.sat, p.body.light] = t; rebuild = true; kind = 'face'; break; }
+    case 'ears': if (!EAR_CHOICES.includes(val) || isClaude(p)) return ''; p.body.ears = val; rebuild = true; kind = 'face'; break;
+    default: return '';
+  }
+  if (kind === 'face' && part !== 'resetface' && !rebuild) { p.body.faceMods = mods; p.look.face = faceFor(p, p.look.fashion); }
+  p.look.byCreator = true; p.look.rev = (p.look.rev || 0) + 1;
+  if (rebuild) rebuildKin(p); else restyleLook(p);
+  if (typeof interior !== 'undefined' && interior) interior.dirty = true;
+  if (!p.today.some((m) => m.tag === 'restyle')) {
+    remember(p, kind === 'style' ? `The Creator changed my style to ${FASHION[p.look.fashion].name.replace(/ \(.*\)/, '').toLowerCase()}.` : kind === 'face' ? 'The Creator changed my face a little. I keep checking the mirror.' : 'The Creator picked out new clothes for me.', 2, 'restyle');
+    if (!p.inside && MODE === 'host') bubble(p, pick(kind === 'face' ? ['Is my face different?', 'Wait, do I look new?', 'Huh. I like it.'] : ['Wait, I love this.', 'Is this me now?', 'Okay, new me!', 'Where did this come from?']), 2.6);
+  }
+  markDirty(); return '';
+}
+
+// ---- residents tinker with their own look now and then (called each morning) ----
+function styleWhim(p) {
+  if (isRealish(p) || p.grow < 1 || !p.look || p.look.byCreator || rand() > 0.03) return;
+  const L = p.look, F = FASHION[L.fashion], roll = rand();
+  if (roll < 0.3) {
+    const k = pickFashion(p); if (k === L.fashion) return;
+    setFashion(p, k);
+    remember(p, `I wanted a change, so I tried a ${FASHION[k].name.replace(/ \(.*\)/, '').toLowerCase()} look. I think it's me.`, 2, 'style');
+    diary(`👗 <b>${esc(p.name)}</b> showed up in a whole new ${esc(FASHION[k].name.replace(/ \(.*\)/, '').toLowerCase())} look today.`);
+    return;
+  }
+  if (roll < 0.55 && F.head?.length) { const [k] = pick(F.head); if (k === L.head) return; L.head = k; remember(p, `I started wearing ${HEAD_WORDS[k] || 'something new on my head'}.`, 1, 'style'); }
+  else if (roll < 0.8 && F.tops) { const c = pick(F.tops); if (c === p.outfit.shirt) return; p.outfit.shirt = c; if (!p.wardrobe.shirts.includes(c)) p.wardrobe.shirts.push(c); remember(p, `Bought ${a_an(c)} top. It goes with everything I own.`, 1, 'style'); }
+  else { const c = pick(LOOK_PALETTE); if (!L.layer) return; L.layerColor = c; remember(p, `Found a new ${LOOK_LABELS[L.layer]?.toLowerCase() || 'jacket'} I like better than my old one.`, 1, 'style'); }
+  L.rev = (L.rev || 0) + 1; restyleLook(p);
+}
+
+// ---- one-time upgrade for towns that already exist ----
+const NEW_STYLES_2 = ['comfy', 'business', 'academia', 'coquette', 'boho', 'fairy', 'kidcore', 'neko', 'egirl', 'grunge', 'witchy', 'techwear'];
+function looksBoot() {
+  W.added = W.added || {};
+  if (W.added.looks2) return; W.added.looks2 = true;
+  for (const p of W.people) {
+    if (!p.body || !p.look) continue;
+    if (!isRealish(p) && !p.look.byCreator) {
+      const r = seededRand(hashStr('looks2:' + p.id));
+      if (r() < 0.4) { const k = pickFashion(p, r); if (k !== p.look.fashion && NEW_STYLES_2.includes(k)) setFashion(p, k, true); }
+    }
+    p.look.face = faceFor(p, p.look.fashion); p.look.rev = (p.look.rev || 0) + 1;
+  }
+  if (typeof logUpdate === 'function') logUpdate('build', 'Every resident card has a Change look button near the top now. You can pick from 27 styles (new ones include cottagecore\'s cousins coquette and boho, fairy kei, kidcore, neko with cat ears and a tail, e-girl, grunge, witchy, techwear, dark academia, business and comfy), then change any piece: jackets, skirts, tights, shoes, hats, bags, glasses. Faces have more to them too: eye shapes and eye colors, fangs and little tongues, blush, lipstick, freckles, stickers and piercings, plus skin and ears. A few residents already tried the new styles, and now and then someone swaps a piece on their own.', 'look studio');
 }
 // ============================================================
 // SHOW & TELL: "look at this!" on phones and laptops, and book browsing
@@ -9529,7 +9901,7 @@ function cutStart(S) {
   requestAnimationFrame(() => el.classList.add('on'));
   document.body.classList.add('incut');
   releaseDlg?.();
-  if (!$('#sheet').hidden && !CUT.userBusy()) $('#sheet').hidden = true;
+  if (!$('#sheet').hidden && !CUT.userBusy() && !S.replay) { $('#sheet').hidden = true; CUT.sheetBack = true; }
   try { S.stage?.(S); } catch (e) { console.error('cut stage', e); }
   const T = el.querySelector('.ctitle'); T.querySelector('.ct1').textContent = S.title || ''; T.querySelector('.ct2').textContent = S.sub || '';
   if (S.title) { T.classList.add('show'); Sound.bell(); }
@@ -9593,6 +9965,8 @@ function cutEnd(skipped) {
   try { S.unstage?.(S); } catch (e) { console.error(e); }
   for (const p of W.people) if (p.task?.kind === 'cutscene') { p.task = null; p.busyUntil = 0; p.path = []; if (!p.heldByDlg) p.state = 'free'; p.pose = null; }
   CUT.live = null; CUT.cam = null;
+  // the scene closed the panel you had open: bring it back once the scenes are done
+  if (CUT.sheetBack && !CUT.queue.length) { CUT.sheetBack = false; setTimeout(() => { if (!CUT.live && $('#sheet').hidden) { $('#sheet').hidden = false; refreshPanel(true); } }, 700); }
   try { S.onEnd?.(S, false); } catch (e) { console.error(e); }
   markDirty();
 }
@@ -9614,7 +9988,13 @@ function cutShotDefault(S, L, sp) {
 }
 // the panel counts as busy for a little while after you touch it, so a scene never yanks it away mid-tap
 document.addEventListener('pointerdown', (e) => { if (e.target.closest && e.target.closest('#sheet, #dlg, .dlg')) CUT.sheetTouch = performance.now(); }, true);
-const sheetBusy = () => { const sh = $('#sheet'); return sh && !sh.hidden && performance.now() - (CUT.sheetTouch || -1e9) < 25000; };
+// dressing someone up or writing a letter takes a while, so those count as busy for longer
+const sheetBusy = () => {
+  const sh = $('#sheet'); if (!sh || sh.hidden) return false;
+  const since = performance.now() - (CUT.sheetTouch || -1e9);
+  const deep = (typeof lookOpen !== 'undefined' && lookOpen && activeTab === 'people') || (typeof mailOpen !== 'undefined' && mailOpen && activeTab === 'mail');
+  return since < (deep ? 240000 : 90000);
+};
 function cutFrame(dt) {
   if (!CUT.live) {
     if (CUT.queue.length && !W.meeting && !(W.scene && W.scene.live) && !fishing?.running && !sheetBusy() && !CUT.userBusy()) cutStart(CUT.queue.shift());
@@ -10149,6 +10529,7 @@ function crimeMorning() {
   }
   // wrongful convictions have a way of coming out
   for (const C of S.list) if (C.status === 'closed' && C.wrong && !C.reopened && rand() < 0.12) { const g = person(C.culprit); if (g && !jailed(g)) { remember(g, `I can't sleep. ${person(C.convicted)?.name || 'Someone'} is paying for what I did.`, 3, 'guilt'); if (rand() < 0.5) confessCut(C); else { C.clues.push({ id: 'cx', found: false, kind: 'new', icon: '🆕', text: C.alibiBreak, pid: C.culprit, genuine: true, strong: true }); revealClue(C, det); } } }
+  custodyCheck(false);
   // releases
   for (const p of W.people) if (p.jail && !jailed(p)) releaseFromJail(p, 'served');
   sentenceMorning();
@@ -10223,6 +10604,7 @@ function chargeCrime(C, pid, by, byCreator) {
   C.status = 'charged'; C.accused = pid; C.accusedBy = byCreator ? 'creator' : by?.id || null; C.chargedDay = W.day;
   diary(`⚖ ${esc(A.name)} was charged with <b>${esc(CRIME_TYPES[C.type].label.toLowerCase())}</b>${byCreator ? ' by the Creator' : by ? ` on ${esc(by.name)}'s evidence` : ''}. The trial is at Glimmer Hall.`);
   remember(A, `I was charged with ${CRIME_TYPES[C.type].label.toLowerCase()}. ${A.id === C.culprit ? 'They know.' : 'I did not do it!'}`, 4, 'charged');
+  holdForTrial(A, C);
   if (C.tier >= 2) arrestCut(C, by);
   else crimeTrialNow(C);
   markDirty();
@@ -10329,7 +10711,7 @@ function crimeVerdict(C, T, k, silent) {
   } else {
     L.push(jline(`${A.name} is free to go. Hoo. The case stays open.`, 'gavel'));
     L.push(pline(A.id, pick(['Thank you. Thank you.', 'I TOLD you!', 'Can I go home now?']), null, { emote: '✨' }));
-    C.status = C.clues.some((c) => !c.found) ? 'open' : 'cold'; C.accused = null; C.acquitted = [...(C.acquitted || []), A.id];
+    C.status = C.clues.some((c) => !c.found) ? 'open' : 'cold'; C.accused = null; C.acquitted = [...(C.acquitted || []), A.id]; endRemand(A);
     remember(A, `I was found not guilty of ${K.label.toLowerCase()}. Everyone still looks at me funny.`, 3, 'acquitted');
   }
   L.push(jline('Court is adjourned!', 'gavel'));
@@ -10907,6 +11289,48 @@ function crimeClarityBoot() {
   if (typeof logUpdate === 'function') logUpdate('build', 'Murders were happening once a game year, which is only a couple of hours in real life. Now there\'s about one murder per real year (you can change that in the Court tab). If the detective is too upset to work a case, someone else steps in as acting detective. Misleading clues now get a follow-up that rules them out, every clue says how far to trust it, and you can call the detective for a briefing that walks through the whole case.', 'clearer cases');
 }
 // ============================================================
+// CUSTODY: whoever is charged waits for their trial in the cell under
+// Glimmer Hall, and a trial that got lost (the box reloaded while it was
+// queued) is held again instead of leaving the accused free forever
+// ============================================================
+function holdForTrial(A, C) {
+  if (!A || !C || A.away) return;
+  if (A.jail && !A.jail.remand) return; // already serving something
+  A.jail = { until: W.day + 9999, crime: C.id, label: `charged with ${CRIME_TYPES[C.type].label.toLowerCase()}`, remand: true, since: W.day };
+  A.task = { kind: 'jail', phase: 'do' };
+  if (!A.today.some((m) => m.tag === 'remand')) remember(A, 'They are holding me in the cell under Glimmer Hall until my trial.', 3, 'remand');
+}
+function endRemand(A) {
+  if (!A?.jail?.remand) return;
+  A.jail = null;
+  if (A.task?.kind === 'jail') { A.task = null; A.state = 'free'; A.busyUntil = 0; A.inside = false; const s = TOWN.hall.spot; A.x = s[0]; A.z = s[1] + 1.5; }
+}
+const trialWaiting = (C) => trialsQueued.has(C.id) || CUT.queue.some((q) => q.crimeId === C.id && (q.kind === 'trial' || q.kind === 'arrest')) || (CUT.live && CUT.live.crimeId === C.id && ['trial', 'arrest'].includes(CUT.live.kind));
+// morning (and boot): everyone charged is in custody, lost trials get held, stray holds get cleared
+function custodyCheck(atBoot) {
+  const S = crimeState();
+  for (const C of S.list) {
+    if (!['charged', 'trial'].includes(C.status)) continue;
+    const A = person(C.accused);
+    if (!A) { C.status = C.clues.some((c) => !c.found) ? 'open' : 'cold'; C.accused = null; continue; }
+    holdForTrial(A, C);
+    if (!trialWaiting(C) && (atBoot || W.day - (C.chargedDay ?? W.day) >= 1)) { C.status = 'charged'; crimeTrialNow(C); }
+  }
+  for (const p of W.people) {
+    if (!p.jail?.remand) continue;
+    const C = crimeById(p.jail.crime);
+    if (C && ['charged', 'trial'].includes(C.status) && C.accused === p.id) continue;
+    // the verdict came in but the sentence never got picked (the box reloaded): use the default
+    if (C && C.status === 'closed' && C.convicted === p.id && !C.sentence && typeof applySentence === 'function') { endRemand(p); applySentence(C, p, sentenceOptions(C, p)[0].key); continue; }
+    endRemand(p);
+  }
+}
+function custodyBoot() {
+  custodyCheck(true);
+  W.added = W.added || {}; if (W.added.custody) return; W.added.custody = true;
+  if (typeof logUpdate === 'function') logUpdate('build', 'Anyone charged with a crime now waits for their trial in the cell under Glimmer Hall instead of walking around town. If a trial got lost because the box reloaded in the middle of it, it gets held again.', 'custody before trial');
+}
+// ============================================================
 // SENTENCES: what happens to people who are convicted. The Creator
 // picks from a few fitting options (or the court's default is used):
 // restitution, community service, probation with an ankle monitor,
@@ -10944,6 +11368,7 @@ function sentenceOptions(C, A) {
 }
 // the sentence itself: returns lines for the scene
 function applySentence(C, A, key) {
+  endRemand(A);
   const K = CRIME_TYPES[C.type], L = [], V = C.victim && person(C.victim), days = Math.max(1, K.days || 1);
   const repeat = onProbation(A);
   A.record = A.record || [];
@@ -11070,6 +11495,7 @@ function compensateWrong(p, C) {
 }
 function jailLeftText(p) {
   const J = p.jail; if (!J) return '';
+  if (J.remand) return 'waiting for trial';
   if (J.life) return 'life';
   if (J.untilReal) { const d = Math.max(0, Math.ceil((J.untilReal - Date.now()) / 864e5)); return `${d} real day${d === 1 ? '' : 's'} left`; }
   return `${plural(J.until - W.day, 'day')} left`;
@@ -12175,7 +12601,7 @@ function doing(p) {
 }
 function showTab(t) {
   activeTab = t;
-  document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === t)));
+  document.querySelectorAll('.tab').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.tab === t)); if (b.dataset.tab === t && !sheet.hidden) b.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); });
   for (const id of ['people', 'mail', 'texts', 'web', 'shops', 'gifts', 'build', 'board', 'court', 'diary', 'box']) $('#pane-' + id).hidden = id !== t;
   refreshPanel(true);
 }
@@ -12235,6 +12661,7 @@ function renderDetail(id) {
     <div class="d-head"><span class="dot" style="background:${skinCss(p)};border-color:${COLORS[p.outfit.shirt]}"></span>
       <div><div class="d-name">${esc(p.name)}</div>
       <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}${p.job && JOBS[p.job] ? ` · ${JOBS[p.job].short}, ${payOf(p)}/day` : ''}</div></div></div>
+    ${lookStudioHtml(p)}
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>
     ${bookshelfHtml(p)}
@@ -12242,7 +12669,6 @@ function renderDetail(id) {
     ${goalHtml(p)}
     ${healthDetailHtml(p)}
     ${savingHtml(p)}
-    ${cuteOn() ? hairEditorHtml(p) + fashionEditorHtml(p) : ''}
     ${isMili(p) ? `<p class="hint">✧ A piece of you, living down here. Her cat is called ${esc(catName())}. <button class="btn" type="button" data-renamecat>Rename the cat</button></p>` : ''}
     ${(() => { const T = (W.texts || []).filter((m) => m.from === p.id || m.to === p.id).slice(-4).reverse(); return T.length ? `<p class="label">Their phone</p>${T.map((m) => `<p class="hint">${m.from === p.id ? `To ${esc(m.to === 'town' ? 'the group chat' : person(m.to)?.name || '?')}` : `From ${esc(m.fromName)}`}: "${esc(m.text)}"</p>`).join('')}` : ''; })()}
     <div class="creator">
@@ -12378,7 +12804,12 @@ function renderBuild() {
     ${workshopAgentHtml()}
     ${(W.placed || []).length ? `<p class="label">What you've built</p><div class="chips">${W.placed.map((pl) => `<span class="chip">${esc(BUILDS[pl.type].name)} <button class="btn" type="button" data-unplace="${pl.id}" style="padding:1px 8px;font-size:11px">Remove</button></span>`).join('')}</div>` : ''}`;
 }
-let mailOpen = null;
+let mailOpen = null, mailListScroll = 0, mailSlide = null;
+function mailStep(dir) {
+  const mail = W.mail || [], i = mail.findIndex((x) => x.id === mailOpen), j = i + dir;
+  if (i < 0 || j < 0 || j >= mail.length) return;
+  mailOpen = mail[j].id; mailSlide = dir > 0 ? 'l' : 'r'; refreshPanel(true); $('#pane-mail').scrollTop = 0; mailSlide = null;
+}
 function renderMail() {
   const mail = W.mail || [];
   const pane = $('#pane-mail');
@@ -12388,11 +12819,17 @@ function renderMail() {
     if (!m.read) send({ t: 'mailread', mid: m.id });
     m.read = true;
     if (!m.written && RT.sample) writeLetter(m);
-    pane.innerHTML = `<button class="back" type="button" data-mailback>&larr; All letters</button>
-      <div class="letter" style="--ink:hsl(${Math.round(m.hue || 280)} 45% 32%)">
-        <p class="l-date">Day ${m.day}${!m.written && RT.sample ? ' · <i>unfolding…</i>' : ''}</p>
-        <p>${esc(m.greet)}</p><p>${esc(m.body)}</p><p class="l-sign">${esc(m.sign)}<br>${esc(m.fromName)}</p>
+    const i = mail.indexOf(m), nextUnread = mail.find((x, j) => j !== i && !x.read);
+    pane.innerHTML = `<div class="mailnav">
+        <button class="back" type="button" data-mailback>&larr; All letters</button>
+        <span class="mailpos">${i + 1} of ${mail.length}</span>
+        <span class="btns" style="margin:0"><button class="btn" type="button" data-mailnav="-1" ${i <= 0 ? 'disabled' : ''} aria-label="Newer letter">‹</button><button class="btn" type="button" data-mailnav="1" ${i >= mail.length - 1 ? 'disabled' : ''} aria-label="Older letter">›</button></span>
       </div>
+      <div class="letter ${mailSlide ? 'slide-' + mailSlide : ''}" style="--ink:hsl(${Math.round(m.hue || 280)} 45% 32%)">
+        <p class="l-date">Day ${m.day}${!m.written && RT.sample ? ' · <i>unfolding…</i>' : ''}</p>
+        <p>${esc(m.greet)}</p>${String(m.body).split(/\n\n+/).map((b) => `<p>${esc(b)}</p>`).join('')}<p class="l-sign">${esc(m.sign)}<br>${esc(m.fromName)}</p>
+      </div>
+      <p class="hint" style="text-align:center">Swipe the letter left or right for the next one.${nextUnread ? ` <button class="btn gold" type="button" data-mail="${nextUnread.id}" style="padding:3px 10px;font-size:12px">Next unread ✉</button>` : ''}</p>
       ${m.reply ? `<div class="creator"><h3>You wrote back</h3><p>"${esc(m.reply)}"</p>${m.reaction ? `<p><b style="color:var(--ink)">${esc(m.fromName)}:</b> "${esc(m.reaction)}"</p>` : ''}</div>`
         : person(m.from) ? `<form class="talk" data-mailreply="${m.id}"><label class="label" for="reply-${m.id}">Write back</label><textarea id="reply-${m.id}" rows="3" maxlength="600" placeholder="Dear ${esc(m.fromName)}…" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:10px"></textarea><div class="btns"><button class="btn gold" type="submit">Send your letter</button></div></form>`
         : `<p class="hint">${esc(m.fromName)} doesn't live here anymore.</p>`}`;
@@ -12408,6 +12845,14 @@ function renderLink() {
   if (MODE === 'host') s.textContent = RT.room ? (peerCount > 1 ? `This device is running the town. ${plural(peerCount - 1, 'other device')} connected.` : 'This device is running the town. No remote connected yet.') : 'This device is running the town. Add Firebase in Settings below to use a remote.';
   else s.textContent = 'This device is the remote.';
 }
+// swipe through letters
+{
+  let sx = null, sy = 0;
+  const pm = $('#pane-mail');
+  pm.addEventListener('touchstart', (e) => { if (!mailOpen || e.target.closest('textarea, input, form')) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  pm.addEventListener('touchend', (e) => { if (sx == null || !mailOpen) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null; if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.6) mailStep(dx < 0 ? 1 : -1); }, { passive: true });
+  document.addEventListener('keydown', (e) => { if (!mailOpen || sheet.hidden || activeTab !== 'mail' || e.target.closest?.('textarea, input')) return; if (e.key === 'ArrowRight') mailStep(1); else if (e.key === 'ArrowLeft') mailStep(-1); });
+}
 // panel clicks
 sheet.addEventListener('click', (e) => {
   const t = e.target.closest('button'); if (!t) return;
@@ -12421,6 +12866,9 @@ sheet.addEventListener('click', (e) => {
   if (d.buybook) { send({ t: 'buybook', id: d.buybook }); return; }
   if (d.openlab) { openLab(d.openlab); return; }
   if (d.care) { openCare(d.care); return; }
+  if (d.lookopen !== undefined) { lookOpen = lookOpen === d.lookopen ? null : d.lookopen; refreshPanel(true); return; }
+  if (d.looktab) { lookTab = d.looktab; refreshPanel(true); return; }
+  if (d.look) { send({ t: 'look', pid: d.look, part: d.part, val: d.val }); return; }
   if (d.hair) { send({ t: 'hair', pid: d.hair, style: d.style, color: d.hcolor }); return; }
   if (d.fashion) { send({ t: 'fashion', pid: d.fashion, fashion: d.fstyle }); return; }
   if (d.laptopgift) { send({ t: 'laptopgift', pid: d.laptopgift }); return; }
@@ -12434,7 +12882,8 @@ sheet.addEventListener('click', (e) => {
   if (d.hallview !== undefined) { send({ t: 'hallview' }); if (MODE === 'host') sheet.hidden = true; return; }
   if (d.debateform !== undefined) { debateForm = !debateForm; refreshPanel(true); return; }
   if (d.startdebate !== undefined) { const a = $('#dbA').value, b = $('#dbB').value, topic = ($('#dbCustom').value.trim() || $('#dbTopic').value).slice(0, 80); if (a === b) { toast('Pick two different residents.'); return; } debateForm = false; send({ t: 'debate', a, b, topic }); return; }
-  if (d.craft) { send({ t: 'craft', kind: d.craft, id: d.cid, color: d.color || $('#craftColor')?.value }); return; }
+  if (d.craftcolor) { if (COLORS[d.craftcolor]) craftPick = d.craftcolor; refreshPanel(true); return; }
+  if (d.craft) { send({ t: 'craft', kind: d.craft, id: d.cid, color: d.color || craftPick }); return; }
   if (d.donate) { send({ t: 'donate', uid: d.donate }); return; }
   if (d.sell) { send({ t: 'sell', uid: d.sell }); return; }
   if (d.plotpick !== undefined) { plotPick = plotPick === Number(d.plotpick) ? null : Number(d.plotpick); refreshPanel(true); return; }
@@ -12455,8 +12904,9 @@ sheet.addEventListener('click', (e) => {
   if (d.autoplace) { send({ t: 'place', type: d.autoplace }); return; }
   if (d.land) { send({ t: 'land', lobe: d.land }); return; }
   if (d.unplace) { send({ t: 'unplace', id: d.unplace }); return; }
-  if (d.mail) { mailOpen = d.mail; refreshPanel(true); $('#pane-mail').scrollTop = 0; return; }
-  if (d.mailback !== undefined) { mailOpen = null; refreshPanel(true); return; }
+  if (d.mail) { if (!mailOpen) mailListScroll = $('#pane-mail').scrollTop; mailOpen = d.mail; refreshPanel(true); $('#pane-mail').scrollTop = 0; return; }
+  if (d.mailnav) { mailStep(Number(d.mailnav)); return; }
+  if (d.mailback !== undefined) { mailOpen = null; refreshPanel(true); $('#pane-mail').scrollTop = mailListScroll; return; }
   if (d.paper !== undefined) { makePaper(t); return; }
   if (d.inside) { send({ t: 'shopview', shop: d.inside }); if (MODE === 'host') sheet.hidden = true; return; }
 });
@@ -12488,6 +12938,12 @@ sheet.addEventListener('submit', async (e) => {
 });
 document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
 function openSheet() { sheet.hidden = false; showTab(activeTab); }
+// a taller panel, for dressing people up or reading long letters; remembered on this device
+{
+  const g = $('#growSheet'), setTall = (on) => { sheet.classList.toggle('tall', on); g.setAttribute('aria-pressed', String(on)); g.textContent = on ? '⤡' : '⤢'; g.setAttribute('aria-label', on ? 'Make the panel shorter' : 'Make the panel taller'); };
+  try { setTall(localStorage.getItem('glimmer-tall-sheet') === '1'); } catch (e) {}
+  g.addEventListener('click', () => { const on = !sheet.classList.contains('tall'); setTall(on); try { localStorage.setItem('glimmer-tall-sheet', on ? '1' : '0'); } catch (e) {} });
+}
 $('#toggle').addEventListener('click', () => (sheet.hidden ? openSheet() : (sheet.hidden = true)));
 $('#close').addEventListener('click', () => { if (MODE === 'remote') return; sheet.hidden = true; openDetail = null; giftPick = null; });
 let toastT = 0;
@@ -12654,7 +13110,7 @@ function startRemote() {
 // has to change ?v= by hand. build.mjs stamps BUILD_ID and writes
 // version.json next to index.html.
 // ============================================================
-const BUILD_ID = '6c3d915e51';
+const BUILD_ID = 'abf3f37371';
 const UPDATE_KEY = 'glimmer-update';
 // on the local dev server, check every few seconds so saving a file reloads the page
 const updateLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -12740,7 +13196,7 @@ async function boot() {
   W = (await loadWorld()) || newWorld();
   applyMods();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); crimeClarityBoot(); sentencesBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
