@@ -172,6 +172,7 @@ function renderBoard() {
   const P2 = W.paper && W.paper.day === W.day ? W.paper : null;
   $('#pane-board').innerHTML = `
     <div class="paper"><p class="p-mast">The ${esc(ISL.name)} Gazette · Day ${W.day}</p>${P2 ? `<h3>${esc(P2.headline)}</h3>${P2.stories.map((st) => `<p><b>${esc(st.title)}</b> ${esc(st.text)}</p>`).join('')}` : `<p class="hint" style="color:#6d6488">Today's paper hasn't been printed yet.</p><div class="btns"><button class="btn gold" type="button" data-paper>Read today's paper</button></div>`}</div>
+    ${wishBoardHtml()}
     <p class="label">How ${esc(ISL.name)} works</p><p class="hint">${esc(CULT.long)}${sharing() ? ` The pantry holds ${W.pantry || 0} coins.` : ''}</p>
     <p class="label">Today's plan</p>
     ${ev ? `<p>${esc(cap(EVENTS[ev.id].name))} at ${EVENTS[ev.id].at}. Going: ${ev.going.map((id) => esc(person(id)?.name || '')).filter(Boolean).join(', ')}.</p>` : '<p class="hint">No event planned today.</p>'}
@@ -384,7 +385,7 @@ sheet.addEventListener('submit', async (e) => {
   const inp = document.getElementById('talk-' + id); if (inp) inp.focus();
 });
 document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-function openSheet() { sheet.hidden = false; showTab(activeTab); }
+function openSheet() { if (placing) cancelPlacing(); sheet.hidden = false; showTab(activeTab); }
 // a taller panel, for dressing people up or reading long letters; remembered on this device
 {
   const g = $('#growSheet'), setTall = (on) => { sheet.classList.toggle('tall', on); g.setAttribute('aria-pressed', String(on)); g.textContent = on ? '⤡' : '⤢'; g.setAttribute('aria-label', on ? 'Make the panel shorter' : 'Make the panel taller'); };

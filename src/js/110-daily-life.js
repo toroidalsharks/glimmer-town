@@ -59,6 +59,12 @@ function strollSpot() {
   if (r < 0.8) return ['park', jitter(TOWN.park.spot, 6)];
   return ['garden', jitter(TOWN.garden.spot, 5)];
 }
+function planEat(p) {
+  if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || p.saving || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return true; }
+  const i = W.bushes.findIndex((n) => n > 0);
+  if (i >= 0) { setTask(p, 'forage', 'plaza', [BUSHES[i][0] * 0.86, BUSHES[i][1] * 0.86], { bush: i }); return true; }
+  return false;
+}
 function plan(p) {
   const t = W.t;
   const ev = W.event && W.event.day === W.day ? EVENTS[W.event.id] : null;
@@ -66,6 +72,8 @@ function plan(p) {
   if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
   if (healthPlan(p)) return;
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
+  // really hungry comes before work, goals and books
+  if (p.hunger > 0.7 && planEat(p)) return;
   if (planPicket(p)) return;
   if (planBuyLaptop(p)) return;
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
@@ -78,11 +86,7 @@ function plan(p) {
   if (planRead(p)) return;
   if (planBrowse(p)) return;
   if (planSurf(p)) return;
-  if (p.hunger > 0.45) {
-    if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || p.saving || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return; }
-    const i = W.bushes.findIndex((n) => n > 0);
-    if (i >= 0) { setTask(p, 'forage', 'plaza', [BUSHES[i][0] * 0.86, BUSHES[i][1] * 0.86], { bush: i }); return; }
-  }
+  if (p.hunger > 0.45 && planEat(p)) return;
   if (!p.saving && purse(p) >= (sharing() && !p.visitor ? 15 : 7) && rand() < 0.3) { setTask(p, 'shop', pick(['clothes', 'nook', 'nook', 'books'])); return; }
   if (!p.saving && purse(p) >= 2 && rand() < (/game|League/i.test(p.interests || '') ? 0.3 : 0.08)) { setTask(p, 'arcade', 'arcade'); return; }
   if (W.project && p.coins >= 9 && (!p.saving || W.project.id === 'computer') && rand() < 0.2) { setTask(p, 'donate', 'plaza', jitter([0, 4.6], 1)); return; }

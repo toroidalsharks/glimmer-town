@@ -131,11 +131,17 @@ function applyRuling(c, choice, byJury) {
   Sound.bell(); markDirty();
   return `⚖ ${text}`;
 }
+// a debate topic the town hasn't argued about lately
+function freshDebate() {
+  const recent = new Set((W.cases || []).filter((c) => c.kind === 'debate').slice(-8).map((c) => c.topic));
+  const left = DEBATES.filter((t) => !recent.has(t));
+  return pick(left.length ? left : DEBATES);
+}
 function courtMorning() {
   if (ISLE !== 'isle1' && ISLE !== 'isle2') return;
   const ppl = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 1);
   if (ppl.length < 2) return;
-  if (rand() < 0.35) { const a = pick(ppl), b = pick(ppl.filter((q) => q !== a)); if (b) fileCase('debate', a, b, { topic: pick(DEBATES) }); }
+  if (rand() < 0.35) { const a = pick(ppl), b = pick(ppl.filter((q) => q !== a)); if (b) fileCase('debate', a, b, { topic: freshDebate() }); }
   const sour = [];
   for (const a of ppl) for (const b of ppl) if (a !== b && fscore(a, b) <= -3) sour.push([a, b]);
   if (sour.length && rand() < 0.4) { const [a, b] = pick(sour); fileCase('complaint', a, b, { grievance: pick(GRIEVANCES) }); }
