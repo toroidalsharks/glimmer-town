@@ -17,7 +17,7 @@ function aiLine(me, them, transcript, situation) {
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
 BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
-${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}${socialContext(me, them)}${townRecordContext(me, them)}
+${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}${socialContext(me, them)}${lifeContext(me, them)}${townRecordContext(me, them)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
 ${aboutThem(me, them)}
 ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hungry' : ''}.
@@ -92,7 +92,7 @@ async function aiEncounter(a, b, intent) {
     remember(b, `At ${place} with ${a.name}: ${quote}`.slice(0, 400), 1 + Math.abs(db), intent === 'makeup' && db > 0 ? 'gotApology' : tagB, a.name);
     if (v?.rumor?.about) {
       const target = W.people.find((q) => q.name.toLowerCase() === String(v.rumor.about).toLowerCase());
-      if (target && target !== a && target !== b) { const tone = Number(v.rumor.tone) < 0 ? -1 : 1; feel(b, target, tone, true); remember(b, `${a.name} told me about ${target.name}: ${String(v.rumor.text).slice(0, 160)}`, 2, 'rumor', target.name); }
+      if (target && target !== a && target !== b) { const tone = Number(v.rumor.tone) < 0 ? -1 : 1; feel(b, target, tone, true); remember(b, `${a.name} told me about ${target.name}: ${String(v.rumor.text).slice(0, 160)}`, 2, 'rumor', target.name); rumorStart(a, b, target, String(v.rumor.text), tone); }
     }
     if (v?.diary) diary(`<i>${esc(String(v.diary).slice(0, 220))}</i>`);
     if (da > 0) addJoy(a, 3 + da * 2); if (db > 0) addJoy(b, 3 + db * 2);

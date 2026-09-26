@@ -154,7 +154,7 @@ function startFreeze(c, t) {
     const m = person(id); if (!m || m === L || m === t) continue;
     const P = personaOf(m);
     const pull = -fscore(m, t) * 0.25 + fscore(m, L) * 0.15 + (0.3 - P.warmth * 0.3) + rand() * 0.5;
-    if (fscore(m, t) >= 4 || pull < 0.9) holdouts.push(m); else members.push(m.id);
+    if (fscore(m, t) >= 4 || owes(m, t) || pull < 0.9) holdouts.push(m); else members.push(m.id);
   }
   if (members.length < 2) return null;
   if (inside) c.members = c.members.filter((id) => id !== t.id);
@@ -210,7 +210,7 @@ function socialNight() {
   thawNight();
   formCliques();
   for (const T of S.trends) if (!T.over) spreadTrend(T);
-  for (const c of S.cliques) if (rand() < 0.3) { const t = freezeCandidate(c); if (t) { startFreeze(c, t); break; } }
+  if (!storyQuiet()) for (const c of S.cliques) if (rand() < 0.3) { const t = freezeCandidate(c); if (t) { startFreeze(c, t); break; } }
 }
 function socialMorning() {
   if (MODE !== 'host') return;

@@ -13,7 +13,7 @@
 // townRecordFor(pid) and townRecordText(entry).
 const TOWN_RECORD_KINDS = {
   dating: '💕', engaged: '💍', married: '💒', separated: '💔', breakup: '💔', divorce: '💔', admirer: '💌',
-  crime: '🚨', verdict: '⚖', acquitted: '⚖', exonerated: '🆕', court: '⚖', trend: '📣', freeze: '🧊',
+  crime: '🚨', verdict: '⚖', acquitted: '⚖', exonerated: '🆕', court: '⚖', trend: '📣', freeze: '🧊', tradition: '🎏', memorial: '🕯',
 };
 const TOWN_RECORD_LOVE = new Set(['dating', 'engaged', 'married', 'separated', 'breakup', 'divorce', 'admirer']);
 const TOWN_RECORD_MAX = 200;
