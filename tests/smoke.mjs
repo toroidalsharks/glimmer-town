@@ -173,6 +173,19 @@ try {
     return true;
   })()`) === true, 'rumors bend, favors are owed, moods spread, regulars warm up, anniversaries and traditions happen, the storyteller paces');
   ok(await E(`(() => { for (let i = 0; i < 3; i++) { lifeNight(); lifeMorning(); lifeSample(); } return true; })()`), 'a few nights of town life run cleanly');
+  ok(await E(`(() => {
+    const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p));
+    const n0 = W.records.length;
+    diary('<b>' + esc(a.name) + '</b> asked <b>' + esc(b.name) + '</b> to be friends, and they said yes.');
+    const fr = W.records.slice(n0).find((r) => r.kind === 'friends'); if (!fr || !fr.who.includes(a.id) || !fr.who.includes(b.id)) return 'friendship not recorded';
+    diary('Nothing much happened at the pier.'); if (W.records.length !== n0 + 1) return 'recorded a boring line';
+    diary('💼 <b>' + esc(a.name) + '</b> left their job as a baker and got hired as a <b>gardener</b>.');
+    for (let i = 0; i < 30; i++) diary('💢 <b>' + esc(a.name) + '</b> and <b>' + esc(b.name) + '</b> got into a fight.');
+    if (!/got hired as a gardener/.test(townRecordContext(a, null))) return 'a big moment got buried';
+    W.log.push({ day: W.day, text: '🎉 <b>' + esc(b.name) + '</b> threw a party in the park. 5 people came.' }); W.records = W.records.filter((r) => r.kind !== 'party');
+    W.added.townRecord2 = false; townRecordDiaryBoot(); if (!W.records.some((r) => r.kind === 'party' && r.who.includes(b.id))) return 'old diary not read back';
+    return true;
+  })()`) === true, 'the diary feeds the town record, and big moments stay in view');
   // everyday crimes follow the real calendar: a week of game nights before the clock is due adds none
   ok(await E(`(() => { const S = crimeState(); S.crimePace = 'week'; S.nextCrimeAt = Date.now() + 864e5; const n = S.list.length, day = W.day; for (let i = 0; i < 7; i++) { W.day++; crimeNight(); } const quiet = S.list.filter((C) => C.tier > 0).length === S.list.slice(0, n).filter((C) => C.tier > 0).length; S.nextCrimeAt = Date.now() - 1; crimeNight(); const one = S.list.filter((C) => C.tier > 0).length === S.list.slice(0, n).filter((C) => C.tier > 0).length + 1 && S.nextCrimeAt > Date.now() + 3 * 864e5; W.day = day; return quiet && one; })()`), 'everyday crimes wait for the real-week clock');
   ok(await E(`(() => { const t = fitLine('One two three. ' + 'word '.repeat(80), 60); const j = parseLoose('{"lines":[{"who":"A","say":"hi"},{"who":"B","sa'); return t.length <= 61 && !/\\bwor$/.test(t) && j.lines.length === 1; })()`), 'long lines end on a whole word and cut-off replies still parse');
