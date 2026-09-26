@@ -1,0 +1,20 @@
+{
+  "name": "glimmer-town",
+  "version": "25.0.0",
+  "private": true,
+  "description": "A tiny town of AI residents that lives in a hologram box.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "watch": "node build.mjs --watch",
+    "dev": "node tools/serve.mjs",
+    "test": "node build.mjs --check && node tests/smoke.mjs && node tests/update.mjs",
+    "shots": "node tests/look.mjs",
+    "assets": "python3 tools/blender/assets.py && node build.mjs --check"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0",
+    "three": "0.147.0"
+  }
+}
