@@ -102,6 +102,9 @@ try {
   ok(st === 'wait', 'a civil case reaches a ruling');
   await E(`cutPick('fine')`); await cutStep(20, log);
 
+  // the town record writes down the murder, its verdict and the ruling, and feeds them to the minds
+  ok(await E(`(() => { const R = W.records || []; return R.some((r) => r.kind === 'crime' && r.big) && R.some((r) => r.kind === 'verdict' && r.who.includes('${culprit}')) && R.some((r) => r.kind === 'court'); })()`), 'the town record keeps crimes, verdicts and rulings');
+  ok(await E(`(() => { const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p) && !p.partner).slice(0, 2); a.partner = b.id; b.partner = a.id; a.married = b.married = true; townRecord('married', [a.id, b.id], a.name + ' and ' + b.name + ' got married at the fountain.'); for (let i = 0; i < 20; i++) townRecord('court', [a.id], 'Filler ruling ' + i + '.'); const c = townRecordContext(a, b); a.partner = b.partner = null; a.married = b.married = false; W.records = W.records.filter((r) => !/^Filler/.test(r.text)); return /THE TOWN RECORD/.test(c) && /got married at the fountain/.test(c) && /town record/.test(townRecordHtml()); })()`), 'residents are reminded who they married, however long ago');
   // a trial lost to a reload gets held again, and the accused stays in custody until then
   ok(await E(`(() => { const id = __g.crime('burglary') || __g.crime('pickpocket'); const X = crimeById(id); if (!X) return 'no crime'; const A = person(X.suspects.find((q) => !jailed(person(q)))); X.status = 'charged'; X.accused = A.id; X.chargedDay = W.day - 1; trialsQueued.delete(X.id); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); const realTrial = crimeTrialNow; crimeTrialNow = (Y) => trialsQueued.add(Y.id); custodyCheck(false); crimeTrialNow = realTrial; const held = jailed(A) && A.jail.remand && trialsQueued.has(X.id); crimeVerdict(X, { def: A.id, jury: [] }, 'innocent', true); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); return held && !jailed(A) && X.status !== 'charged'; })()`) === true, 'lost trials come back, and not guilty means free');
   // letters: at most two a night, no exact repeats, and you can page through them
@@ -126,6 +129,7 @@ try {
   await page.waitForFunction(() => window.__g && window.__g.ev('typeof W !== "undefined" && W.people.length > 0'), null, { timeout: 60000 });
   const after = await E(`JSON.stringify([W.day, W.people.length, jailedPeople().map((p) => p.id)])`);
   ok(before === after, 'the town survives a reload');
+  ok(await E(`(W.records || []).some((r) => r.kind === 'verdict')`), 'the town record survives a reload');
 } catch (e) {
   console.log(' FAIL  the test itself crashed: ' + e.message); failed++;
 }

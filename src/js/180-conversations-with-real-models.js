@@ -17,7 +17,7 @@ function aiLine(me, them, transcript, situation) {
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
 BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
-${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}
+${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}${townRecordContext(me, them)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
 ${aboutThem(me, them)}
 ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hungry' : ''}.
@@ -112,7 +112,7 @@ async function aiReflect(p, T) {
 
 WHO I THOUGHT I WAS THIS MORNING: ${p.selfNote}
 MY SECRET WANT: ${p.want?.text || 'none yet'}
-HOW I FEEL ABOUT THE CREATOR: ${attitude(p)[1]}.
+HOW I FEEL ABOUT THE CREATOR: ${attitude(p)[1]}.${townRecordContext(p, null)}
 
 TODAY:
 ${T.map((m, i) => `${i}. ${m.text}`).join('\n')}

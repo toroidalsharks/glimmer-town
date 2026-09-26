@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glimmer Town</title>
-<meta name="glimmer-build" content="abf3f37371">
+<meta name="glimmer-build" content="3597b83a29">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@400;700&display=swap">
@@ -1941,7 +1941,7 @@ function aiLine(me, them, transcript, situation) {
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
 BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
-${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}
+${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}${townRecordContext(me, them)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
 ${aboutThem(me, them)}
 ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hungry' : ''}.
@@ -2036,7 +2036,7 @@ async function aiReflect(p, T) {
 
 WHO I THOUGHT I WAS THIS MORNING: ${p.selfNote}
 MY SECRET WANT: ${p.want?.text || 'none yet'}
-HOW I FEEL ABOUT THE CREATOR: ${attitude(p)[1]}.
+HOW I FEEL ABOUT THE CREATOR: ${attitude(p)[1]}.${townRecordContext(p, null)}
 
 TODAY:
 ${T.map((m, i) => `${i}. ${m.text}`).join('\n')}
@@ -2061,6 +2061,12 @@ function finishReflection(p, r, T) {
 // ============================================================
 // SETTINGS: minds and sync
 // ============================================================
+// one-tap model sets for Settings. The first one is the game's default list.
+const MODEL_PICKS = [
+  { key: 'default', label: 'The usual mix', models: DEFAULT_MODELS, judge: 'deepseek/deepseek-v4-flash', why: 'three cheap roleplay models, so residents sound a little different from each other' },
+  { key: 'ds41', label: 'DeepSeek V4.1 Flash', models: ['deepseek/deepseek-v4.1-flash'], judge: 'deepseek/deepseek-v4.1-flash', why: 'newer and smarter than V4 Flash, better at keeping facts straight, still cheap (a little over V4 Flash)' },
+  { key: 'glm', label: 'GLM 5.3 Flash', models: ['z-ai/glm-5.3-flash'], judge: 'z-ai/glm-5.3-flash', why: 'scores well on reasoning for its price and stays in character' },
+];
 function renderBrainSettings() {
   const el = $('#brainBox'); if (!el) return;
   const left = aiLeft();
@@ -2073,6 +2079,7 @@ function renderBrainSettings() {
     <div class="field"><label for="orModels">Models residents can have (one per line)</label><textarea id="orModels" rows="4" style="font:14px ui-monospace,monospace;color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px">${esc(brainCfg.models.join('\n'))}</textarea></div>
     <div class="field"><label for="orJudge">Model that judges how conversations went</label><input id="orJudge" type="text" value="${esc(brainCfg.judge)}" style="font:14px ui-monospace,monospace;color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
     <div class="field"><label for="orBudget">Most model calls per real day (about 3 or 4 per conversation)</label><input id="orBudget" type="number" min="0" max="5000" value="${brainCfg.budget}" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
+    <div class="field"><label>Quick switch (everyone gets the same model, and you can switch back any time)</label><div class="btns">${MODEL_PICKS.map((m) => `<button class="btn${brainCfg.models.length === m.models.length && m.models.every((x, i) => brainCfg.models[i] === x) ? ' gold' : ''}" type="button" data-usemodels="${esc(m.key)}" title="${esc(m.why)}">${esc(m.label)}</button>`).join('')}</div><p class="hint">${MODEL_PICKS.map((m) => `<b>${esc(m.label)}</b>: ${esc(m.why)}`).join('<br>')}</p></div>
     <div class="btns"><button class="btn gold" type="button" id="orSave">Save minds</button><button class="btn" type="button" id="orFind">Find cheap roleplay models</button><button class="btn" type="button" id="orShuffle">Give everyone a new model</button></div>
     <p class="status">${aiDown ? esc(aiDown) : lastAiError ? esc(lastAiError) + ' · ' + aiStats.n + ' calls today' : brainCfg.key ? `${aiStats.n} calls today, ${Math.max(0, left)} left · about $${aiStats.cost.toFixed(3)} spent today` : 'No key yet, so residents run on rules.'}</p>
     <div id="orList"></div></div>
@@ -2097,6 +2104,12 @@ document.addEventListener('click', async (e) => {
     if (MODE === 'host') RT.sample = brainCfg.key ? makeSample() : null;
     badModels.clear(); lastAiError = ''; checkModels(); if (W) W.people.forEach(modelOf);
     toast(brainCfg.key ? 'Saved. Residents will start thinking for themselves.' : 'Saved.'); renderBrainSettings();
+  }
+  if (b.dataset.usemodels) {
+    const m = MODEL_PICKS.find((x) => x.key === b.dataset.usemodels); if (!m) return;
+    brainCfg.models = m.models.slice(); brainCfg.judge = m.judge; saveBrain();
+    badModels.clear(); lastAiError = ''; checkModels(); if (W) { W.people.forEach((p) => { p.model = null; modelOf(p); }); markDirty(); }
+    toast(`Switched to ${m.label}.`); renderBrainSettings();
   }
   if (b.id === 'orShuffle' && W) { W.people.forEach((p) => { p.model = pick(brainCfg.models); }); markDirty(); toast('Everyone got a new model.'); refreshPanel(true); }
   if (b.id === 'orFind') {
@@ -4104,7 +4117,7 @@ async function romanceScene(a, b, intent) {
         remember(a, `I confessed to ${b.name} and they said yes. We're dating now.`, 3, 'couple', b.name);
         remember(b, `${a.name} confessed to me and I said yes. We're dating now.`, 3, 'couple', a.name);
         for (const q of W.people) if (q !== a && q !== b && rand() < 0.6) remember(q, `I heard ${a.name} and ${b.name} are dating now.`, 1, 'gossipLove', a.name);
-        diary(`💕 <b>${esc(a.name)}</b> confessed to <b>${esc(b.name)}</b>, and they said yes! They're dating now.`);
+        diary(`💕 <b>${esc(a.name)}</b> confessed to <b>${esc(b.name)}</b>, and they said yes! They're dating now.`); townRecord('dating', [a.id, b.id], `${a.name} asked ${b.name} out and they said yes. They started dating.`);
         queueLetter(a, 'dating', { who: b.name });
       } else {
         emote(a, '💔', 5); feel(a, b, -1, true); a.heartbreakDay = W.day; Sound.paper();
@@ -4127,7 +4140,7 @@ async function romanceScene(a, b, intent) {
         addJoy(a, 40); addJoy(b, 40);
         remember(a, `I asked ${b.name} to marry me. They said yes! The wedding is tomorrow.`, 3, 'engaged', b.name);
         remember(b, `${a.name} asked me to marry them and I said yes. The wedding is tomorrow.`, 3, 'engaged', a.name);
-        diary(`💍 <b>${esc(a.name)}</b> proposed to <b>${esc(b.name)}</b>. They said yes! The wedding is tomorrow at the fountain.`); engageCut(a, b, l1, l2);
+        diary(`💍 <b>${esc(a.name)}</b> proposed to <b>${esc(b.name)}</b>. They said yes! The wedding is tomorrow at the fountain.`); townRecord('engaged', [a.id, b.id], `${a.name} proposed to ${b.name} and they said yes. They got engaged.`); engageCut(a, b, l1, l2);
         queueLetter(b, 'engaged', { who: a.name });
       } else {
         feel(a, b, -0.5, true);
@@ -4139,14 +4152,14 @@ async function romanceScene(a, b, intent) {
       await say(a, l1);
       const l2 = await romLine(b, a, `${a.name} just broke up with you: "${l1}". React honestly.`, fb >= 4 ? pick(['…Oh. Okay.', "Wait, what? Why?", "I didn't see that coming."]) : pick(['Honestly? Fine.', 'Yeah. I felt it too.']));
       await say(b, l2);
-      if (a.married) { emote(a, '💔', 5); emote(b, '💔', 5); a.separated = b.separated = true; remember(a, `I told ${b.name} I want a divorce.`, 3, 'breakup', b.name); remember(b, `${a.name} wants a divorce.`, 3, 'heartbreak', a.name); diary(`💔 <b>${esc(a.name)}</b> told <b>${esc(b.name)}</b> they want a divorce. It's going to Glimmer Hall.`); divorceAskCut(a, b, l1, l2); fileCase('divorce', a, b); return; }
+      if (a.married) { emote(a, '💔', 5); emote(b, '💔', 5); a.separated = b.separated = true; remember(a, `I told ${b.name} I want a divorce.`, 3, 'breakup', b.name); remember(b, `${a.name} wants a divorce.`, 3, 'heartbreak', a.name); diary(`💔 <b>${esc(a.name)}</b> told <b>${esc(b.name)}</b> they want a divorce. It's going to Glimmer Hall.`); townRecord('separated', [a.id, b.id], `${a.name} told ${b.name} they want a divorce. It went to Glimmer Hall.`); divorceAskCut(a, b, l1, l2); fileCase('divorce', a, b); return; }
       emote(a, '💔', 5); emote(b, '💔', 5);
       a.partner = b.partner = null; const wasMarried = a.married; a.married = b.married = false;
       a.exes = [...(a.exes || []), b.name].slice(-5); b.exes = [...(b.exes || []), a.name].slice(-5);
       feel(b, a, fb >= 4 ? -3 : -1, true); b.heartbreakDay = W.day;
       remember(a, `I broke up with ${b.name}.`, 3, 'breakup', b.name);
       remember(b, `${a.name} broke up with me.`, 3, 'heartbreak', a.name);
-      diary(`💔 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> ${wasMarried ? 'split up' : 'broke up'}.`);
+      diary(`💔 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> ${wasMarried ? 'split up' : 'broke up'}.`); townRecord('breakup', [a.id, b.id], `${a.name} broke up with ${b.name}.`);
       for (const q of W.people) if (q !== a && q !== b && rand() < 0.6) remember(q, `I heard ${a.name} and ${b.name} broke up.`, 1, 'gossipLove', a.name);
     }
   } finally {
@@ -4179,7 +4192,7 @@ function weddingFrame(dt) {
       remember(a, `I married ${b.name} today at the fountain.`, 3, 'married', b.name);
       remember(b, `I married ${a.name} today at the fountain.`, 3, 'married', a.name);
       bubble(a, pick(['I do!', 'I do. Forever.']), 3.5); setTimeout(() => bubble(b, pick(['I do too!', 'I do.']), 3.5), 1800);
-      diary(`💒 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got married at the fountain! Everyone threw petals.`); weddingCut(a, b);
+      diary(`💒 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got married at the fountain! Everyone threw petals.`); townRecord('married', [a.id, b.id], `${a.name} and ${b.name} got married at the fountain.`); weddingCut(a, b);
       markDirty();
     }
   }
@@ -4848,6 +4861,7 @@ function applyRuling(c, choice, byJury) {
     const v = juryVotes(c), townSaid = v.yes > v.no ? P : D;
     for (const q of v.jurors) { const agrees = townSaid === win ? rand() < 0.7 : rand() < 0.3; creatorShift(q, agrees ? 0.1 : -0.15); if (!agrees && rand() < 0.4) remember(q, `I don't think the Creator's ruling in ${title} was fair.`, 1, 'unfair'); }
   }
+  if (c.kind !== 'license' || choice !== 'fountain') townRecord(choice === 'grant' ? 'divorce' : choice === 'now' ? 'married' : 'court', [P.id, D.id], choice === 'now' ? `${P.name} and ${D.name} got married at Glimmer Hall.` : `${title}: ${text}${byJury ? ' The jury decided.' : ' The Creator decided.'}`);
   diary(`⚖ Ruling in <b>${esc(title)}</b>${byJury && c.jury ? ` (jury ${c.jury})` : ''}: ${esc(text)}`);
   Sound.bell(); markDirty();
   return `⚖ ${text}`;
@@ -4938,7 +4952,7 @@ function renderCourt() {
       <p>${esc(c.summary)}</p>
       <p class="note"><b>${esc(c.pName)}:</b> "${esc(c.args.p || '…')}"</p><p class="note"><b>${esc(c.dName)}:</b> "${esc(c.args.d || '…')}"</p>
       <div class="btns">${(RULINGS[c.kind] || []).map(([k, l]) => `<button class="btn ${k === 'jury' ? '' : 'gold'}" type="button" data-rule="${c.id}" data-choice="${k}">${esc(l.replace('#P', c.pName).replace('#D', c.dName))}</button>`).join('')}${c.kind !== 'license' ? `<button class="btn" type="button" data-rule="${c.id}" data-choice="jury">Let the jury decide</button>` : ''}</div></div>`).join('') : '<p class="hint">No cases right now. Peace on the island. For now.</p>'}
-    ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}`;
+    ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}${townRecordHtml()}`;
   $('#detSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'detective', pid: e.target.value }));
   $('#paceSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'pace', pace: e.target.value }));
 }
@@ -10461,6 +10475,7 @@ function crimeDiscover(C) {
   if (C.tier === 0) { revealClue(C, null, true); diary(`💌 <b>A secret admirer</b>: ${esc(C.headline)}`); admirerFoundCut(C); markDirty(); return; }
   for (let i = 0; i < (C.tier >= 2 ? 2 : 1); i++) revealClue(C, null, true);
   diary(`${K.icon} <b>${K.label}</b>: ${esc(C.headline)}`);
+  { const e = townRecord('crime', [C.victim], `${K.label}: ${C.headline}`); if (e && C.tier >= 2) e.big = true; }
   for (const q of W.people) if (adult(q) && q.id !== C.culprit && rand() < (C.tier >= 2 ? 0.8 : 0.4)) remember(q, `Heard about the ${K.label.toLowerCase()}: ${C.headline}`, C.tier >= 2 ? 2 : 1, 'crimeNews');
   if (C.tier >= 2) { notifyCreator?.('news', pick(W.people.filter((q) => adult(q) && q.id !== C.culprit)), `${K.label} on the island: ${C.headline}`, null, { key: 'crime:' + C.id }).catch?.(() => {}); crimeScene(C); discoverCut(C); }
   markDirty();
@@ -10591,6 +10606,7 @@ function murderMorning(C) {
   griefFor({ id: C.victim, name: C.victimName }, C);
   for (let i = 0; i < 2; i++) revealClue(C, null, true);
   diary(`🔪 <b>Murder.</b> ${esc(C.headline)}`);
+  { const e = townRecord('crime', [C.victim, C.victimPartner], `Murder: ${C.headline}`); if (e) e.big = true; }
   const det = detectiveOf();
   notifyCreator?.('bad', det || pick(W.people), `There has been a murder on ${ISL.name}. ${C.headline}`, `${C.victimName} is dead. Someone did this. Please come to the island.`, { key: 'murder:' + C.id }).catch?.(() => {});
   crimeScene(C); discoverCut(C);
@@ -10713,6 +10729,7 @@ function crimeVerdict(C, T, k, silent) {
     L.push(pline(A.id, pick(['Thank you. Thank you.', 'I TOLD you!', 'Can I go home now?']), null, { emote: '✨' }));
     C.status = C.clues.some((c) => !c.found) ? 'open' : 'cold'; C.accused = null; C.acquitted = [...(C.acquitted || []), A.id]; endRemand(A);
     remember(A, `I was found not guilty of ${K.label.toLowerCase()}. Everyone still looks at me funny.`, 3, 'acquitted');
+    townRecord('acquitted', [A.id, C.victim], `${A.name} was found not guilty of ${K.label.toLowerCase()}${!C.byCreator && C.jury ? ` (jury ${C.jury})` : ' by the Creator'}. The case is still open.`);
   }
   L.push(jline('Court is adjourned!', 'gavel'));
   diary(`⚖ Verdict in <b>The Town v. ${esc(A.name)}</b> (${esc(K.label.toLowerCase())})${C.jury ? `, jury ${C.jury}` : C.byCreator ? ', ruled by the Creator' : ''}: <b>${guilty ? 'GUILTY' : 'NOT GUILTY'}</b>${guilty && C.sentence ? `. ${esc(C.sentence)}.` : '.'}`);
@@ -10733,6 +10750,7 @@ function reopenWrong(C) {
   const inn = person(C.convicted); if (inn && jailed(inn)) releaseFromJail(inn, 'exonerated');
   if (inn && typeof compensateWrong === 'function') compensateWrong(inn, C);
   C.status = 'open'; C.wrong = false; C.convicted = null; C.acquitted = [...(C.acquitted || []), inn?.id].filter(Boolean);
+  if (inn) townRecord('exonerated', [inn.id, C.victim], `New evidence cleared ${inn.name} of the ${CRIME_TYPES[C.type].label.toLowerCase()}. They were innocent, and the case was reopened.`);
   diary(`🆕 New evidence in the ${esc(CRIME_TYPES[C.type].label.toLowerCase())} case. <b>${esc(inn?.name || 'The convicted resident')}</b> was innocent.`);
   const g = person(C.culprit); if (g && crimeAble(g)) setTimeout(() => chargeCrime(C, g.id, detectiveOf(), false), 1500);
 }
@@ -11021,7 +11039,7 @@ function admirerReveal(C, pid, self) {
   queueCut({ kind: 'mystery', icon: '💌', title: 'The Admirer Revealed', sub: `${real.name} → ${V.name}`, music: 'wedding', lines: L,
     stage: (S) => { townStage(S, [0, 7], castFrom(onlookers([real.id, V.id], 4), 4), { r: 3.2, marks: [[real.id, -0.7, 7, Math.PI / 2], [V.id, 0.7, 7, -Math.PI / 2]] }); CUT.focus = { x: 0, z: 7 }; },
     onEnd: () => { feel(V, real, likes ? 2 : 0.8, true); feel(real, V, 1, true); remember(V, `${real.name} was my secret admirer!`, 3, 'admirerRevealed', real.name); remember(real, `I told ${V.name} I was the one leaving the flowers.`, 3, 'admirerRevealed', V.name); if (likes && !real.partner && !V.partner) real.confessTo = V.id; } });
-  diary(`💌 The secret admirer was <b>${esc(real.name)}</b>, all along, for <b>${esc(V.name)}</b>.`);
+  diary(`💌 The secret admirer was <b>${esc(real.name)}</b>, all along, for <b>${esc(V.name)}</b>.`); townRecord('admirer', [real.id, V.id], `The secret admirer leaving flowers for ${V.name} turned out to be ${real.name}.`);
   markDirty();
   return `It was ${real.name}!`;
 }
@@ -11399,6 +11417,7 @@ function applySentence(C, A, key) {
   for (const q of W.people) if (q !== A && adult(q)) { remember(q, `${A.name} was found guilty of ${K.label.toLowerCase()} and got ${text}.`, 2, 'verdict', A.name); if (fscore(q, A) > 2 && rand() < 0.5) feel(q, A, -1.5, true); }
   remember(A, `I was found guilty of ${K.label.toLowerCase()} and got ${text}. ${C.wrong ? "I DIDN'T DO IT." : 'It is over.'}`, 4, 'convicted');
   diary(`⚖ <b>${esc(A.name)}</b>'s sentence for ${esc(K.label.toLowerCase())}: ${esc(text)}.`);
+  townRecord('verdict', [A.id, C.victim], `${A.name} was found guilty of ${K.label.toLowerCase()}${!C.byCreator && C.jury ? ` (jury ${C.jury})` : ' by the Creator'} and got ${text}.`);
   if (key === 'exile') setTimeout(() => exileResident(A, C), 2500);
   markDirty();
   return L;
@@ -11513,6 +11532,93 @@ function factSafe(text, allowedIds) {
 function sentencesBoot() {
   W.added = W.added || {}; if (W.added.sentences1) return; W.added.sentences1 = true;
   if (typeof logUpdate === 'function') logUpdate('build', 'When someone is found guilty now, you pick the sentence. Small crimes get community service in an orange vest, a public apology, or a warning. Bigger ones get time in the cell and probation with an ankle monitor. Violent ones come with anger management and an order to stay away from the victim. Murder means a real year in the cell with a parole hearing every month, life, or exile from the island. People who get convicted by mistake are paid back when the truth comes out. I also stopped the AI from making up facts in trials: the game states every clue itself now.', 'sentences and parole');
+}
+// ============================================================
+// THE TOWN RECORD: a written log of who dated, married, split up,
+// and every crime, trial and verdict, so the minds stop forgetting
+// ============================================================
+// W.records is a plain array, oldest first. Each entry:
+//   { id: 'r12', day: 14, at: 1790000000000, kind: 'married',
+//     who: ['p3', 'p7'], names: ['Red', 'Tim'], text: 'Red and Tim got married at the fountain.' }
+// day is the game day (null for things that happened before the record began), at is real
+// time in ms, who holds resident ids and names holds their names at the time (ids can
+// vanish when someone dies or leaves). kind is one of TOWN_RECORD_KINDS. The text is a
+// full sentence written by the game, never by a model, so it is safe to show and to feed
+// back into prompts. Other features (the relationship chart, the paper) can read it with
+// townRecordFor(pid) and townRecordText(entry).
+const TOWN_RECORD_KINDS = {
+  dating: '💕', engaged: '💍', married: '💒', separated: '💔', breakup: '💔', divorce: '💔', admirer: '💌',
+  crime: '🚨', verdict: '⚖', acquitted: '⚖', exonerated: '🆕', court: '⚖',
+};
+const TOWN_RECORD_LOVE = new Set(['dating', 'engaged', 'married', 'separated', 'breakup', 'divorce', 'admirer']);
+const TOWN_RECORD_MAX = 200;
+function townRecord(kind, ids, text, day = W.day) {
+  if (!W || !text) return null;
+  W.records = W.records || [];
+  const who = [...new Set((ids || []).filter(Boolean))];
+  const e = { id: 'r' + ((W.recordSeq = (W.recordSeq || 0) + 1)), day, at: Date.now(), kind, who, names: who.map((id) => person(id)?.name || null), text: String(text).slice(0, 220) };
+  W.records.push(e);
+  // over the cap, court and crime entries go first; who married whom is kept longest
+  while (W.records.length > TOWN_RECORD_MAX) {
+    const i = W.records.findIndex((r) => !TOWN_RECORD_LOVE.has(r.kind));
+    W.records.splice(i >= 0 ? i : 0, 1);
+  }
+  markDirty();
+  return e;
+}
+const townRecordFor = (pid) => (W.records || []).filter((r) => r.who.includes(pid));
+function recordDayText(day) {
+  if (day == null) return 'Before the record began';
+  return `Day ${day} (${dateText(yearDay(day))}, year ${Math.floor((day - 1) / YEAR) + 1})`;
+}
+const townRecordText = (r) => `${recordDayText(r.day)}: ${r.text}`;
+// the part of the record one resident should know, for their prompt
+function townRecordContext(me, them) {
+  const all = W.records || []; if (!all.length) return '';
+  const pickd = new Set();
+  // how the current relationship started, however long ago
+  if (me.partner) {
+    const start = all.filter((r) => r.who.includes(me.id) && r.who.includes(me.partner) && ['dating', 'married'].includes(r.kind));
+    for (const r of start.slice(-2)) pickd.add(r);
+  }
+  for (const r of all.filter((r) => r.who.includes(me.id)).slice(-8)) pickd.add(r);
+  if (them) for (const r of all.filter((r) => r.who.includes(them.id) && !r.who.includes(me.id)).slice(-3)) pickd.add(r);
+  for (const r of all.filter((r) => ['verdict', 'acquitted', 'exonerated', 'married', 'divorce'].includes(r.kind) || (r.kind === 'crime' && r.big)).slice(-4)) pickd.add(r);
+  const lines = all.filter((r) => pickd.has(r)).map((r) => `- ${townRecordText(r)}`);
+  return `\nTHE TOWN RECORD (written down at the time, so these are true; trust them over your own memory, and don't contradict them. Today is ${recordDayText(W.day).toLowerCase()}):\n${lines.join('\n')}`;
+}
+// a readable list for the Court tab
+function townRecordHtml() {
+  const all = (W.records || []).slice().reverse();
+  if (!all.length) return '';
+  return `<details class="creator"><summary><b>📜 The town record</b> <span class="hint">(${all.length} ${all.length === 1 ? 'entry' : 'entries'})</span></summary>
+    <p class="hint">Written down as it happens: dating, weddings, breakups, crimes, trials and verdicts. Residents read the parts about them before they talk.</p>
+    ${all.slice(0, 40).map((r) => `<p class="note"><span class="chip">${r.day == null ? 'earlier' : `day ${r.day}`}</span> ${TOWN_RECORD_KINDS[r.kind] || '•'} ${esc(r.text)}</p>`).join('')}</details>`;
+}
+// old saves: write down what the world already knows, once
+function townRecordBoot() {
+  W.added = W.added || {}; if (W.added.townRecord) return; W.added.townRecord = true;
+  W.records = W.records || [];
+  const back = [], seen = new Set();
+  const add = (kind, ids, text, day, extra) => back.push({ kind, ids, text, day: day ?? null, ...extra });
+  for (const p of W.people) {
+    const q = p.partner && person(p.partner); if (!q) continue;
+    const key = [p.id, q.id].sort().join('|'); if (seen.has(key)) continue; seen.add(key);
+    if (p.married) add('married', [p.id, q.id], `${p.name} and ${q.name} are married.`, null);
+    else add('dating', [p.id, q.id], `${p.name} and ${q.name} started dating.`, p.datingSince);
+  }
+  const S = W.crime;
+  for (const C of S?.list || []) {
+    const K = CRIME_TYPES[C.type]; if (!K) continue;
+    if (C.tier >= 1 && C.discovered) add('crime', [C.victim], `${K.label}: ${C.headline}`, C.discovered, { big: C.tier >= 2 });
+    if (C.verdict === 'revealed') add('admirer', [C.culprit, C.victim], `The secret admirer turned out to be ${nameOf(C.culprit)}, for ${C.victimName}.`, C.verdictDay);
+    else if (C.convicted && C.verdictDay) add('verdict', [C.convicted, C.victim], `${nameOf(C.convicted)} was found guilty of ${K.label.toLowerCase()}${C.sentence ? ` and got ${C.sentence}` : ''}.`, C.verdictDay);
+    for (const id of C.acquitted || []) if (person(id) && C.verdictDay) add('acquitted', [id, C.victim], `${nameOf(id)} was cleared in the ${K.label.toLowerCase()} case.`, C.verdictDay);
+  }
+  for (const c of W.cases || []) if (c.status === 'closed' && c.ruled && c.result && c.kind !== 'license') add(c.kind === 'divorce' && c.choice === 'grant' ? 'divorce' : 'court', [c.p, c.d], `${caseTitle(c)}: ${c.result}`, c.ruled);
+  back.sort((x, y) => (x.day ?? -1) - (y.day ?? -1));
+  for (const b of back) { const e = townRecord(b.kind, b.ids, b.text, b.day); if (e && b.big) e.big = true; }
+  if (typeof logUpdate === 'function') logUpdate('build', 'The town keeps a written record now. Every date, engagement, wedding, breakup and divorce goes in it, along with every crime, trial and verdict. Residents read the parts about themselves and whoever they are talking to before they speak, so they stop forgetting who they married or how the last trial went. You can read it at the bottom of the Court tab. I also filled it in with what the town already knew.', 'the town record');
 }
 // ============================================================
 // MILI (a piece of the Creator, living down here) and CLAUDE (a little helper)
@@ -13110,7 +13216,7 @@ function startRemote() {
 // has to change ?v= by hand. build.mjs stamps BUILD_ID and writes
 // version.json next to index.html.
 // ============================================================
-const BUILD_ID = 'abf3f37371';
+const BUILD_ID = '3597b83a29';
 const UPDATE_KEY = 'glimmer-update';
 // on the local dev server, check every few seconds so saving a file reloads the page
 const updateLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -13196,7 +13302,7 @@ async function boot() {
   W = (await loadWorld()) || newWorld();
   applyMods();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); townRecordBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }

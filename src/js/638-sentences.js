@@ -67,6 +67,7 @@ function applySentence(C, A, key) {
   for (const q of W.people) if (q !== A && adult(q)) { remember(q, `${A.name} was found guilty of ${K.label.toLowerCase()} and got ${text}.`, 2, 'verdict', A.name); if (fscore(q, A) > 2 && rand() < 0.5) feel(q, A, -1.5, true); }
   remember(A, `I was found guilty of ${K.label.toLowerCase()} and got ${text}. ${C.wrong ? "I DIDN'T DO IT." : 'It is over.'}`, 4, 'convicted');
   diary(`⚖ <b>${esc(A.name)}</b>'s sentence for ${esc(K.label.toLowerCase())}: ${esc(text)}.`);
+  townRecord('verdict', [A.id, C.victim], `${A.name} was found guilty of ${K.label.toLowerCase()}${!C.byCreator && C.jury ? ` (jury ${C.jury})` : ' by the Creator'} and got ${text}.`);
   if (key === 'exile') setTimeout(() => exileResident(A, C), 2500);
   markDirty();
   return L;
