@@ -1,0 +1,57 @@
+# On every push: builds the game from src/ and checks that it parses.
+# Publishing depends on Settings > Pages > Source:
+#   "Deploy from a branch"  GitHub serves the committed index.html; this only checks the build
+#   "GitHub Actions"        this workflow publishes the freshly built site
+name: Build Glimmer Town
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      pages: ${{ steps.pages.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build and check
+        run: node build.mjs --check
+      - name: See how Pages is set up
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mode=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type 2>/dev/null) || mode=none
+          echo "mode=${mode:-none}" | head -n 1 >> "$GITHUB_OUTPUT"
+          echo "Pages source: ${mode:-none}"
+      # publishes the whole repo like "deploy from a branch" would, so any other
+      # pages kept here stay online; the game is the freshly built index.html
+      - if: steps.pages.outputs.mode == 'workflow'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.pages == 'workflow'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

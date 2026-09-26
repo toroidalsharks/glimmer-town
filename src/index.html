@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Glimmer Town</title>
+<meta name="glimmer-build" content="@@BUILD@@">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@400;700&display=swap">
+<style>/*@@CSS@@*/</style>
+
+</head>
+<body>
+<div id="stage"></div>
+<div id="tags"></div>
+<p class="loading" id="loading">Building the town…</p>
+<script>(() => { const m = ["Building the town…", "Planting flowers…", "Filling the sea…", "Fluffing the trees…", "Waking up the ghosts…"]; let i = 0; const t = setInterval(() => { const e = document.getElementById("loading"); if (!e || /Couldn|Waiting/.test(e.textContent)) return clearInterval(t); e.textContent = m[++i % m.length]; }, 1400); })();</script>
+
+<div class="hud" id="hud"><b id="hudName">Glimmer Town</b><span id="clock"></span><span id="np"></span></div>
+<button class="toggle" id="toggle" type="button">Town</button>
+<p class="ghost-hint" id="ghostHint" style="opacity:0">Tap empty space to bring the menus back</p>
+<div class="roomcard" id="roomcard" hidden><div class="rc"><b id="rcTitle"></b><span id="rcSub"></span><span id="rcBtns" class="rcbtns"></span></div><button class="btn" id="rcClose" type="button">Back to town</button></div>
+<div id="itags"></div>
+<div class="roomcard" id="placeBar" hidden style="top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 16px)"><div class="rc"><b>Build mode</b><span id="placeText"></span></div><button class="btn" id="placeCancel" type="button">Cancel</button></div>
+<div class="toast" id="toast" style="opacity:0" role="status"></div>
+<div class="dlg" id="dlg" hidden><div class="dlg-name" id="dlgName"></div><button class="dlg-x" id="dlgX" type="button">Close</button><p class="dlg-text" id="dlgText"></p><div class="dlg-body" id="dlgBody"></div></div>
+
+<div class="remote" id="remote" hidden>
+  <div class="remote-top"><b>Glimmer Remote</b><span id="remoteStatus">Looking for the box…</span></div>
+  <div class="pad" id="pad">Drag to turn the camera<br>Pinch to zoom</div>
+  <div class="pad-btns" id="padGo">
+    <button class="btn" type="button" id="padMode" aria-pressed="false">Move mode</button>
+    <button class="btn" type="button" data-go="reset">Reset view</button>
+    <button class="btn" type="button" id="padSong">♪ Next song</button>
+    <button class="btn" type="button" data-go="fountain">Fountain</button>
+    <button class="btn" type="button" data-go="downtown">Downtown</button>
+    <button class="btn" type="button" data-go="pier">Pier</button>
+    <button class="btn" type="button" data-go="park">Park</button>
+    <button class="btn" type="button" data-go="garden">Garden</button>
+  </div>
+  <div class="pad-btns">
+    <button class="btn" type="button" data-cam="in">Zoom in</button>
+    <button class="btn" type="button" data-cam="out">Zoom out</button>
+    <button class="btn" type="button" data-cam="home">Whole town</button>
+    <button class="btn" type="button" id="takeover" hidden>Run the town on this device</button>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+<div class="upbox" id="uproarBox" hidden role="status" aria-live="polite"></div>
+<div class="awaybox" id="careBox" hidden role="dialog" aria-label="Health"><div id="careBody"></div></div>
+<div class="awaybox" id="labBox" hidden role="dialog" aria-label="Glimmer Labs"><div id="labBody"></div></div>
+<div class="awaybox" id="awayBox" hidden role="dialog" aria-label="While you were away"><h2>While you were away</h2><div id="awayBody"></div><div class="btns"><button class="btn gold" type="button" id="awayOk">Okay</button></div></div>
+<div class="fishbox" id="fishBox" hidden><b>Fishing off the pier</b><p id="fishMsg"></p><div class="fishbar"><i id="fishZone"></i><span id="fishFloat"></span></div><div class="btns"><button class="btn gold" id="fishReel" type="button">Reel</button><button class="btn" id="fishCast" type="button">Cast again</button><button class="btn" id="fishClose" type="button">Done</button></div></div>
+<section class="sheet" id="sheet" hidden aria-label="Town panel">
+  <div class="sheet-head">
+    <div class="tabs" role="group" aria-label="Panel sections">
+      <button class="tab" type="button" data-tab="people" aria-pressed="true">Residents</button>
+      <button class="tab" type="button" data-tab="mail" aria-pressed="false" id="mailTab">Mail</button>
+      <button class="tab" type="button" data-tab="texts" aria-pressed="false">Texts</button>
+      <button class="tab" type="button" data-tab="web" aria-pressed="false">Web</button>
+      <button class="tab" type="button" data-tab="shops" aria-pressed="false">Shops</button>
+      <button class="tab" type="button" data-tab="gifts" aria-pressed="false">Your gifts</button>
+      <button class="tab" type="button" data-tab="build" aria-pressed="false">Build</button>
+      <button class="tab" type="button" data-tab="board" aria-pressed="false">Town board</button>
+      <button class="tab" type="button" data-tab="court" aria-pressed="false">Court</button>
+      <button class="tab" type="button" data-tab="diary" aria-pressed="false">Diary</button>
+      <button class="tab" type="button" data-tab="box" aria-pressed="false">Settings</button>
+    </div>
+    <button class="grow" id="growSheet" type="button" aria-label="Make the panel taller" aria-pressed="false">⤢</button>
+    <button class="close" id="close" type="button">Hide</button>
+  </div>
+  <div class="pane" id="pane-people"></div>
+  <div class="pane" id="pane-mail" hidden></div>
+  <div class="pane" id="pane-texts" hidden></div>
+  <div class="pane" id="pane-web" hidden></div>
+  <div class="pane" id="pane-court" hidden></div>
+  <div class="pane" id="pane-shops" hidden></div>
+  <div class="pane" id="pane-gifts" hidden></div>
+  <div class="pane" id="pane-build" hidden></div>
+  <div class="pane" id="pane-board" hidden></div>
+  <div class="pane" id="pane-diary" hidden></div>
+  <div class="pane" id="pane-box" hidden>
+    <p class="label">Remote control</p>
+    <p class="status" id="linkStatus">Checking…</p>
+    <p class="hint">Open this same page on a second phone or a computer while this one runs the town. The second device turns into a remote with a touchpad and all the menus, so you never have to touch the phone inside the box.</p>
+    <hr>
+    <div id="notifyBox"></div>
+    <hr>
+    <div class="field">
+      <label for="dayLen">Length of one town day</label>
+      <select id="dayLen">
+        <option value="90">90 seconds (watch it zoom)</option>
+        <option value="300" selected>5 minutes</option>
+        <option value="1200">20 minutes</option>
+        <option value="3600">1 hour</option>
+        <option value="86400">A real day</option>
+      </select>
+    </div>
+    <label class="check"><input type="checkbox" id="spin" checked> Slowly turn the camera</label>
+    <label class="check"><input type="checkbox" id="follow" checked> Follow whoever I pick</label>
+    <label class="check"><input type="checkbox" id="shadows" checked> Shadows (turn off if an old phone gets slow)</label>
+    <label class="check"><input type="checkbox" id="cute" checked> Extra cute details: hair, faces, grass and flowers (turn off if the box gets slow; it reloads)</label>
+    <div id="gfxBox" style="display:flex;flex-direction:column;gap:6px"></div>
+    <label class="check"><input type="checkbox" id="cutscenes" checked> Cutscenes for trials, crimes, weddings and other big moments</label>
+    <hr>
+    <p class="label">Hologram box</p>
+    <p class="label">Sound</p>
+    <label class="check"><input type="checkbox" id="music" checked> Music</label>
+    <label class="check"><input type="checkbox" id="sfx" checked> Sound effects</label>
+    <label class="check"><input type="checkbox" id="voices" checked> Voices when they talk</label>
+    <div class="field"><label for="volume">Volume</label><input id="volume" type="range" min="0" max="1" step="0.05" value="0.7" style="accent-color:var(--lilac)"></div>
+    <hr>
+    <label class="check"><input type="checkbox" id="boxMode"> Black sky, so the town floats in the box</label>
+    <label class="check"><input type="checkbox" id="mirror"> Mirror the picture for the reflection</label>
+    <div class="btns">
+      <button class="btn" id="ghostBtn" type="button">Hide all menus</button>
+      <button class="btn" id="wakeBtn" type="button">Keep screen on</button>
+    </div>
+    <hr>
+    <div id="brainBox" style="display:flex;flex-direction:column;gap:10px"></div>
+    <hr>
+    <div class="btns"><button class="btn warn" id="resetBtn" type="button">Start a new town</button></div>
+    <p class="hint" id="resetHint">This replaces everyone who lives here now.</p>
+  </div>
+</section>
+<div class="cambar" id="cambar"><button class="btn" id="cbPhoto" type="button" aria-label="Take a photo">📷</button><button class="btn" id="cbMove" type="button" aria-pressed="false">✥ Move</button><button class="btn" id="cbGo" type="button">Go to…</button><button class="btn" id="cbSong" type="button" aria-label="Next song">♪</button></div>
+<div class="goto" id="goto" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+'use strict';
+//@@JS@@
+})();
+</script>
+</body>
+</html>
