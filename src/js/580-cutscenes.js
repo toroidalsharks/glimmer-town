@@ -214,6 +214,8 @@ const sheetBusy = () => {
   const sh = $('#sheet'); if (!sh || sh.hidden) return false;
   const since = performance.now() - (CUT.sheetTouch || -1e9);
   const deep = (typeof lookOpen !== 'undefined' && lookOpen && activeTab === 'people') || (typeof mailOpen !== 'undefined' && mailOpen && activeTab === 'mail');
+  // a half-written reply keeps the panel open however long it takes
+  if (typeof mailDraftOpen !== 'undefined' && mailDraftOpen()) return true;
   return since < (deep ? 240000 : 90000);
 };
 function cutFrame(dt) {

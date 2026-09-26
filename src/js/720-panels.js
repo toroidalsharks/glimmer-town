@@ -220,6 +220,18 @@ function renderBuild() {
     ${(W.placed || []).length ? `<p class="label">What you've built</p><div class="chips">${W.placed.map((pl) => `<span class="chip">${esc(BUILDS[pl.type].name)} <button class="btn" type="button" data-unplace="${pl.id}" style="padding:1px 8px;font-size:11px">Remove</button></span>`).join('')}</div>` : ''}`;
 }
 let mailOpen = null, mailListScroll = 0, mailSlide = null;
+// replies you're still writing, kept per letter so a panel redraw (a letter arriving, the
+// keyboard closing, a reload for a new build) never wipes them. They stay on this device.
+const MAIL_REPLY_MAX = 4000, MAIL_DRAFT_KEY = 'glimmer-mail-drafts';
+let mailDrafts = {};
+try { mailDrafts = JSON.parse(localStorage.getItem(MAIL_DRAFT_KEY) || '{}') || {}; } catch (e) {}
+let mailDraftTimer = 0;
+function saveMailDrafts() { clearTimeout(mailDraftTimer); mailDraftTimer = 0; try { localStorage.setItem(MAIL_DRAFT_KEY, JSON.stringify(mailDrafts)); } catch (e) {} }
+function setMailDraft(mid, text) {
+  if (text) mailDrafts[mid] = String(text).slice(0, MAIL_REPLY_MAX); else delete mailDrafts[mid];
+  if (!mailDraftTimer) mailDraftTimer = setTimeout(saveMailDrafts, 800);
+}
+const mailDraftOpen = () => !!(mailOpen && activeTab === 'mail' && mailDrafts[mailOpen]);
 function mailStep(dir) {
   const mail = W.mail || [], i = mail.findIndex((x) => x.id === mailOpen), j = i + dir;
   if (i < 0 || j < 0 || j >= mail.length) return;
@@ -235,6 +247,10 @@ function renderMail() {
     m.read = true;
     if (!m.written && RT.sample) writeLetter(m);
     const i = mail.indexOf(m), nextUnread = mail.find((x, j) => j !== i && !x.read);
+    // remember what's typed and where the cursor is, so the redraw below puts it all back
+    const oldTa = pane.querySelector('form[data-mailreply] textarea'), hadFocus = !!oldTa && document.activeElement === oldTa;
+    const sel = hadFocus ? [oldTa.selectionStart, oldTa.selectionEnd] : null;
+    if (oldTa) setMailDraft(oldTa.closest('form').dataset.mailreply, oldTa.value);
     pane.innerHTML = `<div class="mailnav">
         <button class="back" type="button" data-mailback>&larr; All letters</button>
         <span class="mailpos">${i + 1} of ${mail.length}</span>
@@ -245,15 +261,31 @@ function renderMail() {
         <p>${esc(m.greet)}</p>${String(m.body).split(/\n\n+/).map((b) => `<p>${esc(b)}</p>`).join('')}<p class="l-sign">${esc(m.sign)}<br>${esc(m.fromName)}</p>
       </div>
       <p class="hint" style="text-align:center">Swipe the letter left or right for the next one.${nextUnread ? ` <button class="btn gold" type="button" data-mail="${nextUnread.id}" style="padding:3px 10px;font-size:12px">Next unread ✉</button>` : ''}</p>
-      ${m.reply ? `<div class="creator"><h3>You wrote back</h3><p>"${esc(m.reply)}"</p>${m.reaction ? `<p><b style="color:var(--ink)">${esc(m.fromName)}:</b> "${esc(m.reaction)}"</p>` : ''}</div>`
-        : person(m.from) ? `<form class="talk" data-mailreply="${m.id}"><label class="label" for="reply-${m.id}">Write back</label><textarea id="reply-${m.id}" rows="3" maxlength="600" placeholder="Dear ${esc(m.fromName)}…" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:10px"></textarea><div class="btns"><button class="btn gold" type="submit">Send your letter</button></div></form>`
+      ${m.reply ? `<div class="creator"><h3>You wrote back</h3><p style="white-space:pre-wrap">"${esc(m.reply)}"</p>${m.reaction ? `<p><b style="color:var(--ink)">${esc(m.fromName)}:</b> "${esc(m.reaction)}"</p>` : ''}</div>`
+        : person(m.from) ? `<form class="talk" data-mailreply="${m.id}"><label class="label" for="reply-${m.id}">Write back</label><textarea id="reply-${m.id}" rows="7" maxlength="${MAIL_REPLY_MAX}" placeholder="Dear ${esc(m.fromName)}…" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:10px;resize:vertical;min-height:9em"></textarea><p class="hint" data-mailcount style="margin:2px 0 0;text-align:right"></p><div class="btns"><button class="btn gold" type="submit">Send your letter</button></div></form>`
         : `<p class="hint">${esc(m.fromName)} doesn't live here anymore.</p>`}`;
+    const ta = pane.querySelector('form[data-mailreply] textarea');
+    if (ta) {
+      ta.value = mailDrafts[m.id] || '';
+      mailCount(ta);
+      if (hadFocus && oldTa.id === ta.id) { ta.focus({ preventScroll: true }); if (sel) ta.setSelectionRange(sel[0], sel[1]); }
+    }
     return;
   }
   const unread = mail.filter((m) => !m.read).length;
   pane.innerHTML = `<p class="hint">Residents write to you when something big happens, or when they feel ignored. ${unread ? `${plural(unread, 'unread letter')}.` : ''}</p>
     ${mail.length ? mail.map((m) => `<button class="who" type="button" data-mail="${m.id}"><span class="dot" style="background:hsl(${Math.round(m.hue || 280)} 70% 78%);border-color:${m.read ? 'var(--line)' : 'var(--gold)'}"></span><span><span class="who-name">${esc(m.fromName)}</span>${m.read ? '' : ' <span class="chip gold">new</span>'}${m.reply ? ' <span class="chip good">replied</span>' : ''}<br><span class="who-note">${esc(m.body)}</span></span><span class="who-stats">day ${m.day}</span></button>`).join('') : '<p class="hint">No letters yet. The mailbox is by the apartment door.</p>'}`;
 }
+function mailCount(ta) {
+  const c = ta.closest('form')?.querySelector('[data-mailcount]'); if (!c) return;
+  const left = MAIL_REPLY_MAX - ta.value.length;
+  c.textContent = left < 500 ? `${left} characters left` : '';
+}
+sheet.addEventListener('input', (e) => {
+  const ta = e.target.closest && e.target.closest('form[data-mailreply] textarea'); if (!ta) return;
+  setMailDraft(ta.closest('form').dataset.mailreply, ta.value); mailCount(ta);
+});
+addEventListener('pagehide', () => { if (mailDraftTimer) saveMailDrafts(); });
 let peerCount = 0;
 function renderLink() {
   const s = $('#linkStatus');
@@ -330,7 +362,7 @@ sheet.addEventListener('submit', async (e) => {
   const inv = e.target.closest('[data-invite]');
   if (inv) { e.preventDefault(); const name = $('#invName').value.trim(), about = $('#invAbout').value.trim(), color = $('#invColor').value; if (!name || !about) return; const bt = inv.querySelector('button[type=submit]'); bt.disabled = true; bt.textContent = 'Moving in…'; if (MODE === 'host') { toast(await inviteResident(name, about, color)); } else send({ t: 'invite', name, about, color }); inviteOpen = false; refreshPanel(true); return; }
   const mf = e.target.closest('[data-mailreply]');
-  if (mf) { e.preventDefault(); const m = (W.mail || []).find((x) => x.id === mf.dataset.mailreply); const txt = mf.querySelector('textarea').value.trim(); if (!m || !txt) return; const bt = mf.querySelector('button'); bt.disabled = true; bt.textContent = 'Sending…'; panelBusy = true; await replyLetter(m, txt); panelBusy = false; if (MODE !== 'host') { m.reply = txt; } refreshPanel(true); return; }
+  if (mf) { e.preventDefault(); const m = (W.mail || []).find((x) => x.id === mf.dataset.mailreply); const txt = mf.querySelector('textarea').value.trim(); if (!m || !txt) return; setMailDraft(m.id, txt); const bt = mf.querySelector('button'); bt.disabled = true; bt.textContent = 'Sending…'; panelBusy = true; try { await replyLetter(m, txt); } finally { panelBusy = false; } if (MODE !== 'host') { m.reply = txt; } setMailDraft(m.id, ''); saveMailDrafts(); refreshPanel(true); return; }
   const f = e.target.closest('[data-talk]'); if (!f) return;
   e.preventDefault();
   const id = f.dataset.talk, p = person(id), input = f.querySelector('input'), said = input.value.trim();

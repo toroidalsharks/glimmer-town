@@ -105,7 +105,7 @@ function applyCmd(c) {
     case 'mailtext': { const m = (W.mail || []).find((x) => x.id === c.mid); if (m) { Object.assign(m, { greet: String(c.greet || m.greet), body: String(c.body || m.body), sign: String(c.sign || m.sign), written: true }); markDirty(); } return ''; }
     case 'mailreply': {
       const m = (W.mail || []).find((x) => x.id === c.mid); if (!m || m.reply) return '';
-      m.reply = String(c.reply || ''); m.reaction = String(c.reaction || ''); m.read = true;
+      m.reply = String(c.reply || '').slice(0, MAIL_REPLY_MAX); m.reaction = String(c.reaction || ''); m.read = true;
       const p = person(m.from);
       if (p) { const f = clamp(Number(c.feeling) || 0, -2, 2); creatorShift(p, f * 0.8 + 0.4); addJoy(p, 12); p.cr.lastSeen = W.day; remember(p, `The Creator wrote back to my letter: "${m.reply.slice(0, 140)}"`, 3, 'creatorLetter'); bubble(p, m.reaction.slice(0, 110), 5, true); emote(p, '✉', 3); diary(`<span class="cr">Creator</span> wrote back to <b>${esc(p.name)}</b>. ${esc(p.name)}: "${esc(m.reaction)}"`); }
       markDirty(); return p ? `${p.name} read your letter.` : '';
