@@ -373,7 +373,7 @@ sheet.addEventListener('submit', async (e) => {
   panelBusy = true; refreshPanel(true);
   try {
     const r = await RT.sample.json(talkPrompt(p, said, history), { model: modelOf(p), fallbackKey: 'reply', cache: false });
-    const reply = String(r?.reply || '…').slice(0, 400);
+    const reply = fitLine(r?.reply || '…', 500);
     st.log.push({ me: false, text: reply });
     send({ t: 'talked', to: id, said, reply, feeling: clamp(Math.round(Number(r?.feeling) || 0), -2, 2), memory: String(r?.memory || '').slice(0, 200) });
   } catch (err) {
