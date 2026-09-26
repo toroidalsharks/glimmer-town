@@ -7,13 +7,13 @@
 //     who: ['p3', 'p7'], names: ['Red', 'Tim'], text: 'Red and Tim got married at the fountain.' }
 // day is the game day (null for things that happened before the record began), at is real
 // time in ms, who holds resident ids and names holds their names at the time (ids can
-// vanish when someone dies or leaves). kind is one of TOWN_RECORD_KINDS. The text is a
+// vanish when someone dies or leaves). kind is one of TOWN_RECORD_KINDS (trend and freeze come from 515-social-currents.js). The text is a
 // full sentence written by the game, never by a model, so it is safe to show and to feed
 // back into prompts. Other features (the relationship chart, the paper) can read it with
 // townRecordFor(pid) and townRecordText(entry).
 const TOWN_RECORD_KINDS = {
   dating: '💕', engaged: '💍', married: '💒', separated: '💔', breakup: '💔', divorce: '💔', admirer: '💌',
-  crime: '🚨', verdict: '⚖', acquitted: '⚖', exonerated: '🆕', court: '⚖',
+  crime: '🚨', verdict: '⚖', acquitted: '⚖', exonerated: '🆕', court: '⚖', trend: '📣', freeze: '🧊',
 };
 const TOWN_RECORD_LOVE = new Set(['dating', 'engaged', 'married', 'separated', 'breakup', 'divorce', 'admirer']);
 const TOWN_RECORD_MAX = 200;

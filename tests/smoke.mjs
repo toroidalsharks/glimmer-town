@@ -105,6 +105,27 @@ try {
   // the town record writes down the murder, its verdict and the ruling, and feeds them to the minds
   ok(await E(`(() => { const R = W.records || []; return R.some((r) => r.kind === 'crime' && r.big) && R.some((r) => r.kind === 'verdict' && r.who.includes('${culprit}')) && R.some((r) => r.kind === 'court'); })()`), 'the town record keeps crimes, verdicts and rulings');
   ok(await E(`(() => { const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p) && !p.partner).slice(0, 2); a.partner = b.id; b.partner = a.id; a.married = b.married = true; townRecord('married', [a.id, b.id], a.name + ' and ' + b.name + ' got married at the fountain.'); for (let i = 0; i < 20; i++) townRecord('court', [a.id], 'Filler ruling ' + i + '.'); const c = townRecordContext(a, b); a.partner = b.partner = null; a.married = b.married = false; W.records = W.records.filter((r) => !/^Filler/.test(r.text)); return /THE TOWN RECORD/.test(c) && /got married at the fountain/.test(c) && /town record/.test(townRecordHtml()); })()`), 'residents are reminded who they married, however long ago');
+  // crowds, fads and freeze-outs
+  ok(await E(`(() => {
+    const folk = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p) && !p.away && !p.visitor);
+    const [a, b, c, d, t] = folk; if (!t) return 'not enough people';
+    const set = (x, y, v) => { x.feelings[y.id] = { name: y.name, score: v, note: '' }; };
+    for (const x of folk) for (const y of folk) if (x !== y) set(x, y, 0);
+    for (const x of [a, b, c]) for (const y of [a, b, c]) if (x !== y) set(x, y, 7);
+    const cl = formCliques().find((k) => k.members.includes(a.id));
+    if (!cl || !cl.members.includes(b.id) || !cl.members.includes(c.id)) return 'no crowd';
+    const m = findMili(); if (m) { for (const x of [a, b, c]) set(x, m, -8); if (freezeCandidate(cl) === m) return 'froze out a real person'; for (const x of [a, b, c]) set(x, m, 0); }
+    for (const x of [a, b, c]) set(x, t, -7);
+    if (freezeCandidate(cl) !== t) return 'no freeze target';
+    const F = startFreeze(cl, t); if (!F || F.members.length < 2 || !socialAvoids(a, t)) return 'no freeze';
+    if (!/FREEZING OUT/.test(socialContext(person(F.members[0]), t)) || !/FROZEN OUT/.test(socialContext(t, a))) return 'minds not told';
+    const br = person(F.members[1]); set(br, t, 3); socialAfterChat(br, t); if (!F.breakers.includes(br.id)) return 'no breaking ranks';
+    const T = startTrend('phrase', a); T.adopters[b.id] = W.day; set(d, a, 5); set(d, b, 5); spreadTrend(T); if (!T.adopters[d.id]) return 'fad did not spread';
+    if (!/LATELY you keep saying/.test(socialContext(d, a))) return 'fad not in prompt';
+    if (!(W.records || []).some((r) => r.kind === 'freeze') || !/Crowds, fads/.test(socialBoardHtml())) return 'not recorded or shown';
+    return true;
+  })()`) === true, 'crowds form, fads spread, freeze-outs happen and real people are never frozen out');
+  ok(await E(`(() => { for (let i = 0; i < 3; i++) { socialNight(); socialMorning(); } return !!W.social; })()`), 'a few nights of social life run cleanly');
   // a trial lost to a reload gets held again, and the accused stays in custody until then
   ok(await E(`(() => { const id = __g.crime('burglary') || __g.crime('pickpocket'); const X = crimeById(id); if (!X) return 'no crime'; const A = person(X.suspects.find((q) => !jailed(person(q)))); X.status = 'charged'; X.accused = A.id; X.chargedDay = W.day - 1; trialsQueued.delete(X.id); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); const realTrial = crimeTrialNow; crimeTrialNow = (Y) => trialsQueued.add(Y.id); custodyCheck(false); crimeTrialNow = realTrial; const held = jailed(A) && A.jail.remand && trialsQueued.has(X.id); crimeVerdict(X, { def: A.id, jury: [] }, 'innocent', true); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); return held && !jailed(A) && X.status !== 'charged'; })()`) === true, 'lost trials come back, and not guilty means free');
   // letters: at most two a night, no exact repeats, and you can page through them
