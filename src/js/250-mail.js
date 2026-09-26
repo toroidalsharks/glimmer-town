@@ -143,6 +143,6 @@ Reply with only JSON: {"reaction": "1 or 2 short sentences in first person", "fe
     } catch (e) {}
   }
   if (!reaction) reaction = p ? (p.cr.score >= 0 ? pick(['The Creator wrote back to me! I read it three times.', "I'm keeping this letter forever."]) : pick(['…Huh. I didn\'t think you\'d actually answer.', "Fine. That's something, I guess."])) : 'They never got it.';
-  send({ t: 'mailreply', mid: m.id, reply: text.slice(0, 600), reaction, feeling });
+  send({ t: 'mailreply', mid: m.id, reply: text.slice(0, MAIL_REPLY_MAX), reaction, feeling });
 }
 
