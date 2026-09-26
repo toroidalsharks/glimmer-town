@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glimmer Town</title>
-<meta name="glimmer-build" content="c43d37ed33">
+<meta name="glimmer-build" content="ef96e103f9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@400;700&display=swap">
@@ -1232,7 +1232,7 @@ function goTo(p, dest, spot) {
   const sp0 = spot || TOWN[dest].spot, fromIsle = bridgedAt(p.x, p.z), toIsle0 = bridgedAt(sp0[0], sp0[1]);
   if (fromIsle && fromIsle !== toIsle0) pts.push(...bridgeVia(fromIsle, true));
   const cur = TOWN[p.at] || TOWN.plaza, d = TOWN[dest];
-  const E = (x) => (!x ? [] : Array.isArray(x[0]) ? x : [x]);
+  const E = (x) => (!x || !x.length ? [] : Array.isArray(x[0]) ? x : [x]);
   if (dest !== p.at) {
     if (cur.zone === 'dt' && d.zone === 'dt') pts.push(...E(cur.local).slice().reverse(), ...E(d.local));
     else pts.push(...E(cur.entry).slice().reverse(), ...E(d.entry));
@@ -1240,10 +1240,12 @@ function goTo(p, dest, spot) {
   if (toIsle0 && toIsle0 !== fromIsle) pts.push(...bridgeVia(toIsle0, false));
   pts.push(spot || d.spot);
   const out = []; let prev = [p.x, p.z];
-  for (const q of pts) { const det = routeAround(prev, q); const ordered = det.length ? orderDetour(prev, det) : []; out.push(...ordered, q); prev = q; }
+  // a waypoint without real numbers turns the walker's position into NaN: they vanish and their name tag freezes
+  for (const q of pts.filter(routePointOk)) { const det = routeAround(prev, q); const ordered = det.length ? orderDetour(prev, det) : []; out.push(...ordered, q); prev = q; }
   p.path = out.map(([x, z]) => ({ x, z }));
   p.dest = dest; p.stuckT = 0; p.lastD = Infinity;
 }
+function routePointOk(q) { return Array.isArray(q) && Number.isFinite(q[0]) && Number.isFinite(q[1]); }
 function orderDetour(from, pts) { const [a, b, c] = pts; return Math.hypot(a[0] - from[0], a[1] - from[1]) <= Math.hypot(c[0] - from[0], c[1] - from[1]) ? [a, b, c] : [c, b, a]; }
 const jitter = ([x, z], r) => [x + (rand() - 0.5) * r, z + (rand() - 0.5) * r];
 function workSpot(job) {
@@ -1504,6 +1506,11 @@ function newDay() {
 // SIMULATION STEP
 // ============================================================
 const isNight = () => W.t >= 0.63;
+// safety net: someone whose position went bad (NaN) is invisible and drags anyone they bump into along, so walk them home
+function strandedHome(p) {
+  const s = TOWN[homeKey(p)]?.spot || TOWN.plaza.spot;
+  p.x = s[0] + (rand() - 0.5) * 2; p.z = s[1] + 0.3; p.at = homeKey(p); p.path = []; p.task = null; p.pose = null; p.stuckT = 0; p.lastD = Infinity;
+}
 function step(dt) {
   if (!W.meeting) W.t += dt / cfg.daySec;
   if (W.t >= 0.018 && W.meetingDay !== W.day && !W.meeting && W.t < 0.2) { W.meetingDay = W.day; townMeeting().catch((e) => { console.error(e); W.meeting = null; }); }
@@ -1512,6 +1519,7 @@ function step(dt) {
   const dDay = dt / cfg.daySec;
   for (const p of W.people) {
     if (p.task?.kind === 'away') continue;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) strandedHome(p);
     const asleep = p.inside && p.task?.kind === 'home';
     if (!W.meeting) p.hunger = clamp(p.hunger + p.body.hungerRate * dDay * (asleep ? 0.35 : 1.15), 0, 1);
     if (p.hunger > 0.88 && !p.today.some((m) => m.tag === 'hungry')) remember(p, 'Went hungry for a long stretch.', 2, 'hungry');
@@ -1529,6 +1537,7 @@ function step(dt) {
     if (!p.task) { if (!W.meeting) plan(p); continue; }
     if (p.task?.kind === 'walkwith') { walkWithStep(p, dt); continue; }
     if (p.path.length) {
+      if (!Number.isFinite(p.path[0]?.x) || !Number.isFinite(p.path[0]?.z)) { p.path.shift(); continue; }
       const tgt = p.path[0], dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
       const achy = p.body.ailments?.length && W.t < 0.15 && !(p.healedUntil >= W.day) ? 0.75 : 1;
       if (achy < 1 && p.sickDay !== W.day && /sick/.test(p.body.ailments.join(' ')) && rand() < 0.01) { p.sickDay = W.day; bubble(p, pick(['Ugh. Sick again.', 'Mornings are the worst.', 'My joints. Man.']), 2.6); remember(p, 'Felt sick this morning, like always.', 1, 'sick'); }
@@ -13123,7 +13132,8 @@ function declutterTags() {
       y = Math.max(y, m.sy - 70);
       placed.push({ x: m.sx, y, w, h });
     }
-    m.offY = (m.offY ?? 0) + ((y - m.sy) - (m.offY ?? 0)) * 0.25;
+    const was = Number.isFinite(m.offY) ? m.offY : 0;
+    m.offY = was + ((y - m.sy) - was) * 0.25;
     m.tag.style.transform = `translate(${m.sx}px, ${m.sy + m.offY}px) translate(-50%, -100%) scale(${m.tsc.toFixed(3)})`;
     m.tag.style.transformOrigin = '50% 100%';
     m.tag.style.zIndex = String(Math.round(m.sy));
@@ -13353,7 +13363,7 @@ function visuals(dt) {
     tag.style.display = show ? '' : 'none';
     if (!show) continue;
     vec.set(p.x, m.root.position.y + 2.55 * m.root.scale.x + (p.outfit.hat ? 0.4 : 0), p.z).project(camera);
-    if (vec.z > 1) { tag.style.display = 'none'; continue; }
+    if (!(vec.z <= 1) || !Number.isFinite(vec.x) || !Number.isFinite(vec.y)) { tag.style.display = 'none'; continue; }
     m.sx = (vec.x * 0.5 + 0.5) * w; m.sy = (-vec.y * 0.5 + 0.5) * h;
     const b = p.bubble && p.bubble.until > now ? p.bubble.text : '';
     if (m.tagBub.textContent !== b) m.tagBub.textContent = b;
@@ -14068,7 +14078,7 @@ function startRemote() {
 // has to change ?v= by hand. build.mjs stamps BUILD_ID and writes
 // version.json next to index.html.
 // ============================================================
-const BUILD_ID = 'c43d37ed33';
+const BUILD_ID = 'ef96e103f9';
 const UPDATE_KEY = 'glimmer-update';
 // on the local dev server, check every few seconds so saving a file reloads the page
 const updateLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
