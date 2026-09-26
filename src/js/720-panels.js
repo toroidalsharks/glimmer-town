@@ -115,6 +115,7 @@ function renderDetail(id) {
     </dl>
     <div><div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--faint)">Hunger</span><span>${Math.round(p.hunger * 100)}%</span></div><div class="meter"><i style="width:${Math.round(p.hunger * 100)}%"></i></div></div>
     ${cols.length ? `<p class="label">Style</p><div class="chips">${cols.map((c) => `<span class="chip"><i style="background:${COLORS[c]}"></i>likes ${c}</span>`).join('')}${p.wardrobe.hats.map((h) => `<span class="chip"><i style="background:${COLORS[h.color]}"></i>${esc(hatText(h))}${h.maker ? ` by ${esc(h.maker)}` : ''}</span>`).join('')}</div>` : ''}
+    ${relChartHtml(p)}
     <p class="label">How they feel about others</p>
     <div>${feels.length ? feels.map((f) => { const w2 = Math.abs(f.score) * 5, l2 = f.score >= 0 ? 50 : 50 - w2; return `<div class="feel"><b>${esc(f.name)}</b><span class="bar"><i style="left:${l2}%;width:${w2}%;background:${f.score >= 0 ? 'var(--good)' : 'var(--bad)'}"></i></span><span>${esc(f.note)}</span></div>`; }).join('') : '<p class="hint">Hasn\'t met anyone yet.</p>'}</div>
     <p class="label">Memories they keep</p>
