@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glimmer Town</title>
+<meta name="glimmer-build" content="6c3d915e51">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@400;700&display=swap">
@@ -75,6 +76,8 @@
   .who-note { color: var(--dim); font-size: 13px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .who-stats { color: var(--faint); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .back { align-self: flex-start; font: 700 13px var(--body); color: var(--dim); background: none; border: 0; padding: 0; cursor: pointer; }
+  .back.thread-exit { position: sticky; top: 0; z-index: 3; color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+  .back.thread-exit.bottom { position: static; align-self: center; margin-top: 10px; }
   .d-head { display: flex; gap: 12px; align-items: center; }
   .d-head .dot { width: 36px; height: 36px; margin: 0; }
   .d-name { font-family: var(--display); font-size: 22px; line-height: 1.2; }
@@ -387,6 +390,7 @@ const COLORS = {
   mint: '#9fe3c4', peach: '#ffc3a0', lilac: '#c9b3ff', sky: '#9fd3ff', lemon: '#ffe98a', rose: '#ff9fbf',
   cream: '#fff4dc', navy: '#3d4f86', tomato: '#ff6f5e', moss: '#8fae6a', charcoal: '#4a4652',
   gray: '#a3a3ad', silver: '#cfd3dc', dusk: '#8aa0bf',
+  black: '#2e2a36', white: '#fbf8f4', wine: '#7a2e3a', forest: '#2f5d4a', khaki: '#cdb88f', hotpink: '#ff5fa8', plum: '#5e3a6e',
 };
 const HATS = {
   beanie: { name: 'beanie', price: 3 }, bow: { name: 'bow', price: 2 }, tophat: { name: 'top hat', price: 5 },
@@ -603,11 +607,12 @@ function bodyFacts(p, you = true) {
   f.push(B.speed > 1.1 ? (you ? 'You move quickly.' : 'quick on their feet') : B.speed < 0.85 ? (you ? 'You walk slowly.' : 'walks slowly') : (you ? 'You walk at an ordinary pace.' : 'ordinary pace'));
   if (B.stormBorn) f.push(you ? 'You were born during a storm.' : 'born in a storm');
   if (B.ailments?.length) f.push(you ? cap(B.ailments.join(', and ').replace(/\bhis\b|\bher\b|\btheir\b/g, 'your').replace(/\bhe feels\b|\bshe feels\b|\bthey feel\b/g, 'you feel')) + '.' : B.ailments.join(', '));
+  if (typeof vibeWords === 'function' && p.body) f.push(you ? `Your personality: ${vibeWords(p).join(', ')}.${p.look ? ` You dress ${FASHION[p.look.fashion].name.replace(/ \(.*\)/, '').toLowerCase()}.` : ''}` : `${vibeWords(p).join(', ')}${p.look ? `, dresses ${FASHION[p.look.fashion].name.replace(/ \(.*\)/, '').toLowerCase()}` : ''}`);
   return you ? f.join(' ') : f.join(', ');
 }
 function favoriteFood(p) { const e = Object.entries(p.tastes).sort((x, y) => y[1] - x[1])[0]; return e && e[1] > 0.25 ? foodById(e[0]).name : null; }
 const hatText = (h) => `${h.color} ${HATS[h.id].name}`;
-function outfitText(p) { return `${a_an(p.outfit.shirt)} shirt${p.outfit.hat ? ` and ${a_an(hatText(p.outfit.hat))}` : ''}`; }
+function outfitText(p) { if (p.look && typeof lookText === 'function' && p.body) return lookText(p) + (p.outfit.hat && !inUniform(p) ? ` and ${a_an(hatText(p.outfit.hat))}` : ''); return `${a_an(p.outfit.shirt)} shirt${p.outfit.hat ? ` and ${a_an(hatText(p.outfit.hat))}` : ''}`; }
 function topColors(p, n = 3) { return Object.entries(p.likes).filter(([k, v]) => COLORS[k] && v > 0.3).sort((x, y) => y[1] - x[1]).slice(0, n).map((x) => x[0]); }
 function attitude(p) {
   const s = p.cr.score;
@@ -689,7 +694,8 @@ function diary(text) {
 // ============================================================
 function leanings(p) {
   const s = p.selfNote.toLowerCase();
-  return { kind: /(kind|shar|giv|generous|help|gentle)/.test(s), wary: /(careful|wary|mean|trust|hurt|alone)/.test(s), food: /(hungry|food close|save)/.test(s) };
+  const P = typeof personaOf === 'function' ? personaOf(p) : { warmth: 0 };
+  return { kind: /(kind|shar|giv|generous|help|gentle)/.test(s) || P.warmth > 0.45, wary: /(careful|wary|mean|trust|hurt|alone)/.test(s) || P.warmth < -0.5, food: /(hungry|food close|save)/.test(s) };
 }
 function creatorLine(me) {
   const s = me.cr.score, fav = creatorFavorite(), color = Object.entries(me.cr.beliefs).filter(([k]) => COLORS[k]).sort((a, b) => b[1] - a[1])[0];
@@ -701,7 +707,7 @@ function creatorLine(me) {
 }
 function daydream(me, them, ctx) {
   const f = me.feelings[them.id], score = f ? f.score : 0, L = leanings(me), r = rand();
-  let action = 'chat', say = '', feeling = 0, compliment = false, topic = null;
+  let action = 'chat', say = '', feeling = 0, compliment = false, topic = null, sr = null;
   if (ctx.replyTo) {
     if (ctx.topic === 'culture') { const cr = cultureReply(me, them); return { say: cr.say, action: 'chat', feeling: cr.feeling, compliment: false, topic: null }; }
     if (ctx.topic === 'creator') {
@@ -737,6 +743,7 @@ function daydream(me, them, ctx) {
     else if ((me.visitor || them.visitor) && r < 0.55) { say = cultureLine(me, them); topic = 'culture'; }
     else if (r < 0.2 && Object.entries(me.feelings).some(([id, x]) => id !== them.id && Math.abs(x.score) >= 4 && person(id))) { const [gid, gx] = Object.entries(me.feelings).filter(([id, x]) => id !== them.id && Math.abs(x.score) >= 4 && person(id)).sort(() => rand() - 0.5)[0]; const g = person(gid); say = gx.score > 0 ? pick([`Have you talked to ${g.name} lately? They're the best.`, `${g.name} helped me with something yesterday. So sweet.`]) : pick([`Is it just me, or is ${g.name} kind of full of themselves?`, `Don't tell ${g.name} I said this, but they get on my nerves.`, `Did you hear what ${g.name} did at the meeting?`]); topic = 'gossip'; feel(them, g, gx.score > 0 ? 0.5 : -0.5, true); remember(them, `${me.name} said: "${say}"`, 1, 'rumor', g.name); }
     else if (r < 0.26 && (W.day > 1 || W.creator.giftsTotal > 0)) { say = creatorLine(me); topic = 'creator'; }
+    else if (r < 0.34 && score > -3 && (sr = styleRemark(me, them, score))) { say = sr.say; feeling = sr.feeling; compliment = !!sr.compliment; action = sr.action || 'chat'; }
     else if (them.outfit.hat && score >= 1 && r < 0.36) { say = `I love your ${hatText(them.outfit.hat)}!`; feeling = 1; compliment = true; }
     else if (score >= 5 && me.coins > 4 && r < 0.42) { action = 'give_coin'; say = pick(['This made me think of you.', 'For you!']); feeling = 1; }
     else if (!f) say = pick([`Hi! I'm ${me.name}.`, 'Oh! Hello, neighbor.', 'Have we met?', `You're in room ${them.room + 1}, right?`]);
@@ -772,6 +779,7 @@ function applyAction(a, b, action) {
 function feel(me, them, delta, quiet = false) {
   if (!them || me === them) return;
   const f = me.feelings[them.id] || { name: them.name, score: 0, note: 'Just met.' };
+  if (delta > 0 && typeof styleKin === 'function') delta += styleKin(me, them) * 0.3;
   f.name = them.name; f.score = clamp(f.score + delta, -10, 10); me.feelings[them.id] = f;
   if (quiet) return;
   if (delta > 0) { emote(me, '♥'); me.happyUntil = now + 6; addJoy(me, 3); }
@@ -1441,7 +1449,7 @@ function newDay() {
   for (const p of W.people) {
     p.workedToday = false;
     if (p.grow < 1) { p.grow = Math.min(1, p.grow + 0.1); if (p.grow >= 1 && !p.job) { p.job = randomJob(); diary(`<b>${esc(p.name)}</b> grew up and started work as a ${JOBS[p.job].short}.`); } scaleMesh(p); }
-    morningOutfit(p); selfHaircut(p);
+    morningOutfit(p); selfHaircut(p); styleDrift(p);
   }
   importStock();
   dailyWishes();
@@ -1653,6 +1661,7 @@ function applyCmd(c) {
     case 'labsview': if (MODE === 'host') openInterior({ kind: 'labs', wing: LAB_WINGS[c.wing] ? c.wing : labWingLast }); return '';
     case 'uproar': if (W.scene && W.scene.kind === 'uproar' && W.scene.live && !W.scene.creator && ['A', 'B', 'calm'].includes(c.choice)) W.scene.creator = c.choice; return '';
     case 'hair': return setHair(c.pid, c.style, c.color);
+    case 'fashion': return setFashionCmd(c.pid, c.fashion);
     case 'laptopgift': return MODE === 'host' ? creatorLaptop(c.pid) : '';
     case 'clinicview': if (MODE === 'host') openInterior({ kind: 'clinic' }); return '';
     case 'care': if (MODE === 'host' && person(c.pid)) { careAct(c.pid, c.act, c.text, c.cond).then((r) => { if (r) toast(r); if (careOpen) renderCare(); refreshPanel(false); }); setTimeout(() => { if (careOpen) renderCare(); }, 30); } return '';
@@ -1910,7 +1919,7 @@ function aiLine(me, them, transcript, situation) {
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
 BODY: ${bodyFacts(me)}${me.grow < 1 ? ' You are a small child.' : ''}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
-${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}
+${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
 ${aboutThem(me, them)}
 ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hungry' : ''}.
@@ -2482,10 +2491,11 @@ function dressMesh(p) {
   m.body.material = m.arms[0].material = m.arms[1].material = vinyl(COLORS[p.outfit.shirt], { kind: 'cloth' });
   while (m.hat.children.length) m.hat.remove(m.hat.children[0]);
   if (p.outfit.hat) { const h = hatMesh(p.outfit.hat); h.traverse((o) => (o.userData.pid = p.id)); m.hat.add(h); }
+  if (typeof restyleLook === 'function') restyleLook(p);
   while (m.tools.children.length) m.tools.remove(m.tools.children[0]);
   if (p.job === 'pier') { const rod = mesh(cyl(0.03, 0.03, 2.2, 6), toon('#8a6a4e'), 0.5, 1.4, 0.7); rod.rotation.x = 0.9; m.tools.add(rod); }
   else if (p.job === 'garden') m.tools.add(mesh(cyl(0.16, 0.2, 0.3, 10), toon('#9fd3ff'), 0.55, 0.62, 0.2));
-  else if (p.job) m.tools.add(mesh(box(0.55, 0.5, 0.05), toon({ dev: '#3d4f86', ai: '#5a7fd8', lawyer: '#6b4a3a', bio: '#3d8a6a', chem: '#9fe3c4', phys: '#3d4f86', robo: '#b86b3a', civil: '#ffb347', doctor: '#ffffff', therapist: '#c9b3ff', builder: '#ffb347', janitor: '#9fd3ff', cafe: '#5a3a2e', mart: '#e2566b', clothes: '#6f73c9', nook: '#5f7f4a', bakery: '#f3b67a', icecream: '#ff9fbf', books: '#5f4a6b', arcade: '#3a2f63' }[p.job] || '#ffffff'), 0, 0.72, 0.4));
+  else if (p.job) m.tools.add(mesh(box(0.3, 0.24, 0.05), toon({ dev: '#3d4f86', ai: '#5a7fd8', lawyer: '#6b4a3a', bio: '#3d8a6a', chem: '#9fe3c4', phys: '#3d4f86', robo: '#b86b3a', civil: '#ffb347', doctor: '#ffffff', therapist: '#c9b3ff', builder: '#ffb347', janitor: '#9fd3ff', cafe: '#5a3a2e', mart: '#e2566b', clothes: '#6f73c9', nook: '#5f7f4a', bakery: '#f3b67a', icecream: '#ff9fbf', books: '#5f4a6b', arcade: '#3a2f63' }[p.job] || '#ffffff'), 0.3, 0.5, 0.44));
 }
 function scaleMesh(p) { const m = meshes.get(p.id); if (m) m.root.scale.setScalar(p.body.size * (0.6 + 0.4 * p.grow)); }
 function removeAllMeshes() { for (const [, m] of meshes) { scene.remove(m.root); m.tag.remove(); } meshes.clear(); }
@@ -4861,6 +4871,7 @@ function renderCourt() {
       <div class="btns">${(RULINGS[c.kind] || []).map(([k, l]) => `<button class="btn ${k === 'jury' ? '' : 'gold'}" type="button" data-rule="${c.id}" data-choice="${k}">${esc(l.replace('#P', c.pName).replace('#D', c.dName))}</button>`).join('')}${c.kind !== 'license' ? `<button class="btn" type="button" data-rule="${c.id}" data-choice="jury">Let the jury decide</button>` : ''}</div></div>`).join('') : '<p class="hint">No cases right now. Peace on the island. For now.</p>'}
     ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}`;
   $('#detSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'detective', pid: e.target.value }));
+  $('#paceSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'pace', pace: e.target.value }));
 }
 
 function planLandmark(p) {
@@ -7079,7 +7090,7 @@ function dramaBoot() {
 // ============================================================
 const HAIR_STYLES = { short: 'Short', pixie: 'Pixie', bob: 'Bob', long: 'Long', spiky: 'Spiky', bun: 'Bun', twintails: 'Pigtails', curly: 'Curly', buzz: 'Buzz', none: 'None' };
 const HAIR_COLORS = { cocoa: '#5a3a2e', chestnut: '#8a5a3a', ink: '#2a2230', honey: '#e0b060', ginger: '#c8643a', ash: '#9a98a6', snow: '#f1ede6', bubblegum: '#ff9fc4', ocean: '#7fb3ff', lavender: '#b9a3f0', mint: '#8fdcc0' };
-const SHOE_COLORS = ['#ff6f5e', '#3d4f86', '#fffaf2', '#ffb347', '#8a84a8', '#5a3a2e', '#ff9fbf', '#6fbf6a'];
+const SHOE_COLORS = ['#ff6f5e', '#3d4f86', '#fffaf2', '#ffb347', '#8a84a8', '#5a3a2e', '#ff9fbf', '#6fbf6a', '#2e2a36'];
 const cuteOn = () => cfg.cute !== false;
 function hashStr(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0); }
 function hairOf(p) {
@@ -7141,6 +7152,7 @@ function cuteFigure(p, f) {
   const shoe = vinyl(hair.shoe || '#fffaf2');
   f.shoes = f.legs.map((l) => { const s = mesh(sph(0.13, 10, 8), shoe, 0, -0.2, 0.05); s.scale.set(1, 0.62, 1.35); l.add(s); return s; });
   [f.mouthOpen, f.mouthFrown, f.mouthO, ...f.happyEyes].forEach((m) => (m.visible = false));
+  if (typeof dressLook === 'function') dressLook(p, f);
   return f;
 }
 function restyleHair(p) {
@@ -7166,16 +7178,18 @@ function faceUpdate(p, m, blink) {
   if (!m.brows) return;
   const expr = faceExpr(p), talking = p.bubble && p.bubble.until > now && p.bubble.text !== '…';
   const laugh = expr === 'laugh' && !blink;
-  m.eyes.forEach((e) => { e.visible = !laugh; e.scale.y = blink ? 0.2 : expr === 'sad' ? 1.05 : expr === 'surprised' ? 1.7 : expr === 'angry' ? 1.2 : 1.45; });
+  m.eyes.forEach((e) => { e.visible = !laugh; e.scale.y = (blink ? 0.2 : expr === 'sad' ? 1.05 : expr === 'surprised' ? 1.7 : expr === 'angry' ? 1.2 : 1.45) * (e.userData.ky || 1); });
   m.happyEyes.forEach((a) => (a.visible = laugh));
   m.shines.forEach((s) => (s.visible = !blink && !laugh));
   const tilt = expr === 'angry' ? 0.38 : expr === 'sad' ? -0.32 : 0;
-  m.brows.forEach((b) => { b.rotation.z = b.userData.s * tilt; b.position.y = expr === 'surprised' ? 0.3 : expr === 'sad' ? 0.24 : 0.25; });
+  m.brows.forEach((b) => { b.rotation.z = b.userData.s * (tilt + (b.userData.base || 0)); b.position.y = expr === 'surprised' ? 0.3 : expr === 'sad' ? 0.24 : 0.25; });
   const talkK = talking ? Math.abs(Math.sin(now * 14 + (p.room || 0))) : 0;
   const shape = talking ? (talkK > 0.35 ? 'open' : expr === 'sad' || expr === 'angry' ? 'frown' : 'smile') : expr === 'surprised' ? 'o' : expr === 'sad' || expr === 'angry' ? 'frown' : expr === 'laugh' ? 'open' : 'smile';
-  m.mouth.visible = shape === 'smile'; m.mouthFrown.visible = shape === 'frown'; m.mouthO.visible = shape === 'o'; m.mouthOpen.visible = shape === 'open';
+  const catSmile = !!m.mouthCat && shape === 'smile' && expr !== 'happy';
+  if (m.mouthCat) m.mouthCat.visible = catSmile;
+  m.mouth.visible = shape === 'smile' && !catSmile; m.mouthFrown.visible = shape === 'frown'; m.mouthO.visible = shape === 'o'; m.mouthOpen.visible = shape === 'open';
   if (shape === 'open') m.mouthOpen.scale.y = talking ? 0.45 + talkK * 0.55 : 0.8;
-  if (shape === 'smile') m.mouth.scale.set(expr === 'happy' ? 1.25 : 1, expr === 'happy' ? 1.2 : 1, 1);
+  if (shape === 'smile') { const rs = expr === 'happy' ? null : m.mouth.userData.rest; m.mouth.scale.set((expr === 'happy' ? 1.25 : 1) * (rs?.sx || 1), (expr === 'happy' ? 1.2 : 1) * (rs?.sy || 1), 1); m.mouth.rotation.z = Math.PI + (rs?.rot || 0); m.mouth.position.x = rs?.x || 0; }
 }
 
 // the island: grass tufts, little flowers, a hazy horizon
@@ -7240,6 +7254,370 @@ function selfHaircut(p) {
   diary(`💇 <b>${esc(p.name)}</b> got a new haircut.`);
 }
 
+// ============================================================
+// FASHION & FACES: every resident gets a personality ("vibe"), a
+// clothing style that fits it (goth, emo, jirai kei, gyaru, lolita,
+// preppy, mom, dad, ...), a face that matches, and a uniform for work
+// ============================================================
+
+// ---- personality: five sliders, -1..1, stable per resident ----
+function seededRand(seed) { let s = seed >>> 0 || 1; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function personaOf(p) {
+  if (!p.body) return { energy: 0, warmth: 0, edge: 0, order: 0, cute: 0, age: 0.3 };
+  if (!p.body.persona) {
+    const r = seededRand(hashStr('persona:' + p.id + ':' + (p.name || ''))), s = () => r() * 2 - 1;
+    const q = { energy: s(), warmth: s(), edge: s(), order: s(), cute: s(), age: r() };
+    q.energy = clamp(q.energy + ((p.body.speed ?? 1) - 1) * 1.2, -1, 1);
+    q.edge = clamp(q.edge + (p.body.openness ?? 0) * 0.35, -1, 1);
+    // the people Milo wrote herself get a vibe that matches how she described them
+    if (p.lovesMili) Object.assign(q, { energy: -0.35, warmth: 0.2, edge: 0.25, order: -0.2, cute: -0.3, age: 0.3 });
+    for (const k of Object.keys(q)) q[k] = +q[k].toFixed(2);
+    p.body.persona = q;
+  }
+  return p.body.persona;
+}
+function vibeWords(p) {
+  const P = personaOf(p), w = [];
+  if (P.energy > 0.35) w.push('bubbly'); else if (P.energy < -0.35) w.push('calm');
+  if (P.warmth > 0.35) w.push('warm'); else if (P.warmth < -0.35) w.push('a bit cold');
+  if (P.edge > 0.4) w.push('rebellious'); else if (P.edge < -0.4) w.push('gentle');
+  if (P.order > 0.45) w.push('tidy'); else if (P.order < -0.45) w.push('messy');
+  if (P.cute > 0.5) w.push('loves cute things');
+  return w.length ? w : ['easygoing'];
+}
+
+// ---- clothing styles ----
+const FASHION = {
+  casual:  { name: 'Casual', family: 'everyday', tops: null, bottoms: [['pants', ['#5b7fb5', '#4a6fa8', '#4a4652']], ['shorts', ['#5b7fb5', '#cdb88f']]], shoes: ['#fffaf2', '#ff6f5e', '#3d4f86'] },
+  preppy:  { name: 'Preppy', family: 'neat', tops: ['white', 'cream', 'sky'], layers: [['vest', ['navy', 'forest', 'wine']], ['cardigan', ['navy', 'cream', 'forest']]], bottoms: [['pleated', ['#3d4f86', '#2f5d4a', '#7a2e3a']], ['pants', ['#cdb88f', '#3d4f86']]], shoes: ['#5a3a2e', '#2e2a36'], neck: ['collar', 'tie'], glasses: 0.3, head: [['beret', ['#3d4f86', '#7a2e3a'], 0.3]] },
+  emo:     { name: 'Emo', family: 'dark', tops: ['black', 'charcoal'], stripes: ['#ff3355', '#fbf8f4'], bottoms: [['pants', ['#2e2a36']]], shoes: ['#2e2a36', '#fffaf2'], extras: ['belt', 'wristbands'], liner: true },
+  goth:    { name: 'Goth', family: 'dark', tops: ['black', 'plum'], bottoms: [['long', ['#2e2a36']], ['pants', ['#2e2a36']]], tights: '#2e2a36', shoes: ['#2e2a36'], platform: true, neck: ['choker'], extras: ['pendant'], liner: true, lips: '#4a1a3a' },
+  alt:     { name: 'Alt / punk', family: 'dark', tops: ['black', 'charcoal', 'wine'], bottoms: [['pleated', ['#b8323f']], ['pants', ['#b8323f', '#2e2a36']]], tights: '#2e2a36', shoes: ['#2e2a36'], platform: true, neck: ['choker'], extras: ['chain', 'belt'], liner: true },
+  jirai:   { name: 'Jirai kei', family: 'kawaii', tops: ['black', 'white', 'rose'], bottoms: [['pleated', ['#2e2a36', '#ff9fbf']]], tights: '#2e2a36', shoes: ['#2e2a36', '#ff9fbf'], platform: true, neck: ['collar', 'bow'], bowColor: ['#2e2a36', '#ff5f9a'], head: [['sidebow', ['#2e2a36', '#ff9fbf'], 1]], lashes: true, underEye: true, liner: true },
+  gyaru:   { name: 'Gyaru', family: 'kawaii', tops: ['hotpink', 'white', 'lemon', 'peach'], bottoms: [['skirt', ['#fbf8f4', '#ff5fa8', '#d9a55a']], ['pants', ['#5b7fb5']]], tights: null, shoes: ['#fffaf2', '#ff9fbf'], platform: true, extras: ['hoops'], lashes: true, liner: true, lips: '#ff5f8f' },
+  lolita:  { name: 'Lolita', family: 'kawaii', tops: ['rose', 'sky', 'white', 'black'], dress: true, bottoms: [['bell', null]], tights: '#fbf8f4', shoes: ['#2e2a36', '#fffaf2', '#ff9fbf'], platform: true, neck: ['bow'], head: [['headbow', null, 1]], lashes: true },
+  cottage: { name: 'Cottagecore', family: 'soft', tops: ['cream', 'peach', 'moss', 'lemon'], dress: true, bottoms: [['long', null]], layers: [['cardigan', ['cream', 'moss', 'peach'], 0.4]], shoes: ['#5a3a2e', '#fffaf2'], head: [['straw', null, 0.35]], freckles: 0.45 },
+  sporty:  { name: 'Sporty', family: 'everyday', tops: ['tomato', 'sky', 'white', 'navy'], layers: [['track', ['navy', 'tomato', 'charcoal'], 0.6]], bottoms: [['pants', ['#2e2a36', '#3d4f86']], ['shorts', ['#2e2a36', '#3d4f86']]], shoes: ['#fffaf2', '#ff6f5e'], head: [['cap', ['#3d4f86', '#ff6f5e'], 0.3]] },
+  y2k:     { name: 'Y2K (dresses young)', family: 'kawaii', tops: ['hotpink', 'lilac', 'sky', 'lemon'], bottoms: [['pants', ['#5b7fb5', '#9fd3ff']], ['skirt', ['#c9b3ff', '#fbf8f4']]], shoes: ['#fffaf2', '#ff9fbf'], platform: true, head: [['clips', null, 0.8]], freckles: 0.3 },
+  street:  { name: 'Streetwear', family: 'everyday', tops: ['charcoal', 'moss', 'black', 'tomato'], layers: [['hoodie', ['charcoal', 'moss', 'black', 'dusk'], 0.7]], bottoms: [['pants', ['#cdb88f', '#2e2a36', '#4a4652']]], shoes: ['#fffaf2', '#2e2a36'], extras: ['chain'], head: [['cap', ['#2e2a36', '#8fae6a'], 0.35]] },
+  classic: { name: 'Classic (dresses older)', family: 'neat', tops: ['cream', 'white', 'dusk'], layers: [['cardigan', ['khaki', 'gray', 'wine']], ['vest', ['khaki', 'gray']]], bottoms: [['pants', ['#8a8a96', '#a8916b']], ['long', ['#6b5a4a', '#3d4f86']]], shoes: ['#5a3a2e', '#2e2a36'], glasses: 0.6, head: [['flatcap', ['#8a8a96', '#6b5a4a'], 0.35]] },
+  mom:     { name: 'Mom style', family: 'soft', tops: ['peach', 'mint', 'sky', 'rose', 'white'], layers: [['cardigan', ['cream', 'khaki', 'lilac'], 0.6]], bottoms: [['pants', ['#5b7fb5', '#4a6fa8']]], shoes: ['#fffaf2'], extras: ['tote'], glasses: 0.2 },
+  dad:     { name: 'Dad style', family: 'everyday', tops: ['white', 'navy', 'sky', 'moss'], bottoms: [['shorts', ['#cdb88f']], ['pants', ['#cdb88f', '#5b7fb5']]], shoes: ['#fffaf2'], extras: ['belt'], glasses: 0.4, head: [['cap', ['#3d4f86', '#8fae6a', '#ff6f5e'], 0.55]] },
+};
+const KID_FASHION = ['casual', 'sporty', 'y2k', 'cottage', 'preppy'];
+const FASHION_ORDER = ['casual', 'preppy', 'sporty', 'street', 'emo', 'goth', 'alt', 'jirai', 'gyaru', 'lolita', 'cottage', 'y2k', 'classic', 'mom', 'dad'];
+const isParent = (p) => W.people.some((q) => q !== p && (q.parents || []).includes(p.name));
+function fashionWeights(p) {
+  const P = personaOf(p), par = isParent(p);
+  const w = {
+    casual: 1.1, preppy: 0.45 + P.order * 0.8 - P.edge * 0.5, sporty: 0.35 + P.energy * 0.8 - P.cute * 0.3, street: 0.3 + P.edge * 0.4 + P.energy * 0.3,
+    emo: 0.2 + P.edge * 0.9 - P.energy * 0.5 - P.warmth * 0.3 - P.age * 0.6, goth: 0.2 + P.edge * 0.9 - P.cute * 0.4 - P.energy * 0.3, alt: 0.2 + P.edge * 0.8 + P.energy * 0.5 - P.order * 0.3,
+    jirai: 0.1 + P.cute * 0.7 + P.edge * 0.5 - P.age * 0.8, gyaru: 0.1 + P.energy * 0.8 + P.cute * 0.5 + P.warmth * 0.3 - P.age * 0.8, lolita: 0.1 + P.cute * 0.8 + P.order * 0.5 - P.energy * 0.3,
+    cottage: 0.3 + P.warmth * 0.6 + P.cute * 0.3 - P.edge * 0.5, y2k: 0.2 + P.energy * 0.6 - P.age * 0.9, classic: 0.1 + P.age * 1.4 + P.order * 0.3,
+    mom: par ? 0.9 + P.warmth * 0.5 + P.age * 0.5 : 0.04 + P.age * 0.25, dad: par ? 0.9 - P.energy * 0.2 + P.age * 0.5 : 0.04 + P.age * 0.25,
+  };
+  if (p.grow < 1) for (const k of Object.keys(w)) if (!KID_FASHION.includes(k)) w[k] = 0;
+  for (const k of Object.keys(w)) w[k] = Math.max(k === 'casual' ? 0.3 : 0, w[k]);
+  return w;
+}
+function pickFashion(p, r = rand) {
+  const w = fashionWeights(p), tot = Object.values(w).reduce((a, b) => a + b, 0);
+  let x = r() * tot;
+  for (const [k, v] of Object.entries(w)) { x -= v; if (x <= 0) return k; }
+  return 'casual';
+}
+// choose the concrete pieces for a style (stable per resident, so they don't reshuffle every day)
+function dressFor(p, fashion) {
+  const F = FASHION[fashion] || FASHION.casual, r = seededRand(hashStr('dress:' + fashion + ':' + p.id));
+  const pk = (arr) => arr[Math.floor(r() * arr.length) % arr.length];
+  const d = { fashion };
+  if (F.tops) d.top = pk(F.tops);
+  const bt = pk(F.bottoms); d.bottom = bt[0]; d.bottomColor = bt[1] ? pk(bt[1]) : null;
+  if (F.layers) { const opts = F.layers.filter((l) => l[2] == null || r() < l[2]); if (opts.length) { const l = pk(opts); d.layer = l[0]; d.layerColor = pk(l[1]); } }
+  d.shoe = pk(F.shoes); d.platform = !!F.platform && r() < 0.8;
+  d.tights = F.tights === undefined ? (['skirt', 'pleated', 'long', 'bell'].includes(d.bottom) ? pk(['skin', '#2e2a36', '#fbf8f4']) : null) : F.tights;
+  d.neck = (F.neck || []).filter(() => r() < 0.85); d.extras = (F.extras || []).filter(() => r() < 0.8);
+  if (F.stripes && r() < 0.7) d.stripes = pk(F.stripes);
+  d.bowColor = F.bowColor ? pk(F.bowColor) : null;
+  d.head = null; for (const [k, cols, ch] of F.head || []) if (r() < ch) { d.head = k; d.headColor = cols ? pk(cols) : null; }
+  d.glasses = r() < (F.glasses || 0) + Math.max(0, personaOf(p).order - 0.6) * 0.5;
+  return d;
+}
+function lookOf(p) {
+  if (!p.look || !FASHION[p.look.fashion]) setFashion(p, isRealish(p) ? 'casual' : pickFashion(p, seededRand(hashStr('fashion:' + p.id + ':' + (p.name || '')))), true);
+  return p.look;
+}
+function setFashion(p, fashion, quiet) {
+  if (!FASHION[fashion]) return;
+  const d = dressFor(p, fashion); p.look = { ...d, face: faceFor(p, fashion) };
+  // the style's colors go into their wardrobe and taste, so morning outfits stay in style
+  if (d.top && COLORS[d.top]) {
+    if (!p.wardrobe.shirts.includes(d.top)) p.wardrobe.shirts.push(d.top);
+    p.outfit.shirt = d.top;
+    for (const c of FASHION[fashion].tops) p.likes[c] = Math.max(p.likes[c] || 0, 0.6);
+  }
+  const h = typeof hairOf === 'function' ? hairOf(p) : null; if (h && SHOE_NAMES[d.shoe]) h.shoe = d.shoe;
+  p.likes['style:' + fashion] = Math.max(p.likes['style:' + fashion] || 0, 1);
+  if (!quiet && typeof restyleLook === 'function') restyleLook(p);
+}
+// ---- faces that fit the vibe ----
+function faceFor(p, fashion) {
+  const P = personaOf(p), F = FASHION[fashion] || {}, r = seededRand(hashStr('face:' + p.id));
+  const eyes = P.edge > 0.35 && P.warmth < 0.1 ? 'sharp' : P.energy < -0.45 ? 'sleepy' : P.cute > 0.35 && P.energy > -0.1 ? 'sparkle' : P.order > 0.45 && P.energy < 0 ? 'dot' : 'round';
+  const mouth = P.cute > 0.5 && P.energy > 0.25 ? 'cat' : P.edge > 0.35 && P.energy > 0 ? 'smirk' : P.warmth < -0.3 && P.energy < 0.2 ? 'flat' : 'smile';
+  return {
+    eyes, mouth, brow: P.warmth < -0.4 ? 0.14 : P.energy < -0.4 && P.warmth > 0 ? -0.14 : 0, browThick: P.edge > 0.4 ? 1.4 : P.cute > 0.4 ? 0.8 : 1,
+    lashes: !!F.lashes || (P.cute > 0.45 && r() < 0.6), liner: !!F.liner, underEye: !!F.underEye, lips: F.lips || null,
+    freckles: r() < (F.freckles || 0.12), blush: P.warmth > 0.3 ? 0.75 : P.warmth < -0.3 ? 0.3 : 0.55,
+  };
+}
+
+// ---- work uniforms ----
+const UNIFORMS = {
+  mart: { layer: ['apron', '#6fbf6a'], head: ['visor', '#6fbf6a'], neck: ['badge'], label: 'Berry Mart apron and visor' },
+  cafe: { layer: ['apron', '#6b4a3a'], head: ['cap', '#2e2a36'], label: 'barista apron and cap' },
+  clothes: { neck: ['tape'], label: 'measuring tape' },
+  nook: { layer: ['apron', '#8a5a3a'], head: ['goggles'], label: 'leather apron and goggles' },
+  garden: { layer: ['overalls', '#5b7fb5'], head: ['straw'], label: 'overalls and a straw hat' },
+  pier: { layer: ['raincoat', '#ffd23f'], head: ['bucket', '#ffd23f'], label: 'yellow raincoat and bucket hat' },
+  bakery: { layer: ['chefcoat', '#fbf8f4'], head: ['chef'], label: "white baker's coat and tall hat" },
+  icecream: { layer: ['apron', '#ff9fbf', true], head: ['paper'], label: 'striped apron and paper hat' },
+  books: { layer: ['cardigan', '#8a6a4e'], neck: ['lanyard'], glasses: true, label: 'cardigan and name badge' },
+  arcade: { layer: ['vest', '#7a4ad8'], head: ['visor', '#7a4ad8'], neck: ['badge'], label: 'Pixel Palace vest and visor' },
+  dev: { layer: ['hoodie', '#3d4f86'], neck: ['lanyard'], label: 'Glimmer Labs hoodie and lanyard' },
+  ai: { layer: ['cardigan', '#5a7fd8'], neck: ['lanyard'], label: 'Glimmer Labs cardigan and lanyard' },
+  lawyer: { layer: ['blazer', '#2e2a36'], neck: ['tie'], tie: '#7a2e3a', label: 'dark suit and tie' },
+  bio: { layer: ['labcoat', '#fbf8f4'], neck: ['lanyard'], label: 'lab coat' },
+  chem: { layer: ['labcoat', '#fbf8f4'], head: ['goggles'], label: 'lab coat and safety goggles' },
+  phys: { layer: ['labcoat', '#fbf8f4'], neck: ['lanyard'], label: 'lab coat' },
+  robo: { layer: ['coverall', '#d9783a'], head: ['goggles'], label: 'orange coveralls and goggles' },
+  civil: { layer: ['hivis', '#d8ff4a'], head: ['hardhat'], label: 'hi-vis vest and hard hat' },
+  doctor: { layer: ['labcoat', '#fbf8f4'], neck: ['stetho'], label: "doctor's white coat and stethoscope" },
+  therapist: { layer: ['cardigan', '#c9b3ff'], neck: ['lanyard'], label: 'soft cardigan' },
+  builder: { layer: ['hivis', '#d8ff4a'], head: ['hardhat'], label: 'hi-vis vest and hard hat' },
+  janitor: { layer: ['coverall', '#6f86a0'], head: ['cap', '#6f86a0'], label: 'blue coveralls and cap' },
+};
+const inUniform = (p) => !!(p.job && UNIFORMS[p.job] && p.grow >= 1 && p.task?.kind === 'work');
+// what the law puts people in: an orange jumpsuit in the cell, an orange vest for community service
+const LAW_OUTFITS = { jumpsuit: { layer: ['coverall', '#ff8a3d'], label: 'orange jumpsuit' }, service: { layer: ['hivis', '#ff8a3d'], head: ['cap', '#ff8a3d'], label: 'orange community service vest' } };
+const lawOutfit = (p) => (typeof jailed === 'function' && jailed(p) ? 'jumpsuit' : typeof onService === 'function' && onService(p) && p.task?.kind === 'service' ? 'service' : null);
+const workOutfit = (p) => (lawOutfit(p) ? LAW_OUTFITS[lawOutfit(p)] : inUniform(p) ? UNIFORMS[p.job] : null);
+
+// ---- words, for the minds and the panels ----
+const BOTTOM_WORDS = { pants: 'pants', shorts: 'shorts', skirt: 'a mini skirt', pleated: 'a pleated skirt', long: 'a long skirt', bell: 'a frilly bell skirt' };
+const LAYER_WORDS = { vest: 'a sweater vest', cardigan: 'a cardigan', track: 'a track jacket', hoodie: 'a hoodie', blazer: 'a blazer' };
+function lookText(p) {
+  const L = lookOf(p), F = FASHION[L.fashion];
+  const law = lawOutfit(p); if (law) return `an ${LAW_OUTFITS[law].label}${typeof onProbation === 'function' && onProbation(p) ? ' and an ankle monitor' : ''}`;
+  if (inUniform(p)) return `their ${JOBS[p.job].short} uniform (${UNIFORMS[p.job].label})${typeof onProbation === 'function' && onProbation(p) ? ' and an ankle monitor' : ''}`;
+  const bits = [`${a_an(p.outfit.shirt)} ${L.fashion === 'lolita' || L.fashion === 'cottage' ? 'dress' : 'top'}`];
+  if (L.layer && LAYER_WORDS[L.layer]) bits.push(LAYER_WORDS[L.layer]);
+  if (!(F.dress)) bits.push(BOTTOM_WORDS[L.bottom] || 'pants');
+  if (L.platform) bits.push('platform shoes');
+  if (L.glasses) bits.push('glasses');
+  if (typeof onProbation === 'function' && onProbation(p)) bits.push('an ankle monitor');
+  return `a ${F.name.replace(/ \(.*\)/, '').toLowerCase()} look: ${bits.join(', ')}`;
+}
+const visibleTop = (p) => { const L = p.look; return L && L.layer && COLORS[L.layerColor] && !workOutfit(p) ? L.layerColor : p.outfit?.shirt || 'cream'; };
+function styleKin(a, b) {
+  const x = a.look && FASHION[a.look.fashion], y = b.look && FASHION[b.look.fashion];
+  if (!x || !y) return 0;
+  return a.look.fashion === b.look.fashion ? 1 : x.family === y.family ? 0.5 : 0;
+}
+// what one resident says about another's clothes, if anything (offline minds)
+function styleRemark(me, them, score) {
+  if (!me.look || !them.look || them.grow < 1 && me.grow < 1) return null;
+  if (inUniform(them)) return rand() < 0.4 ? { say: pick([`The ${JOBS[them.job].short} uniform suits you.`, 'Are you on your way to work?', 'You look so official right now.']), feeling: 1 } : null;
+  const P = personaOf(me), kin = styleKin(me, them), F = FASHION[them.look.fashion], name = F.name.replace(/ \(.*\)/, '').toLowerCase();
+  if (kin === 1) return { say: pick([`Okay, your ${name} outfit today? Perfect.`, 'We match again. Great minds.', `Where did you get that? I need it.`]), feeling: 2, compliment: true };
+  if (kin === 0.5 && score >= 0) return { say: pick(['Your outfit is really cute today.', 'I love how you dress.', 'That look is so you.']), feeling: 1, compliment: true };
+  const old = FASHION[me.look.fashion].family === 'neat' || ['mom', 'dad', 'classic'].includes(me.look.fashion);
+  if (old && F.family === 'dark' && rand() < 0.6) return P.warmth > 0 ? { say: pick(["Is that… a lot of black? It's very bold.", "I don't really get it, but you look confident."]), feeling: 0 } : { say: pick(["Who died?", 'Dressed for a funeral again?']), feeling: -1, action: 'tease' };
+  if (F.family === 'kawaii' && FASHION[me.look.fashion].family === 'dark' && P.warmth < 0 && rand() < 0.5) return { say: pick(['That is so much pink.', 'Did a cake explode on you?']), feeling: -1, action: 'tease' };
+  if (score >= 1 && P.warmth > 0.1) return { say: pick([`I like your ${name} style.`, 'Your shoes are amazing.', 'You always look put together.']), feeling: 1, compliment: true };
+  return null;
+}
+
+// ---- building the clothes on a figure ----
+function lookMat(color) { return vinyl(COLORS[color] || color, { kind: 'cloth' }); }
+function lookSkin(p) { const B = p.body; return vinyl(`hsl(${Math.round(B.hue)}, ${B.sat ?? 70}%, ${B.light ?? 78}%)`); }
+function dressLook(p, f) {
+  if (!f || !f.fig || !f.body || !p.body) return f;
+  f.lookParts = [];
+  const add = (parent, o) => { o.traverse((c) => { c.userData.pid = p.id; }); parent.add(o); f.lookParts.push(o); return o; };
+  const L = lookOf(p), F = FASHION[L.fashion] || FASHION.casual, U = workOutfit(p);
+  const shirtC = COLORS[p.outfit.shirt] || '#fff4dc', skin = f.skin || lookSkin(p);
+  // bottoms
+  const bottom = U && ['overalls', 'coverall'].includes(U.layer?.[0]) ? 'pants' : L.bottom;
+  const bColor = U && ['overalls', 'coverall'].includes(U.layer?.[0]) ? U.layer[1] : F.dress ? shirtC : L.bottomColor || '#4a4652';
+  const tights = L.tights === 'skin' || !L.tights ? skin : lookMat(L.tights);
+  const legMat = bottom === 'pants' ? lookMat(bColor) : bottom === 'shorts' ? skin : tights;
+  f.legs.forEach((l) => (l.material = legMat));
+  const bm = lookMat(bColor);
+  if (bottom === 'shorts') for (const l of f.legs) add(l, mesh(cyl(0.145, 0.16, 0.2, 12), bm, 0, 0.1, 0));
+  else if (bottom === 'skirt') add(f.fig, mesh(cyl(0.37, 0.5, 0.26, 20), bm, 0, 0.36, 0));
+  else if (bottom === 'pleated') { const s = mesh(cyl(0.37, 0.52, 0.3, 12), bm, 0, 0.34, 0); add(f.fig, s); }
+  else if (bottom === 'long') add(f.fig, mesh(cyl(0.37, 0.56, 0.46, 20), bm, 0, 0.24, 0));
+  else if (bottom === 'bell') {
+    add(f.fig, mesh(cyl(0.36, 0.6, 0.34, 22), bm, 0, 0.33, 0));
+    const lace = mesh(new T3.TorusGeometry(0.59, 0.045, 6, 26), lookMat('#fbf8f4'), 0, 0.17, 0); lace.rotation.x = Math.PI / 2; add(f.fig, lace);
+    add(f.fig, mesh(cyl(0.58, 0.62, 0.06, 22), lookMat('#fbf8f4'), 0, 0.13, 0));
+  }
+  // top layer
+  const layer = U?.layer ? U.layer[0] : L.layer, lc = U?.layer ? U.layer[1] : L.layerColor;
+  const lm = layer ? lookMat(lc) : null;
+  const shell = (r = 0.405) => add(f.fig, mesh(new T3.CapsuleGeometry(r, 0.3, 6, 14), lm, 0, 0.78, 0));
+  const frontStrip = (w, mat) => add(f.fig, mesh(box(w, 0.62, 0.04), mat, 0, 0.7, 0.4));
+  let sleeves = null;
+  switch (layer) {
+    case 'vest': { shell(); const v = mesh(new T3.ConeGeometry(0.13, 0.3, 3), vinyl(shirtC, { kind: 'cloth' }), 0, 0.93, 0.4); v.rotation.z = Math.PI; v.scale.z = 0.3; add(f.fig, v); break; }
+    case 'cardigan': case 'track': case 'blazer': {
+      shell(); frontStrip(0.13, vinyl(shirtC, { kind: 'cloth' })); sleeves = lm;
+      if (layer === 'cardigan') for (let i = 0; i < 3; i++) add(f.fig, mesh(sph(0.025, 6, 5), toon('#fbf8f4'), 0.085, 0.88 - i * 0.14, 0.415, false));
+      if (layer === 'track') for (const a of f.arms) add(a, mesh(box(0.04, 0.42, 0.21), toon('#fbf8f4'), 0, -0.02, 0));
+      if (layer === 'blazer') for (const s of [-1, 1]) { const lp = mesh(box(0.1, 0.3, 0.03), lm, s * 0.1, 0.9, 0.41); lp.rotation.z = s * 0.35; add(f.fig, lp); }
+      break;
+    }
+    case 'hoodie': { shell(0.41); sleeves = lm; const hood = mesh(new T3.TorusGeometry(0.24, 0.1, 8, 16), lm, 0, 1.12, -0.2); hood.rotation.x = Math.PI / 2 - 0.5; add(f.fig, hood); add(f.fig, mesh(box(0.34, 0.14, 0.04), lm, 0, 0.55, 0.405)); for (const s of [-1, 1]) add(f.fig, mesh(cyl(0.012, 0.012, 0.16, 5), toon('#fbf8f4'), s * 0.06, 0.9, 0.41, false)); break; }
+    case 'labcoat': case 'chefcoat': case 'raincoat': case 'coverall': {
+      shell(0.41); sleeves = lm;
+      if (layer !== 'coverall') add(f.fig, mesh(cyl(0.41, 0.47, layer === 'chefcoat' ? 0.2 : 0.36, 18), lm, 0, layer === 'chefcoat' ? 0.34 : 0.24, 0));
+      if (layer === 'labcoat') frontStrip(0.09, vinyl(shirtC, { kind: 'cloth' }));
+      if (layer === 'chefcoat') for (let i = 0; i < 3; i++) for (const s of [-1, 1]) add(f.fig, mesh(sph(0.025, 6, 5), toon('#c8c2b8'), s * 0.08, 0.9 - i * 0.14, 0.415, false));
+      if (layer === 'labcoat' || layer === 'raincoat') add(f.fig, mesh(box(0.14, 0.08, 0.03), lm, 0.2, 0.62, 0.4));
+      break;
+    }
+    case 'apron': {
+      const ap = add(f.fig, mesh(box(0.5, 0.66, 0.035), lm, 0, 0.58, 0.395));
+      if (U?.layer?.[2]) for (let i = 0; i < 3; i++) add(ap, mesh(box(0.5, 0.06, 0.04), toon('#fbf8f4'), 0, 0.22 - i * 0.2, 0.005, false));
+      const st = mesh(new T3.TorusGeometry(0.17, 0.022, 5, 12, Math.PI), lm, 0, 0.9, 0.36); add(f.fig, st);
+      break;
+    }
+    case 'overalls': { add(f.fig, mesh(box(0.42, 0.34, 0.035), lm, 0, 0.72, 0.39)); for (const s of [-1, 1]) add(f.fig, mesh(box(0.06, 0.34, 0.03), lm, s * 0.15, 0.98, 0.34)); add(f.fig, mesh(cyl(0.39, 0.39, 0.22, 18), lm, 0, 0.48, 0)); break; }
+    case 'hivis': { shell(); for (const y of [0.62, 0.86]) { const b = mesh(new T3.TorusGeometry(0.41, 0.03, 5, 22), toon('#d9dde6'), 0, y, 0); b.rotation.x = Math.PI / 2; add(f.fig, b); } break; }
+  }
+  const armMat = sleeves || vinyl(shirtC, { kind: 'cloth' });
+  f.arms.forEach((a) => (a.material = armMat)); f.body.material = vinyl(shirtC, { kind: 'cloth' });
+  if (!U && L.stripes) for (const y of [0.52, 0.68, 0.84]) { const t = mesh(new T3.TorusGeometry(0.382, 0.03, 5, 24), lookMat(L.stripes), 0, y, 0); t.rotation.x = Math.PI / 2; add(f.fig, t); }
+  // neck and chest
+  const neck = U ? U.neck || [] : L.neck || [];
+  for (const n of neck) {
+    if (n === 'collar') for (const s of [-1, 1]) { const c = mesh(sph(0.09, 10, 6), toon('#fbf8f4'), s * 0.09, 1.0, 0.33, false); c.scale.set(1.3, 0.45, 0.5); c.rotation.z = s * -0.4; add(f.fig, c); }
+    if (n === 'bow') { const bc = L.bowColor || (F.dress ? '#fbf8f4' : '#ff5f9a'); for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.06, 0.12, 8), toon(bc), s * 0.06, 0.96, 0.38, false); w.rotation.z = s * Math.PI / 2; add(f.fig, w); } add(f.fig, mesh(sph(0.03, 6, 5), toon(bc), 0, 0.96, 0.39, false)); }
+    if (n === 'tie') { const tc = U?.tie || '#7a2e3a'; add(f.fig, mesh(box(0.07, 0.3, 0.03), toon(tc), 0, 0.8, 0.405, false)); add(f.fig, mesh(sph(0.035, 6, 5), toon(tc), 0, 0.96, 0.39, false)); }
+    if (n === 'choker') { const c = mesh(new T3.TorusGeometry(0.17, 0.025, 5, 14, Math.PI), toon('#1e1a24'), 0, 1.02, 0.3, false); c.rotation.z = Math.PI; c.rotation.x = 0.5; add(f.fig, c); add(f.fig, mesh(new T3.OctahedronGeometry(0.035, 0), toon('#d9dde6'), 0, 0.84, 0.39, false)); }
+    if (n === 'badge') add(f.fig, mesh(box(0.1, 0.07, 0.02), toon('#fbf8f4'), 0.16, 0.9, 0.41, false));
+    if (n === 'lanyard') { const ly = mesh(new T3.TorusGeometry(0.16, 0.012, 4, 12, Math.PI), toon('#5a7fd8'), 0, 0.92, 0.37, false); ly.rotation.z = Math.PI; add(f.fig, ly); add(f.fig, mesh(box(0.1, 0.13, 0.02), toon('#fbf8f4'), 0, 0.72, 0.41, false)); }
+    if (n === 'stetho') { const st = mesh(new T3.TorusGeometry(0.17, 0.02, 5, 14, Math.PI), toon('#4a4652'), 0, 0.94, 0.37, false); st.rotation.z = Math.PI; add(f.fig, st); add(f.fig, mesh(cyl(0.045, 0.045, 0.02, 10), toon('#cfd3dc'), 0.12, 0.72, 0.41, false)).rotation.x = Math.PI / 2; }
+    if (n === 'tape') for (const s of [-1, 1]) add(f.fig, mesh(box(0.05, 0.4, 0.02), toon('#ffd23f'), s * 0.12, 0.8, 0.41, false));
+  }
+  const extras = U ? [] : L.extras || [];
+  for (const e of extras) {
+    if (e === 'belt') { const b = mesh(new T3.TorusGeometry(0.39, 0.035, 5, 24), toon('#2a2230'), 0, 0.46, 0); b.rotation.x = Math.PI / 2; add(f.fig, b); for (let i = -2; i <= 2; i++) add(f.fig, mesh(sph(0.02, 5, 4), toon('#d9dde6'), i * 0.09, 0.46, 0.41 - Math.abs(i) * 0.02, false)); }
+    if (e === 'chain') { const c = mesh(new T3.TorusGeometry(0.12, 0.014, 4, 12, Math.PI), toon('#d9dde6'), 0.26, 0.38, 0.3, false); c.rotation.set(0.3, 0.6, Math.PI); add(f.fig, c); }
+    if (e === 'pendant') add(f.fig, mesh(new T3.OctahedronGeometry(0.045, 0), toon('#d9dde6'), 0, 0.84, 0.4, false));
+    if (e === 'wristbands') for (const a of f.arms) add(a, mesh(cyl(0.105, 0.105, 0.07, 10), toon('#ff3355'), 0, -0.14, 0, false));
+    if (e === 'hoops') for (const s of [-1, 1]) { const h = mesh(new T3.TorusGeometry(0.07, 0.014, 5, 14), toon('#ffd36b'), s * 0.6, -0.2, 0.02, false); h.rotation.y = Math.PI / 2; add(f.head, h); }
+    if (e === 'tote') add(f.arms[1], mesh(box(0.2, 0.22, 0.06), lookMat('#cdb88f'), 0.05, -0.3, 0.1));
+  }
+  // shoes
+  if (f.shoes) for (const s of f.shoes) { s.material = vinyl(L.shoe || '#fffaf2'); if (L.platform) add(s, mesh(box(0.26, 0.09, 0.3), toon('#2e2a36'), 0, -0.07, 0, false)); }
+  // head things: uniform hats win over style hats; a hat you bought for them wins over a style hat
+  const bought = !!p.outfit.hat;
+  if (f.hat) f.hat.visible = !(U && U.head);
+  const headK = U ? U.head?.[0] : bought ? null : L.head, headC = U ? U.head?.[1] : L.headColor;
+  if (headK) add(f.head, headMeshFor(headK, headC, F));
+  if (!U && L.head === 'clips' || !U && L.head === 'sidebow') { /* hair accessories sit next to a bought hat too */ if (bought) add(f.head, headMeshFor(L.head, L.headColor, F)); }
+  if (U?.glasses || (!U && L.glasses)) add(f.head, glassesMesh(p));
+  if (typeof onProbation === 'function' && onProbation(p) && f.legs?.[0]) { add(f.legs[0], mesh(cyl(0.135, 0.135, 0.07, 10), toon('#1e1a24'), 0, -0.1, 0, false)); add(f.legs[0], mesh(box(0.09, 0.07, 0.06), toon('#1e1a24'), 0, -0.1, 0.13, false)); add(f.legs[0], mesh(sph(0.018, 5, 4), toon('#6fff8f', { emissive: new T3.Color('#1f8f3f') }), 0, -0.08, 0.165, false)); }
+  faceLook(p, f, add);
+  return f;
+}
+function headMeshFor(k, color, F) {
+  const g = new T3.Group(), c = (x) => toon(x);
+  switch (k) {
+    case 'beret': { const b = mesh(sph(0.5, 16, 8), c(color || '#3d4f86'), 0.08, 0.62, -0.02); b.scale.set(1, 0.32, 1); g.add(b); break; }
+    case 'cap': g.add(mesh(new T3.SphereGeometry(0.645, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2), c(color || '#3d4f86'), 0, 0.28, 0)); g.add(mesh(box(0.7, 0.05, 0.45), c(color || '#3d4f86'), 0, 0.3, 0.62)); break;
+    case 'flatcap': { const b = mesh(sph(0.64, 16, 8), c(color || '#8a8a96'), 0, 0.38, 0.04); b.scale.set(1.02, 0.42, 1.05); g.add(b); g.add(mesh(box(0.5, 0.05, 0.3), c(color || '#8a8a96'), 0, 0.33, 0.6)); break; }
+    case 'straw': g.add(mesh(cyl(0.95, 0.95, 0.04, 22), c('#e8cf8f'), 0, 0.46, 0)); g.add(mesh(cyl(0.48, 0.55, 0.3, 18), c('#e8cf8f'), 0, 0.6, 0)); g.add(mesh(cyl(0.555, 0.555, 0.08, 18), c('#ff9fbf'), 0, 0.5, 0)); break;
+    case 'bucket': g.add(mesh(cyl(0.52, 0.6, 0.34, 18), c(color || '#ffd23f'), 0, 0.52, 0)); g.add(mesh(cyl(0.82, 0.82, 0.04, 20), c(color || '#ffd23f'), 0, 0.36, 0)); break;
+    case 'chef': g.add(mesh(cyl(0.5, 0.5, 0.3, 18), c('#fbf8f4'), 0, 0.55, 0)); { const t = mesh(sph(0.5, 14, 10), c('#fbf8f4'), 0, 0.88, 0); t.scale.y = 0.75; g.add(t); } break;
+    case 'paper': { const pp = mesh(new T3.ConeGeometry(0.5, 0.34, 4), c('#fbf8f4'), 0, 0.72, 0); pp.scale.z = 0.35; pp.rotation.y = Math.PI / 4; g.add(pp); g.add(mesh(box(0.7, 0.06, 0.2), c('#ff9fbf'), 0, 0.56, 0)); break; }
+    case 'visor': { const band = mesh(new T3.TorusGeometry(0.6, 0.05, 6, 22), c(color || '#6fbf6a'), 0, 0.34, 0); band.rotation.x = Math.PI / 2; g.add(band); const br = mesh(new T3.CylinderGeometry(0.62, 0.62, 0.04, 20, 1, false, -Math.PI / 2, Math.PI), c(color || '#6fbf6a'), 0, 0.33, 0.14); br.scale.z = 0.8; g.add(br); break; }
+    case 'hardhat': g.add(mesh(new T3.SphereGeometry(0.66, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2), c('#ffd23f'), 0, 0.3, 0)); g.add(mesh(cyl(0.78, 0.78, 0.05, 20), c('#ffd23f'), 0, 0.3, 0.06)); g.add(mesh(box(0.12, 0.08, 1.2), c('#f2c200'), 0, 0.9, 0)); break;
+    case 'goggles': { const band = mesh(new T3.TorusGeometry(0.63, 0.035, 5, 22), c('#2e2a36'), 0, 0.38, 0); band.rotation.x = Math.PI / 2 - 0.2; g.add(band); for (const s of [-1, 1]) { const l = mesh(cyl(0.12, 0.12, 0.08, 14), toon('#9fd3ff', { transparent: true, opacity: 0.8 }), s * 0.17, 0.45, 0.52, false); l.rotation.x = Math.PI / 2 - 0.4; g.add(l); } break; }
+    case 'headbow': { const bc = color || '#fbf8f4'; for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.2, 0.34, 10), c(bc), s * 0.2, 0.66, 0.08); w.rotation.z = s * Math.PI / 2; g.add(w); } g.add(mesh(sph(0.09, 8, 6), c(bc), 0, 0.66, 0.08)); { const lace = mesh(new T3.TorusGeometry(0.62, 0.03, 5, 20, Math.PI), c('#fbf8f4'), 0, 0.24, 0.02); lace.rotation.y = Math.PI / 2; lace.rotation.z = Math.PI / 2; g.add(lace); } break; }
+    case 'sidebow': { const bc = color || '#2e2a36'; for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.11, 0.2, 8), c(bc), 0.46 + s * 0.11, 0.46, 0.22); w.rotation.z = s * Math.PI / 2; g.add(w); } g.add(mesh(sph(0.05, 6, 5), c(bc), 0.46, 0.46, 0.22)); break; }
+    case 'clips': for (let i = 0; i < 3; i++) g.add(mesh(box(0.1, 0.04, 0.04), c(['#ff9fbf', '#9fd3ff', '#ffe98a'][i]), 0.24 + i * 0.07, 0.5 - i * 0.07, 0.4 - i * 0.04, false)); break;
+  }
+  return g;
+}
+function glassesMesh(p) {
+  const g = new T3.Group(), gap = 0.12 + p.body.eyeGap * 0.45, m = toon('#3a3040');
+  const surf = (x, y, r = 0.62) => Math.sqrt(Math.max(0.01, r * r - x * x - y * y));
+  for (const s of [-1, 1]) { const ring = mesh(new T3.TorusGeometry(0.105, 0.016, 5, 16), m, s * gap, 0.05, surf(s * gap, 0.05) + 0.05, false); ring.rotation.y = s * 0.15; g.add(ring); }
+  g.add(mesh(box(Math.max(0.04, gap * 2 - 0.2), 0.02, 0.02), m, 0, 0.08, surf(0, 0.08) + 0.03, false));
+  return g;
+}
+function faceLook(p, f, add) {
+  const FC = lookOf(p).face || faceFor(p, lookOf(p).fashion); if (!f.eyes || !f.head) return;
+  const gap = 0.12 + p.body.eyeGap * 0.45, surf = (x, y, r = 0.62) => Math.sqrt(Math.max(0.01, r * r - x * x - y * y));
+  const dark = toon('#241a34');
+  const shapes = { round: [1, 1, 0], sleepy: [1.1, 0.62, 0], sharp: [1.15, 0.85, 0.22], sparkle: [1.2, 1.12, 0], dot: [0.78, 0.72, 0] };
+  const [kx, ky, rot] = shapes[FC.eyes] || shapes.round;
+  f.eyes.forEach((e, i) => { const s = i ? 1 : -1; e.scale.x = kx; e.userData.ky = ky; e.rotation.z = -s * rot; });
+  if (FC.eyes === 'sparkle' && f.shines) for (const sh of f.shines) add(f.head, mesh(sph(0.014, 6, 5), toon('#ffffff', { emissive: new T3.Color('#ffffff') }), sh.position.x - 0.045, sh.position.y - 0.06, sh.position.z - 0.005, false));
+  if (FC.eyes === 'sleepy') for (const s of [-1, 1]) { const lid = mesh(new T3.TorusGeometry(0.07, 0.014, 5, 10, Math.PI), dark, s * gap, 0.1, surf(s * gap, 0.1) + 0.02, false); add(f.head, lid); }
+  if (FC.lashes) for (const s of [-1, 1]) for (let i = 0; i < 2; i++) { const l = mesh(new T3.ConeGeometry(0.014, 0.07, 4), dark, s * (gap + 0.05 + i * 0.028), 0.15 - i * 0.025, surf(s * (gap + 0.06), 0.14) + 0.02, false); l.rotation.z = -s * (0.6 + i * 0.35); add(f.head, l); }
+  if (FC.liner) for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.02, 0.1, 4), dark, s * (gap + 0.085), 0.09, surf(s * (gap + 0.085), 0.09) + 0.015, false); w.rotation.z = -s * 1.15; add(f.head, w); }
+  if (FC.underEye) for (const s of [-1, 1]) { const u = mesh(new T3.CircleGeometry(0.075, 12), new T3.MeshBasicMaterial({ color: 0xff6f93, transparent: true, opacity: 0.6 }), s * gap, -0.06, surf(s * gap, -0.06) + 0.012, false); u.scale.set(1.35, 0.55, 1); u.rotation.y = s * 0.2; add(f.head, u); }
+  if (FC.freckles) for (const s of [-1, 1]) for (const [dx, dy] of [[0.1, -0.05], [0.16, -0.02], [0.13, -0.1]]) add(f.head, mesh(sph(0.012, 5, 4), toon('#b0704a'), s * (gap + dx), dy, surf(s * (gap + dx), dy) + 0.004, false));
+  f.head.traverse((c) => { if (c.geometry?.type === 'CircleGeometry' && c.material?.color?.getHex() === 0xff8fb0) c.material.opacity = FC.blush; });
+  if (FC.lips) { const lm = toon(FC.lips); for (const m of [f.mouth, f.mouthFrown, f.mouthO]) if (m) m.material = lm; }
+  f.mouth.userData.rest = FC.mouth === 'flat' ? { sx: 1.1, sy: 0.25 } : FC.mouth === 'smirk' ? { rot: 0.35, x: 0.03 } : null;
+  if (FC.mouth === 'cat') { const cm = new T3.Group(); for (const s of [-1, 1]) { const a = mesh(new T3.TorusGeometry(0.035, 0.014, 5, 10, Math.PI), f.mouth.material, s * 0.035, -0.12, surf(s * 0.035, -0.12) + 0.01, false); a.rotation.z = Math.PI; cm.add(a); } add(f.head, cm); f.mouthCat = cm; } else f.mouthCat = null;
+  if (f.brows) f.brows.forEach((b) => { b.userData.base = FC.brow; b.scale.y = FC.browThick; });
+}
+// rebuild a resident's clothes on their live 3D model
+function restyleLook(p) {
+  const m = typeof meshes !== 'undefined' && meshes.get(p.id); if (!m) return;
+  for (const o of m.lookParts || []) { o.parent?.remove(o); o.traverse((c) => c.geometry?.dispose()); }
+  m.lookParts = [];
+  if (!cuteOn()) return;
+  dressLook(p, m); m.lookKey = lookKey(p);
+  if (typeof interior !== 'undefined' && interior) interior.dirty = true;
+}
+const lookKey = (p) => `${p.look?.fashion}|${inUniform(p) ? p.job : ''}|${lawOutfit(p) || ''}|${typeof onProbation === 'function' && onProbation(p) ? 'P' : ''}|${p.outfit.shirt}|${p.outfit.hat ? p.outfit.hat.id : ''}`;
+function lookFrame(p, m) { if (m.lookParts && m.lookKey !== lookKey(p)) restyleLook(p); }
+
+// friends rub off on each other: now and then someone starts dressing like a close friend
+function styleDrift(p) {
+  if (isRealish(p) || p.grow < 1 || rand() > 0.012) return;
+  const friends = Object.entries(p.feelings).filter(([id, f]) => f.score >= 6 && person(id)?.look).map(([id]) => person(id));
+  const fr = friends.find((q) => q.look.fashion !== p.look?.fashion && (p.grow < 1 ? KID_FASHION.includes(q.look.fashion) : true));
+  if (!fr) return;
+  setFashion(p, fr.look.fashion);
+  remember(p, `I started dressing more like ${fr.name}. ${FASHION[fr.look.fashion].name.replace(/ \(.*\)/, '')} suits me.`, 2, 'style', fr.name);
+  diary(`👗 <b>${esc(p.name)}</b> started dressing ${esc(FASHION[fr.look.fashion].name.replace(/ \(.*\)/, '').toLowerCase())}, like <b>${esc(fr.name)}</b>.`);
+}
+function fashionEditorHtml(p) {
+  const L = lookOf(p);
+  return `<details class="note"><summary>👗 ${esc(p.name)}'s style: ${esc(FASHION[L.fashion].name)} · ${esc(vibeWords(p).join(', '))}</summary>
+    <div class="chips" style="margin-top:6px">${FASHION_ORDER.filter((k) => p.grow >= 1 || KID_FASHION.includes(k)).map((k) => `<button class="btn" type="button" data-fashion="${p.id}" data-fstyle="${k}" aria-pressed="${L.fashion === k}" style="padding:3px 10px;font-size:12px">${esc(FASHION[k].name)}</button>`).join('')}</div></details>`;
+}
+function setFashionCmd(pid, fashion) {
+  const p = person(pid); if (!p || !FASHION[fashion]) return '';
+  if (p.grow < 1 && !KID_FASHION.includes(fashion)) return '';
+  setFashion(p, fashion);
+  if (!p.today.some((m) => m.tag === 'restyle')) { remember(p, `The Creator changed my style to ${FASHION[fashion].name.replace(/ \(.*\)/, '').toLowerCase()}.`, 2, 'restyle'); if (!p.inside) bubble(p, pick(['Wait, I love this.', 'Is this me now?', 'Okay, new me!']), 2.6); }
+  markDirty(); return '';
+}
+function fashionBoot() {
+  W.added = W.added || {};
+  for (const p of W.people) { personaOf(p); lookOf(p); }
+  if (W.added.fashion1) return; W.added.fashion1 = true;
+  if (typeof logUpdate === 'function') logUpdate('build', 'Everyone has their own style now. Some residents are goth or emo, some are jirai kei, gyaru or lolita, some are preppy, sporty or cottagecore, and a few dress like somebody\'s mom or dad. Their faces fit who they are too: sleepy eyes, sharp eyes, sparkly eyes, lashes, eyeliner, freckles. They change into uniforms for work, notice each other\'s outfits, and sometimes start dressing like their best friends. You can change anyone\'s style from their card.', 'styles, faces and uniforms');
+}
 // ============================================================
 // SHOW & TELL: "look at this!" on phones and laptops, and book browsing
 // ============================================================
@@ -9498,17 +9876,17 @@ function crimeState() {
   return W.crime;
 }
 const isRealish = (p) => !!(p && ((typeof isMili === 'function' && isMili(p)) || p.lovesMili || p.custom || p.isClaude));
-const jailed = (p) => !!(p && p.jail && W.day < p.jail.until);
+const jailed = (p) => !!(p && p.jail && (p.jail.untilReal ? Date.now() < p.jail.untilReal : W.day < p.jail.until));
 const jailedPeople = () => W.people.filter(jailed);
 const adult = (p) => p && p.grow >= 1 && !p.away && !p.visitor;
 const crimeAble = (p) => adult(p) && !jailed(p) && !isRealish(p);
 const victimAble = (p, violent) => adult(p) && !jailed(p) && (!violent || !isRealish(p));
 const openCrimes = () => crimeState().list.filter((C) => ['open', 'charged'].includes(C.status));
 const crimeById = (id) => crimeState().list.find((C) => C.id === id);
-const SHOE_NAMES = { '#ff6f5e': 'red', '#3d4f86': 'navy', '#fffaf2': 'white', '#ffb347': 'orange', '#8a84a8': 'gray', '#5a3a2e': 'brown', '#ff9fbf': 'pink', '#6fbf6a': 'green' };
+const SHOE_NAMES = { '#2e2a36': 'black', '#ff6f5e': 'red', '#3d4f86': 'navy', '#fffaf2': 'white', '#ffb347': 'orange', '#8a84a8': 'gray', '#5a3a2e': 'brown', '#ff9fbf': 'pink', '#6fbf6a': 'green' };
 function traitsOf(p) {
   const h = typeof hairOf === 'function' ? hairOf(p) : { color: 'cocoa', shoe: '#fffaf2' };
-  return { shirt: p.outfit?.shirt || 'cream', hair: h.color, shoe: SHOE_NAMES[h.shoe] || 'white', build: p.body.size >= 1.07 ? 'tall' : p.body.size <= 0.95 ? 'small' : 'medium', ears: p.body.ears || 'none', job: p.job || null, laptop: hasLaptop(p) };
+  return { shirt: typeof visibleTop === 'function' ? visibleTop(p) : p.outfit?.shirt || 'cream', hair: h.color, shoe: SHOE_NAMES[h.shoe] || 'white', build: p.body.size >= 1.07 ? 'tall' : p.body.size <= 0.95 ? 'small' : 'medium', ears: p.body.ears || 'none', job: p.job || null, laptop: hasLaptop(p) };
 }
 const TRAIT_WORD = {
   shirt: (v) => `${v}-colored`, hair: (v) => `${v} hair`, shoe: (v) => `${v} shoes`, build: (v) => (v === 'tall' ? 'someone tall' : v === 'small' ? 'someone small' : 'someone of medium height'),
@@ -9618,7 +9996,8 @@ function makeClues(C) {
   if (C.planted) add({ kind: 'plant', icon: '🔓', text: `Fresh scratches on ${h1.name}'s door lock. Somebody broke IN to plant evidence.`, pid: h1.id, genuine: true, clears: true });
   // order: a physical clue first, then the rest, the alibi near the end
   const first = clues.slice(0, 2), mid = clues.slice(2).filter((c) => !['alibi', 'plant'].includes(c.kind)).sort(() => rand() - 0.5), last = clues.filter((c) => ['alibi', 'plant'].includes(c.kind));
-  return first.concat(mid, last);
+  const all = first.concat(mid, last);
+  return typeof withDebunks === 'function' ? withDebunks(C, all) : all;
 }
 const ALIBIS = {
   home: (p) => [`I was home in room ${p.room + 1} all night. Asleep.`, `The light in room ${p.room + 1} was off all night, and ${p.name}'s neighbor knocked at midnight. Nobody answered. ${p.name} was not home.`],
@@ -9709,6 +10088,7 @@ function crimeDiscover(C) {
 function revealClue(C, by, quiet) {
   const c = C.clues.find((x) => !x.found); if (!c) return null;
   c.found = true; c.day = W.day; c.by = by ? by.id : null;
+  if (c.debunks) { const t = C.clues.find((x) => x.id === c.debunks); if (t) t.ruledOut = true; }
   if (!quiet) diary(`🔎 ${by ? `<b>${esc(by.name)}</b> found a clue` : 'New clue'} in the ${esc(CRIME_TYPES[C.type].label.toLowerCase())} case: ${esc(c.text)}`);
   if (C.status === 'closed' && C.wrong && c.genuine && c.pid === C.culprit) reopenWrong(C);
   markDirty(); return c;
@@ -9717,14 +10097,14 @@ function revealClue(C, by, quiet) {
 function evidenceAgainst(C, pid) {
   let s = 0; const T = C.traits[pid]; if (!T) return 0;
   for (const c of C.clues) {
-    if (!c.found) continue;
+    if (!c.found || c.ruledOut || c.kind === 'debunk') continue;
     if (c.clears && c.pid === pid) s -= 2.5;
     else if (c.pid) s += c.pid === pid ? (c.strong ? 2.2 : c.soft ? 0.5 : 1.4) : 0;
     else if (c.attr) s += T[c.attr] === c.val ? 1 : -0.4;
   }
   return s;
 }
-const fitsClue = (C, c) => C.suspects.filter((pid) => (c.pid ? c.pid === pid && !c.clears : c.attr && C.traits[pid]?.[c.attr] === c.val));
+const fitsClue = (C, c) => (c.ruledOut || c.kind === 'debunk' ? [] : C.suspects).filter((pid) => (c.pid ? c.pid === pid && !c.clears : c.attr && C.traits[pid]?.[c.attr] === c.val));
 function detectiveOf() {
   const S = crimeState();
   let d = S.detective && person(S.detective);
@@ -9740,7 +10120,7 @@ function crimeNight() {
   const yr = Math.floor((W.day - 1) / YEAR);
   if (!S.murderYear[yr]) S.murderYear[yr] = { day: yr * YEAR + 9 + Math.floor(rand() * 14), done: false };
   const MY = S.murderYear[yr];
-  if (!MY.done && W.day >= MY.day && W.people.filter(crimeAble).length >= 6 && !openCrimes().some((C) => C.type === 'murder')) { if (commitMurder()) MY.done = true; }
+  if (murderDue(S, MY) && W.people.filter(crimeAble).length >= 6 && !openCrimes().some((C) => C.type === 'murder')) { if (commitMurder()) murderCommitted(S, MY); }
   const ppl = W.people.filter(adult).length; if (ppl < 5) return;
   if (W.day - S.lastSerious >= 5 && rand() < 0.16) {
     const types = Object.keys(CRIME_TYPES).filter((k) => CRIME_TYPES[k].tier === 2);
@@ -9755,11 +10135,13 @@ function crimeMorning() {
   const S = crimeState();
   for (const C of S.list) if (C.pending) { C.pending = false; if (C.type === 'murder') murderMorning(C); else crimeDiscover(C); }
   // the detective works every open case
-  const det = detectiveOf();
+  const det0 = detectiveOf();
   for (const C of openCrimes()) {
     if (C.status !== 'open' || C.discovered === W.day) continue;
+    const det = caseDetective(C, det0);
     if (det && det.id === C.culprit) { if (rand() < 0.35) { const c = revealClue(C, null); if (c) remember(det, 'Someone else found a clue in my own case. I have to be careful.', 3, 'secretCrime'); } }
     else if (det) { const c = revealClue(C, det); if (c) remember(det, `Found a clue in the ${CRIME_TYPES[C.type].label.toLowerCase()} case: ${c.text}`, 2, 'clue'); }
+    maybeAutoBriefing(C);
     const age = W.day - (C.discovered || C.day), found = C.clues.filter((c) => c.found).length;
     if (C.tier === 0) { if (age >= 4) admirerReveal(C, C.culprit, true); continue; }
     if (C.tier === 1 && age >= 2) { chargeCrime(C, topSuspect(C), det, false); continue; }
@@ -9768,7 +10150,8 @@ function crimeMorning() {
   // wrongful convictions have a way of coming out
   for (const C of S.list) if (C.status === 'closed' && C.wrong && !C.reopened && rand() < 0.12) { const g = person(C.culprit); if (g && !jailed(g)) { remember(g, `I can't sleep. ${person(C.convicted)?.name || 'Someone'} is paying for what I did.`, 3, 'guilt'); if (rand() < 0.5) confessCut(C); else { C.clues.push({ id: 'cx', found: false, kind: 'new', icon: '🆕', text: C.alibiBreak, pid: C.culprit, genuine: true, strong: true }); revealClue(C, det); } } }
   // releases
-  for (const p of W.people) if (p.jail && W.day >= p.jail.until) releaseFromJail(p, 'served');
+  for (const p of W.people) if (p.jail && !jailed(p)) releaseFromJail(p, 'served');
+  sentenceMorning();
   // funerals
   for (const d of S.deceased) if (!d.funeral && W.day >= d.died + 1) { d.funeral = true; funeralCut(d); }
   crimeProps();
@@ -9795,6 +10178,7 @@ function commitMurder() {
   C.pending = true;
   // the victim is gone from tonight on
   killResident(V, C);
+  { const S = crimeState(); S.lastMurderAt = Date.now(); S.nextMurderAt = Date.now() + YEAR_MS * (0.85 + rand() * 0.3); }
   return true;
 }
 function killResident(V, C) {
@@ -9873,13 +10257,14 @@ function crimeTrialNow(C) {
   if (typeof offlineSim !== 'undefined' && offlineSim) { go(crimeLines(C, T)); return; }
   Promise.race([aiCrimeLines(C, T), sleep(24000).then(() => null)]).then((ai) => { C.status = 'charged'; go(ai || crimeLines(C, T)); }).catch(() => { C.status = 'charged'; go(crimeLines(C, T)); });
 }
-function crimeLines(C, T) {
+function crimeLines(C, T, fl = {}) {
   const A = person(T.def), K = CRIME_TYPES[C.type], guilty = C.culprit === T.def;
   const found = C.clues.filter((c) => c.found), against = found.filter((c) => fitsClue(C, c).includes(T.def) && !c.clears), other = found.filter((c) => !fitsClue(C, c).includes(T.def) || c.clears);
   const pr = T.pros, co = T.counsel || T.def, w = T.witness && person(T.witness) ? T.witness : null;
   const L = [jline(`Order! Hoo. The town versus ${A.name}, on a charge of ${K.label.toLowerCase()}.`, 'gavel')];
-  L.push(pline(pr, pick([`Your honor, ${C.headline} The evidence points to one person, and they are sitting right there.`, `On day ${C.day}, ${C.headline.charAt(0).toLowerCase() + C.headline.slice(1)} I will show the court that ${A.name} did it.`])));
-  L.push(pline(co, pick([`My client didn't do this. This whole case is gossip wearing a fancy hat.`, `${A.name} is innocent, and the prosecution knows its evidence is thin.`, `The real culprit is still out there, laughing at all of us.`])));
+  L.push(pline(pr, fl.prosOpen || pick([`Your honor, ${C.headline} The evidence points to one person, and they are sitting right there.`, `On day ${C.day}, ${C.headline.charAt(0).toLowerCase() + C.headline.slice(1)} I will show the court that ${A.name} did it.`])));
+  L.push(pline(co, fl.defOpen || pick([`My client didn't do this. This whole case is gossip wearing a fancy hat.`, `${A.name} is innocent, and the prosecution knows its evidence is thin.`, `The real culprit is still out there, laughing at all of us.`])));
+  if (fl.plea) L.push(pline(T.def, fl.plea, null, { emote: '💧' }));
   if (w) { L.push(jline('Prosecution, call your first witness.')); L.push(pline(pr, `The prosecution calls ${nameOf(w)} to the stand.`)); const wc = found.find((c) => c.witness === w); L.push(pline(w, wc ? wc.text.replace(`${nameOf(w)} saw`, 'I saw') : C.victim && w === C.victim ? `I just want the truth. It happened to ME. ${C.headline}` : w === C.finder ? `I was the one who found them. I will never forget it.` : (person(w)?.feelings[C.victim]?.score || 0) >= 3 ? `${C.victimName} was my friend. Whoever did this took them from all of us.` : pick(['I saw them arguing a few days before. Loud.', 'Everyone knew there was bad blood.', 'I only know what everyone knows. It was awful.']))); L.push(pline(co, pick(['It was the middle of the night. How can you be so sure of what you saw?', 'Did you actually see a face? Yes or no.', 'Are you sure you are not just repeating gossip?']))); L.push(pline(pr, pick(['Objection! Badgering the witness!', 'Objection! The witness already answered!']), 'objection')); L.push(jline(rand() < 0.5 ? 'Sustained. Hoo. Move along.' : 'Overruled. The witness will answer.')); L.push(pline(w, pick(['I know what I saw.', '…I think so. It was dark.', 'Yes. I am sure.']))); }
   against.slice(0, 3).forEach((c, i) => { L.push(pline(pr, `The prosecution submits Exhibit ${'ABC'[i]}: ${c.text}`, i === 0 ? 'takethat' : null)); L.push({ who: 'crowd', text: pick(['Ooooh…', '*gasp*', 'No way…']), fx: 'gasp' }); });
   if (other.length) { const c = pick(other), fitsO = fitsClue(C, c).filter((pid) => pid !== T.def); L.push(pline(co, `Objection! ${c.text} ${fitsO.length ? `That fits ${fitsO.map(nameOf).join(' and ')}, not my client!` : 'That points away from my client!'}`, 'objection')); L.push({ who: 'crowd', text: pick(['*murmuring*', 'Wait, what?', 'Ooh, plot twist.']), fx: 'gasp' }); L.push(jline(pick(['Order! Order! Hoo!', 'The court will allow it.']), 'order')); }
@@ -9892,26 +10277,30 @@ function crimeLines(C, T) {
     if (guilty && rand() < (C.tier >= 3 ? 0.55 : 0.4)) { L.push(pline(T.def, pick(['I…', 'That is not…', 'Stop. Stop looking at me like that.']), null, { emote: '💧' })); L.push(pline(T.def, `…FINE! Yes! I did it! I ${C.why}. Are you happy now?!`, 'shock', { emote: '💢' })); L.push({ who: 'crowd', text: '*GASP*', fx: 'gasp' }); C.confessed = true; }
     else L.push(pline(T.def, guilty ? pick(['That… that proves nothing.', 'You are twisting everything.']) : pick(['I have no idea why that is! I swear!', 'That is not how it happened!']), null, { emote: '💧' }));
   } else L.push(pline(pr, pick(['A likely story.', 'And nobody can confirm that. Convenient.'])));
-  L.push(pline(co, pick([`Everything you heard today is a guess. You can't lock someone up for a guess.`, `If you're not sure, you have to let ${A.name} go. That is the rule.`])));
-  L.push(pline(pr, pick([`The clues all point the same way. ${A.name} did this.`, `Look at the evidence, not the tears.`])));
+  L.push(pline(co, fl.defClose || pick([`Everything you heard today is a guess. You can't lock someone up for a guess.`, `If you're not sure, you have to let ${A.name} go. That is the rule.`])));
+  L.push(pline(pr, fl.prosClose || pick([`The clues all point the same way. ${A.name} did this.`, `Look at the evidence, not the tears.`])));
   return L;
 }
 async function aiCrimeLines(C, T) {
   if (!aiReady() || aiBusy >= 3) return null;
   const A = person(T.def), K = CRIME_TYPES[C.type]; if (!A) return null;
-  const cast = [T.pros, T.counsel, T.def, T.witness].map(person).filter(Boolean);
-  const found = C.clues.filter((c) => c.found);
+  const allowed = [T.pros, T.counsel, T.def, T.witness, C.victim, ...C.suspects].filter(Boolean);
+  const guilty = C.culprit === A.id;
   try {
-    const r = await llm(`A courtroom scene in Glimmer Hall on ${ISL.name}, a tiny island town of cute villagers who are real, flawed people. Tone: a dramatic movie trial, tense, with a few funny beats. The judge is Judge Hoot, a fussy old owl who says "hoo".
-THE CHARGE: ${A.name} is accused of ${K.label.toLowerCase()}. ${C.headline}${C.type === 'murder' ? ' Keep it non-graphic: no gore, no weapons detail.' : ''}
-PROSECUTOR: ${person(T.pros)?.name}. DEFENSE: ${T.counsel ? person(T.counsel)?.name : `${A.name}, representing themself`}. WITNESS: ${person(T.witness)?.name || 'none'}.
-THE DEFENDANT: ${sceneProfile(A, { members: [] })}. Their alibi: "${C.alibis[A.id]}". ${C.culprit === A.id ? `SECRET THE SCRIPT KNOWS: ${A.name} really did it (${A.name} ${C.why}). They lie and squirm, and may crack.` : `SECRET THE SCRIPT KNOWS: ${A.name} is innocent. They are scared and angry.`}
-EVIDENCE FOUND SO FAR (use these exact facts, do not invent new evidence):
-${found.map((c, i) => `${i + 1}. ${c.text}`).join('\n')}
-OTHER SUSPECTS: ${C.suspects.filter((id) => id !== A.id).map(nameOf).join(', ') || 'none'}
-Write 18 to 26 lines of the trial, BEFORE the verdict: openings, the witness on the stand, cross-examination, at least three objections ("Objection! …" with a legal-sounding reason) that Judge Hoot sustains or overrules, the prosecution presenting evidence ("Take that!" once), the defense pointing at another suspect, the defendant testifying, one "Hold it!" moment on a contradiction, gallery gasps, and closings. Keep every line under 26 words. Stop before any verdict.
-Reply with only JSON: {"lines":[{"who":"name, or JUDGE, or GALLERY","say":"...","fx":"objection, holdit, takethat, gasp, gavel, shock or none"}]}`, { model: badModels.has(brainCfg.judge) ? null : brainCfg.judge, max: 1600, temperature: 0.9 });
-    return aiToLines(r?.lines, cast);
+    const r = await llm(`A courtroom scene in Glimmer Hall on ${ISL.name}, a tiny island town of cute villagers who are real, flawed people. ${A.name} is on trial for ${K.label.toLowerCase()}.${C.type === 'murder' ? ' Keep it non-graphic.' : ''}
+PROSECUTOR: ${person(T.pros)?.name}. DEFENSE: ${T.counsel ? person(T.counsel)?.name : `${A.name}, representing themself`}.
+THE DEFENDANT: ${sceneProfile(A, { members: [] })}. ${guilty ? `(Secret: ${A.name} did it. They are nervous and defensive.)` : `(Secret: ${A.name} is innocent. They are scared and angry.)`}
+The game shows every piece of evidence itself. Your job is only the people: what they feel and how they argue. So you must NOT mention any evidence, clue, time, date, place, color, clothing, object, or where anyone was. Do not invent facts of any kind. The only names you may use: ${allowed.map(nameOf).join(', ')}.
+Write five short lines (1 or 2 sentences each):
+prosOpen: the prosecutor's opening, about justice and the town.
+defOpen: the defense's opening, about doubt and fairness.
+plea: the defendant speaking for themself, true to their personality.
+defClose: the defense's closing.
+prosClose: the prosecutor's closing.
+Reply with only JSON: {"prosOpen":"...","defOpen":"...","plea":"...","defClose":"...","prosClose":"..."}`, { model: badModels.has(brainCfg.judge) ? null : brainCfg.judge, max: 500, temperature: 0.7 });
+    const fl = {};
+    for (const k of ['prosOpen', 'defOpen', 'plea', 'defClose', 'prosClose']) { const t = String(r?.[k] || '').replace(/\s+/g, ' ').trim().slice(0, 220); if (t && factSafe(t, allowed)) fl[k] = t; }
+    return crimeLines(C, T, fl);
   } catch (e) { return null; }
 }
 function crimeVerdict(C, T, k, silent) {
@@ -9927,20 +10316,16 @@ function crimeVerdict(C, T, k, silent) {
   else L.push(jline('The Creator has decided. The defendant is…'));
   L.push({ who: 'narrator', text: '', fx: guilty ? 'guilty' : 'innocent', hold: 2 });
   if (guilty) {
-    const days = K.days, fine = Math.min(A.coins, (C.loss || 0) + K.fine);
+    const fine = Math.min(A.coins, (C.loss || 0) + K.fine);
     A.coins -= fine; if (C.victim && person(C.victim)) person(C.victim).coins += Math.min(fine, C.loss || fine); else if (C.victimName === 'the Creator' || C.victimName === 'the town') W.creator.coins = Math.min(999, W.creator.coins + Math.min(fine, C.loss || 0));
     for (const id of C.marks || []) { const q = person(id); if (q) q.coins += Math.floor(fine / (C.marks.length || 1)); }
     if (C.stolen && C.victim && person(C.victim)) person(C.victim).decor.push(C.stolen);
-    if (days > 0) { A.jail = { until: W.day + days, crime: C.id, label: K.label }; }
-    else if (typeof autoSpot === 'function') { const sp = autoSpot(); if (sp) setTask(A, 'service', 'plaza', [sp[0] + 1.2, sp[1]], { x: sp[0], z: sp[1] }); }
-    C.sentence = days > 0 ? `${days} days in the cell under Glimmer Hall${fine ? ` and ${fine} coins in restitution` : ''}` : `${fine} coins in restitution and community service`;
-    L.push(jline(`${A.name}, the court sentences you to ${C.sentence}. Hoo.`, 'gavel'));
-    L.push(pline(A.id, C.culprit === A.id ? pick(['…I deserve this.', 'This is not over.', 'I just wanted…', '…']) : pick(['I DIDN\'T DO IT! You are making a mistake!', 'Somebody help me. Please. I didn\'t do this.', 'You got the wrong person!']), null, { emote: C.culprit === A.id ? '💧' : '💢' }));
+    C.restitution = fine;
     C.status = 'closed'; C.convicted = A.id; C.wrong = C.culprit !== A.id;
-    for (const q of W.people) if (q !== A && adult(q)) { remember(q, `${A.name} was found guilty of ${K.label.toLowerCase()} and got ${C.sentence}.`, 2, 'verdict', A.name); if (fscore(q, A) > 2 && rand() < 0.5) feel(q, A, -1.5, true); }
-    remember(A, `I was found guilty of ${K.label.toLowerCase()}. ${C.wrong ? 'I DIDN\'T DO IT.' : 'It is over.'}`, 4, 'convicted');
     if (C.wrong) { const g = person(C.culprit); if (g) remember(g, `${A.name} got convicted for what I did. I should feel relieved. I don't.`, 4, 'guilt'); }
-    if (days > 0) { A.task = { kind: 'jail', phase: 'do' }; }
+    const opts = sentenceOptions(C, A);
+    if (k === 'guilty' && !silent) { const Lc = jline(`Creator, what should happen to ${A.name}? Hoo.`); Lc.choice = { prompt: `Sentence for ${A.name}`, options: opts.map((o) => [o.key, o.label]), timeout: 30, fallback: opts[0].key, pick: (key) => applySentence(C, A, key) }; L.push(Lc); }
+    else L.push(...applySentence(C, A, opts[0].key));
   } else {
     L.push(jline(`${A.name} is free to go. Hoo. The case stays open.`, 'gavel'));
     L.push(pline(A.id, pick(['Thank you. Thank you.', 'I TOLD you!', 'Can I go home now?']), null, { emote: '✨' }));
@@ -9948,7 +10333,7 @@ function crimeVerdict(C, T, k, silent) {
     remember(A, `I was found not guilty of ${K.label.toLowerCase()}. Everyone still looks at me funny.`, 3, 'acquitted');
   }
   L.push(jline('Court is adjourned!', 'gavel'));
-  diary(`⚖ Verdict in <b>The Town v. ${esc(A.name)}</b> (${esc(K.label.toLowerCase())})${C.jury ? `, jury ${C.jury}` : C.byCreator ? ', ruled by the Creator' : ''}: <b>${guilty ? 'GUILTY' : 'NOT GUILTY'}</b>${guilty ? `. ${esc(C.sentence)}.` : '.'}`);
+  diary(`⚖ Verdict in <b>The Town v. ${esc(A.name)}</b> (${esc(K.label.toLowerCase())})${C.jury ? `, jury ${C.jury}` : C.byCreator ? ', ruled by the Creator' : ''}: <b>${guilty ? 'GUILTY' : 'NOT GUILTY'}</b>${guilty && C.sentence ? `. ${esc(C.sentence)}.` : '.'}`);
   notifyCreator?.('news', A, `Verdict: ${A.name} was found ${guilty ? 'GUILTY' : 'not guilty'} of ${K.label.toLowerCase()}.`, null, { key: 'verdict:' + C.id }).catch?.(() => {});
   markDirty();
   return silent ? [] : L;
@@ -9956,14 +10341,15 @@ function crimeVerdict(C, T, k, silent) {
 function releaseFromJail(p, why) {
   const C = p.jail && crimeById(p.jail.crime); p.jail = null;
   if (p.task?.kind === 'jail') { p.task = null; p.state = 'free'; p.busyUntil = 0; p.inside = false; const s = TOWN.hall.spot; p.x = s[0]; p.z = s[1] + 1.5; }
-  diary(`🔓 <b>${esc(p.name)}</b> ${why === 'pardon' ? 'was pardoned by the Creator' : why === 'exonerated' ? 'was set free. They were innocent all along' : 'finished their sentence'} and walked out of Glimmer Hall.`);
-  remember(p, why === 'pardon' ? 'The Creator pardoned me. I am free.' : why === 'exonerated' ? 'They finally found out it wasn\'t me. I lost days of my life for nothing.' : 'I served my time. I am out.', 3, 'released');
-  if (why !== 'served' || (C && C.type === 'murder')) releaseCut(p, why, C);
+  diary(`🔓 <b>${esc(p.name)}</b> ${why === 'pardon' ? 'was pardoned by the Creator' : why === 'exonerated' ? 'was set free. They were innocent all along' : why === 'parole' ? 'was released on parole' : 'finished their sentence'} and walked out of Glimmer Hall.`);
+  remember(p, why === 'parole' ? 'I got parole. I am out, on probation, with an ankle monitor.' : why === 'pardon' ? 'The Creator pardoned me. I am free.' : why === 'exonerated' ? 'They finally found out it wasn\'t me. I lost days of my life for nothing.' : 'I served my time. I am out.', 3, 'released');
+  if (why !== 'parole' && (why !== 'served' || (C && C.type === 'murder'))) releaseCut(p, why, C);
   markDirty();
 }
 function reopenWrong(C) {
   if (C.reopened) return; C.reopened = true;
   const inn = person(C.convicted); if (inn && jailed(inn)) releaseFromJail(inn, 'exonerated');
+  if (inn && typeof compensateWrong === 'function') compensateWrong(inn, C);
   C.status = 'open'; C.wrong = false; C.convicted = null; C.acquitted = [...(C.acquitted || []), inn?.id].filter(Boolean);
   diary(`🆕 New evidence in the ${esc(CRIME_TYPES[C.type].label.toLowerCase())} case. <b>${esc(inn?.name || 'The convicted resident')}</b> was innocent.`);
   const g = person(C.culprit); if (g && crimeAble(g)) setTimeout(() => chargeCrime(C, g.id, detectiveOf(), false), 1500);
@@ -10205,13 +10591,14 @@ function crimeContext(me, them) {
   for (const C of mine.slice(-2)) out.push(`YOUR DARKEST SECRET: on day ${C.day} you committed ${CRIME_TYPES[C.type].label.toLowerCase()} (${C.headline}) because you ${C.why}. Nobody knows. Never admit it unless you are cornered with proof. You are nervous about it, you deflect, and you might point suspicion at someone else.${C.wrong ? ` ${nameOf(C.convicted)} was convicted for it instead. It eats at you.` : ''}`);
   const sus = S.list.filter((C) => ['open', 'charged'].includes(C.status) && C.suspects.includes(me.id) && C.culprit !== me.id);
   for (const C of sus.slice(-1)) out.push(`People suspect you of the ${CRIME_TYPES[C.type].label.toLowerCase()} (${C.headline}). You did not do it, and it hurts.`);
-  if (jailed(me)) { const C = crimeById(me.jail.crime); out.push(`You are locked in the cell under Glimmer Hall for ${me.jail.until - W.day} more days, convicted of ${me.jail.label.toLowerCase()}.${C && C.culprit !== me.id ? ' You are innocent and furious about it.' : ''}`); }
+  if (jailed(me)) { const C = crimeById(me.jail.crime); out.push(`You are locked in the cell under Glimmer Hall (${jailLeftText(me)}), convicted of ${me.jail.label.toLowerCase()}.${C && C.culprit !== me.id ? ' You are innocent and furious about it.' : ''}`); }
   const grief = S.deceased.filter((d) => W.day - d.died <= 10 && (me.feelings[d.id]?.score || 0) >= 3);
   for (const d of grief) out.push(`Your friend ${d.name} died on day ${d.died}${d.cause === 'murder' ? ' (murdered)' : ''}. You are grieving.`);
   const open = openCrimes().filter((C) => C.discovered && C.tier >= 2);
   if (open.length) out.push(`ON THE ISLAND RIGHT NOW: ${open.slice(-2).map((C) => `${CRIME_TYPES[C.type].label} case, unsolved: ${C.headline}${C.status === 'charged' ? ` (${nameOf(C.accused)} is charged)` : ` Suspects people whisper about: ${C.suspects.map(nameOf).join(', ')}.`}`).join(' ')}`);
   if (them && jailed(them)) out.push(`${them.name} is in jail for ${them.jail.label.toLowerCase()}.`);
   if (them && S.list.some((C) => C.convicted === them.id && C.verdictDay && W.day - C.verdictDay < 40)) out.push(`${them.name} was convicted of a crime recently.`);
+  if (open.length) out.push('If the case comes up, only repeat what is written here. You do not know the clues, times or details, so anything more you say is a guess, and you should say it is a guess.');
   return out.length ? `\nCRIME ON THE ISLAND: ${out.join(' ')}` : '';
 }
 // quick gossip bubbles when there is an open case
@@ -10269,8 +10656,8 @@ function suspectRow(C, pid) {
   const dead = !p && crimeState().deceased.some((d) => d.id === pid);
   return `<div class="note" style="display:flex;flex-direction:column;gap:4px">
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;flex-wrap:wrap"><b>${esc(p?.name || nameOf(pid))}${p && jailed(p) ? ' 🔒' : ''}${dead ? ' 🕯' : ''}</b>
-    <span class="hint" style="font-size:12px">${swatch(COLORS[T.shirt] || '#ccc', T.shirt)}${esc(T.shirt)} top · ${swatch(HAIR_COLORS[T.hair] || '#555', T.hair)}${esc(T.hair)} hair · ${swatch(SHOE_HEX[T.shoe] || '#fff', T.shoe)}${esc(T.shoe)} shoes · ${esc(T.build)} · ${esc(T.ears === 'none' ? 'no ears' : T.ears + ' ears')}</span></div>
-    <div class="hint" style="font-size:12px">${esc(C.motives[pid] || '')}</div>
+    <span class="hint" style="font-size:12px">that night: ${swatch(COLORS[T.shirt] || '#ccc', T.shirt)}${esc(T.shirt)} top · ${swatch(HAIR_COLORS[T.hair] || '#555', T.hair)}${esc(T.hair)} hair · ${swatch(SHOE_HEX[T.shoe] || '#fff', T.shoe)}${esc(T.shoe)} shoes · ${esc(T.build)} · ${esc(T.ears === 'none' ? 'no ears' : T.ears + ' ears')}</span></div>
+    <div class="hint" style="font-size:12px">Evidence against them: <span style="color:var(--gold);letter-spacing:1px">${evidenceDots(C, pid)}</span> · ${esc(C.motives[pid] || '')}</div>
     ${q ? `<div style="font-size:13px">🗣 "${esc(q.alibi)}"${q.said ? ` <span class="hint">…${esc(q.said)}</span>` : ''}</div>` : ''}
     ${C.status === 'open' && p ? `<div class="btns"><button class="btn" type="button" data-crime="question" data-cid="${C.id}" data-pid="${pid}" ${canQ ? '' : 'disabled'} style="padding:3px 10px;font-size:12px">🗣 Question</button><button class="btn gold" type="button" data-crime="accuse" data-cid="${C.id}" data-pid="${pid}" style="padding:3px 10px;font-size:12px">${C.tier === 0 ? '💌 Is it them?' : '⚖ Accuse'}</button></div>` : ''}
   </div>`;
@@ -10279,11 +10666,11 @@ function crimeCard(C) {
   const K = CRIME_TYPES[C.type], found = C.clues.filter((c) => c.found), left = C.clues.length - found.length;
   const status = C.status === 'charged' || C.status === 'trial' ? `<span class="chip gold">${esc(nameOf(C.accused))} charged</span>` : C.status === 'cold' ? '<span class="chip">cold case</span>' : C.status === 'closed' ? `<span class="chip">${C.verdict === 'guilty' ? `${esc(nameOf(C.convicted))} convicted` : 'closed'}</span>` : '<span class="chip gold">open</span>';
   return `<div class="creator"><h3>${K.icon} ${esc(K.label)}${C.victimName ? ` · ${esc(C.victimName)}` : ''}</h3>
-    <div class="chips"><span class="chip">case #${C.n}</span><span class="chip">day ${C.day}</span>${status}</div>
+    <div class="chips"><span class="chip">case #${C.n}</span><span class="chip">day ${C.day}</span>${status}${C.acting && person(C.acting) ? `<span class="chip">🔎 acting detective: ${esc(nameOf(C.acting))}</span>` : ''}</div>
     <p>${esc(C.headline)}</p>
     <p class="label" style="margin-top:6px">Clues (${found.length}${left ? `, ${left} still out there` : ', all found'})</p>
-    ${found.map((c) => { const f = fitsClue(C, c); return `<p class="note">${c.icon || '•'} ${esc(c.text)}${f.length && !c.clears ? ` <span class="hint">fits: ${f.map((id) => esc(nameOf(id))).join(', ')}</span>` : c.clears ? ` <span class="hint">clears ${esc(nameOf(c.pid))}</span>` : ''}</p>`; }).join('') || '<p class="hint">Nothing yet.</p>'}
-    ${C.status === 'open' ? `<div class="btns"><button class="btn" type="button" data-crime="search" data-cid="${C.id}" ${C.searchDay === W.day || !left ? 'disabled' : ''}>🔍 Search the scene${C.searchDay === W.day ? ' (tomorrow)' : ''}</button></div>` : ''}
+    ${found.map((c) => { const f = fitsClue(C, c), [lab, tone] = clueLabel(c); return `<p class="note"${c.ruledOut ? ' style="opacity:.55"' : ''}><span class="chip ${tone}" style="font-size:10px;padding:1px 6px;margin-right:4px">${lab}</span>${c.icon || '•'} <span${c.ruledOut ? ' style="text-decoration:line-through"' : ''}>${esc(c.text)}</span>${f.length && !c.clears ? ` <span class="hint">fits: ${f.map((id) => esc(nameOf(id))).join(', ')}</span>` : c.clears ? ` <span class="hint">clears ${esc(nameOf(c.pid))}</span>` : ''}</p>`; }).join('') || '<p class="hint">Nothing yet.</p>'}
+    ${C.status === 'open' ? `<div class="btns"><button class="btn" type="button" data-crime="search" data-cid="${C.id}" ${C.searchDay === W.day || !left ? 'disabled' : ''}>🔍 Search the scene${C.searchDay === W.day ? ' (tomorrow)' : ''}</button>${C.tier >= 1 ? `<button class="btn" type="button" data-crime="briefing" data-cid="${C.id}">🎬 Detective's briefing</button>` : ''}</div>` : ''}
     ${['charged', 'trial'].includes(C.status) && !trialsQueued.has(C.id) ? `<div class="btns"><button class="btn gold" type="button" data-crime="trialnow" data-cid="${C.id}">⚖ Hold the trial now</button></div>` : ''}
     <p class="label" style="margin-top:6px">Suspects</p>
     ${C.suspects.map((pid) => suspectRow(C, pid)).join('')}
@@ -10296,9 +10683,10 @@ function crimeBoardHtml() {
   const cell = jailedPeople(), mem = S.memorials;
   const opts = W.people.filter((p) => adult(p) && !jailed(p)).map((p) => `<option value="${p.id}" ${det && det.id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   return `<div class="creator"><h3>🔎 Investigations</h3><p>Crimes leave clues that match real residents: the color of their clothes, hair, shoes, how tall they are, their ears. The detective finds a clue every morning. You can search the scene once a day, question each suspect once a day, and accuse whoever you think did it. Every charge goes to trial.</p>
-    <div class="field"><label for="detSel">Island detective</label><select id="detSel">${opts}</select></div></div>
+    <div class="field"><label for="detSel">Island detective</label><select id="detSel">${opts}</select></div>
+    <div class="field"><label for="paceSel">Murders</label><select id="paceSel">${Object.entries(MURDER_PACES).map(([k, l]) => `<option value="${k}" ${(S.murderPace || 'real') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
     ${live.length ? live.map(crimeCard).join('') : '<p class="hint">No open cases. Suspiciously quiet.</p>'}
-    ${cell.length ? `<p class="label">🔒 The cell under Glimmer Hall</p>${cell.map((p) => `<div class="note" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><b>${esc(p.name)}</b>, ${esc(p.jail.label.toLowerCase())}, ${plural(p.jail.until - W.day, 'day')} left</span><span class="btns" style="margin:0"><button class="btn" type="button" data-crime="visit" style="padding:3px 10px;font-size:12px">Visit</button><button class="btn" type="button" data-crime="pardon" data-pid="${p.id}" style="padding:3px 10px;font-size:12px">Pardon</button></span></div>`).join('')}` : ''}
+    ${cell.length ? `<p class="label">🔒 The cell under Glimmer Hall</p>${cell.map((p) => `<div class="note" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><b>${esc(p.name)}</b>, ${esc(p.jail.label.toLowerCase())}, ${jailLeftText(p)}</span><span class="btns" style="margin:0"><button class="btn" type="button" data-crime="visit" style="padding:3px 10px;font-size:12px">Visit</button>${p.jail.nextHearing ? `<button class="btn" type="button" data-crime="parole" data-pid="${p.id}" style="padding:3px 10px;font-size:12px">Parole hearing</button>` : ''}<button class="btn" type="button" data-crime="pardon" data-pid="${p.id}" style="padding:3px 10px;font-size:12px">Pardon</button></span></div>`).join('')}` : ''}
     ${mem.length ? `<p class="label">🕯 Remembered</p>${mem.map((m) => `<p class="note">${esc(m.name)} <span class="hint">(day ${m.born} to day ${m.died})</span></p>`).join('')}` : ''}
     ${cutReplaysHtml()}`;
 }
@@ -10313,8 +10701,8 @@ async function questionSuspect(C, p) {
       const r = await llm(`You are ${p.name}, a villager in ${ISL.name}. ${String(p.selfNote || '').slice(0, 200)}
 The Creator (the island's god-like player) is questioning you about a ${CRIME_TYPES[C.type].label.toLowerCase()}: ${C.headline}
 Your alibi: "${q.alibi}". ${guilty ? `You DID do it (you ${C.why}). Lie. Stay calm but let a little nervousness slip.` : 'You did not do it. You are hurt that anyone suspects you.'}
-In one or two short sentences, answer the Creator in your own voice. Reply with only JSON: {"say":"..."}`, { max: 160, temperature: 0.9 });
-      if (r?.say) q.said = String(r.say).slice(0, 220);
+In one or two short sentences, answer the Creator in your own voice. Talk only about how you feel and what kind of person you are. Do not mention any time, place, color, clothing, object or evidence, and do not name anyone except ${[p.id, ...C.suspects.filter((id) => id !== p.id), C.victim].filter(Boolean).map(nameOf).join(', ')}. Never invent facts. Reply with only JSON: {"say":"..."}`, { max: 160, temperature: 0.9 });
+      if (r?.say && factSafe(r.say, [p.id, ...C.suspects, C.victim])) q.said = String(r.say).slice(0, 220);
     } catch (e) {}
   }
   markDirty(); if (activeTab === 'court') refreshPanel(true);
@@ -10328,6 +10716,9 @@ function crimeCmd(c) {
     case 'trialnow': { if (!C || !['charged', 'trial'].includes(C.status)) return ''; if (trialsQueued.has(C.id)) return 'The trial is already on its way.'; crimeTrialNow(C); return 'The court is gathering.'; }
     case 'detective': { if (!p) return ''; crimeState().detective = p.id; remember(p, 'The Creator made me the island\'s detective.', 3, 'detective'); diary(`🔎 The Creator made <b>${esc(p.name)}</b> the island's detective.`); return `${p.name} is the detective now.`; }
     case 'pardon': { if (!p || !jailed(p)) return ''; releaseFromJail(p, 'pardon'); for (const q of W.people) if (q !== p && rand() < 0.5) creatorShift(q, rand() < 0.5 ? 0.1 : -0.2); return `You pardoned ${p.name}.`; }
+    case 'parole': { if (!p || !jailed(p)) return ''; return paroleCut(p); }
+    case 'briefing': { if (!C) return ''; return briefingCut(C); }
+    case 'pace': { if (!MURDER_PACES[c.pace]) return ''; crimeState().murderPace = c.pace; markDirty(); return `Murders: ${MURDER_PACES[c.pace].toLowerCase()}.`; }
     case 'visit': { if (MODE === 'host') { $('#sheet').hidden = true; openInterior({ kind: 'hall' }); } return ''; }
   }
   return '';
@@ -10397,6 +10788,306 @@ function renderAlbum() {
   wrap.innerHTML = album.length ? `<p class="label">Photos</p><div class="album">${album.map((ph, i) => `<a href="${ph.src}" download="glimmer-day${ph.day}-${i}.jpg" title="${esc(ph.label || '')}"><img src="${ph.src}" alt="${esc(ph.label || `Photo from day ${ph.day}`)}"></a>`).join('')}</div><div class="btns"><button class="btn warn" type="button" data-clearalbum>Clear photos</button></div>` : '<p class="hint">Tap 📷 to take a photo of the town. They show up here.</p>';
 }
 
+// ============================================================
+// CASE CLARITY: murders on a real-world calendar, an acting detective
+// when the real one is grieving, misleading clues that get ruled out,
+// labels that say how much to trust each clue, and a briefing scene
+// ============================================================
+const YEAR_MS = 365 * 864e5;
+const MURDER_PACES = { real: 'About once a real year', game: 'Once a game year (every couple of hours)', never: 'Never' };
+function murderDue(S, MY) {
+  const pace = S.murderPace || 'real';
+  if (pace === 'never') return false;
+  if (pace === 'game') return !MY.done && W.day >= MY.day;
+  return S.nextMurderAt != null && Date.now() >= S.nextMurderAt;
+}
+function murderCommitted(S, MY) { MY.done = true; } // commitMurder itself sets the next real-world date
+const listNames = (a) => (a.length <= 1 ? a[0] || 'nobody' : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+
+// ---- who works the case ----
+function grievingFor(p, C) { return !!(p && C.victim && ((p.feelings[C.victim]?.score || 0) >= 3 || /grieving/.test(p.health?.low?.why || ''))); }
+function caseDetective(C, det) {
+  if (C.acting) { const a = person(C.acting); if (a && adult(a) && !jailed(a)) return a; }
+  if (!det || C.tier < 2 || !grievingFor(det, C)) return det;
+  const a = W.people.filter((p) => adult(p) && !jailed(p) && p.id !== det.id && p.id !== C.culprit && p.id !== C.victim && !C.suspects.includes(p.id) && !grievingFor(p, C))
+    .sort((x, y) => (personaOf(y).order + (y.body.openness ?? 0)) - (personaOf(x).order + (x.body.openness ?? 0)))[0];
+  if (!a) return det;
+  C.acting = a.id;
+  const label = CRIME_TYPES[C.type].label.toLowerCase();
+  remember(det, `I couldn't work the ${label} case. I was too close to ${C.victimName}. ${a.name} took it over.`, 3, 'grief', a.name);
+  remember(a, `I'm the acting detective on the ${label} case while ${det.name} grieves.`, 3, 'detective', det.name);
+  diary(`🔎 <b>${esc(det.name)}</b> is too shaken by ${esc(C.victimName || 'the victim')}'s death to work the case. <b>${esc(a.name)}</b> is filling in as acting detective.`);
+  markDirty();
+  return a;
+}
+
+// ---- misleading clues get a follow-up that rules them out ----
+const PHYS_NOUN = { shirt: 'thread', hair: 'hair', shoe: 'footprints', build: 'marks', ears: 'silhouette' };
+function debunkFor(C, c) {
+  if (c.genuine !== false || c.debunkedBy || c.clears) return null;
+  if (c.kind === 'witness') { const w = person(c.witness); return `${w ? w.name : 'The witness'} admits it was dark and they only saw them for a second. They aren't sure about the ${c.attr === 'hair' ? 'hair' : 'clothes'} anymore.`; }
+  if (c.attr) {
+    const owner = C.suspects.find((pid) => pid !== C.culprit && C.traits[pid]?.[c.attr] === c.val);
+    return owner ? `The ${PHYS_NOUN[c.attr]} turned out to be from ${nameOf(owner)}, who walked past earlier that day. It has nothing to do with what happened.` : `The ${PHYS_NOUN[c.attr]} turned out to be old. It was there before any of this happened.`;
+  }
+  if (c.kind === 'item' && C.planted) return null; // the broken lock already covers a planted item
+  return null;
+}
+function withDebunks(C, clues) {
+  const out = clues.slice();
+  for (const c of clues) {
+    const text = debunkFor(C, c); if (!text) continue;
+    const d = { id: 'd' + c.id, found: false, kind: 'debunk', icon: '✖', text, debunks: c.id, genuine: true };
+    c.debunkedBy = d.id;
+    const at = out.indexOf(c), firstOpen = out.findIndex((x) => !x.found);
+    const pos = Math.min(out.length, Math.max(at + 3, firstOpen < 0 ? out.length : firstOpen));
+    out.splice(pos, 0, d);
+  }
+  return out;
+}
+function clueLabel(c) {
+  if (c.ruledOut) return ['ruled out', 'bad'];
+  if (c.kind === 'debunk') return ['update', 'good'];
+  if (c.clears) return ['clears someone', 'good'];
+  if (c.kind === 'motive') return ['rumor', ''];
+  if (c.kind === 'witness') return ['witness, could be wrong', ''];
+  if (c.kind === 'alibi') return ['alibi broken', 'gold'];
+  return ['evidence', 'gold'];
+}
+function evidenceDots(C, pid) {
+  const e = Math.max(0, evidenceAgainst(C, pid));
+  const n = Math.min(5, Math.round(e));
+  return '●'.repeat(n) + '○'.repeat(5 - n);
+}
+
+// ---- the briefing: the detective walks you through the case ----
+function briefingCut(C, auto) {
+  const det = caseDetective(C, detectiveOf()); if (!det) return 'There is no detective to brief you.';
+  const K = CRIME_TYPES[C.type], found = C.clues.filter((c) => c.found);
+  const cast = castFrom([det.id, ...C.suspects.filter((id) => person(id) && !jailed(person(id)))], 5);
+  const L = [nline(`${det.name}${C.acting ? ', the acting detective,' : ''} walks you through the ${K.label.toLowerCase()} case${C.victimName ? `: what happened to ${C.victimName}` : ''}.`)];
+  if (!found.length) L.push(pline(det.id, "We don't have anything solid yet. Give me a day."));
+  for (const c of found) {
+    if (c.kind === 'debunk') continue;
+    L.push(pline(det.id, c.text, c.kind === 'alibi' ? 'takethat' : null));
+    if (c.ruledOut) { L.push(pline(det.id, pick(['Forget that one. It turned out to mean nothing.', "That one was a dead end. Cross it off."]))); continue; }
+    const fits = fitsClue(C, c).map(nameOf);
+    L.push(pline(det.id, c.clears ? `That clears ${nameOf(c.pid)}.` : c.kind === 'motive' ? pick(['That\'s just talk around town, though. A reason, not proof.', 'A reason to do it. Not proof they did.']) : c.kind === 'witness' ? (fits.length ? `A witness can be wrong, but it fits ${listNames(fits)}.` : 'Nobody on our list fits that. Strange.') : fits.length ? `That fits ${listNames(fits)}.` : "That doesn't fit anyone on our list."));
+  }
+  const ranked = C.suspects.map((id) => [id, evidenceAgainst(C, id)]).sort((a, b) => b[1] - a[1]);
+  const [top, second] = ranked;
+  if (found.length >= 2 && top && top[1] - (second?.[1] ?? 0) >= 1) L.push(pline(det.id, `Right now it points at ${nameOf(top[0])}. If I had to bet, that's who I'd look at.`, 'shock'));
+  else if (ranked.length) L.push(pline(det.id, `It could still be ${listNames(ranked.slice(0, 2).map((x) => nameOf(x[0])))}. I want more before anyone gets accused.`));
+  const left = C.clues.filter((c) => !c.found).length;
+  L.push(nline(left ? `${left} clue${left === 1 ? ' is' : 's are'} still out there. Searching the scene or questioning suspects can turn them up.` : 'Every clue has been found. It\'s time to accuse someone, or let the detective decide.'));
+  queueCut({ kind: 'briefing', crimeId: C.id, icon: '🔎', title: auto ? 'The Case So Far' : 'Case Briefing', sub: `${K.label}${C.victimName ? ` · ${C.victimName}` : ''}`, music: 'mystery', lines: L,
+    stage: (S) => townStage(S, [C.where.x, C.where.z], cast, C.where.key === 'pier' ? { r: 2.2, arc: 1.2 } : { r: 2.6 }) });
+  return `${det.name} is on the way.`;
+}
+// halfway through a serious case, the detective sums it up without being asked
+function maybeAutoBriefing(C) {
+  if (C.tier < 2 || C.autoBriefed || C.status !== 'open') return;
+  if (C.clues.filter((c) => c.found && c.kind !== 'debunk').length >= 3) { C.autoBriefed = true; briefingCut(C, true); }
+}
+
+function crimeClarityBoot() {
+  const S = crimeState();
+  S.murderPace = S.murderPace || 'real';
+  if (S.nextMurderAt == null) {
+    const had = S.list.some((C) => C.type === 'murder');
+    S.nextMurderAt = Date.now() + (had ? YEAR_MS : (30 + rand() * 300) * 864e5);
+  }
+  for (const C of S.list) {
+    if (C.v2 || !['open', 'charged', 'trial'].includes(C.status)) continue;
+    C.v2 = true;
+    C.clues = withDebunks(C, C.clues);
+    for (const c of C.clues) if (c.found && c.debunks) { const t = C.clues.find((x) => x.id === c.debunks); if (t) t.ruledOut = true; }
+  }
+  W.added = W.added || {}; if (W.added.caseClarity) return; W.added.caseClarity = true;
+  if (typeof logUpdate === 'function') logUpdate('build', 'Murders were happening once a game year, which is only a couple of hours in real life. Now there\'s about one murder per real year (you can change that in the Court tab). If the detective is too upset to work a case, someone else steps in as acting detective. Misleading clues now get a follow-up that rules them out, every clue says how far to trust it, and you can call the detective for a briefing that walks through the whole case.', 'clearer cases');
+}
+// ============================================================
+// SENTENCES: what happens to people who are convicted. The Creator
+// picks from a few fitting options (or the court's default is used):
+// restitution, community service, probation with an ankle monitor,
+// stay-away orders, anger management, the cell, and for murder a real
+// prison term with parole hearings, or exile from the island
+// ============================================================
+const PAROLE_GAP = 30 * 864e5;
+const onProbation = (p) => !!(p?.probation && W.day <= p.probation.until);
+const onService = (p) => !!(p?.service && W.day <= p.service.until && !jailed(p));
+function sentenceOptions(C, A) {
+  const K = CRIME_TYPES[C.type], d = K.days, again = onProbation(A) || (A.record || []).length > 0;
+  const V = C.victim && person(C.victim);
+  let o;
+  if (C.type === 'murder') o = [
+    { key: 'prison', label: 'A real year in the cell, with parole hearings' },
+    { key: 'life', label: 'Life in the cell (hearings every few months)' },
+    { key: 'exile', label: 'Banish them from the island forever' },
+  ];
+  else if (['assault', 'arson', 'poison'].includes(C.type)) o = [
+    { key: 'cell', label: `${d} days in the cell, then anger management` },
+    { key: 'probation', label: `Probation and anger management${V ? `, and stay away from ${V.name}` : ''}` },
+    { key: 'harsh', label: `${d * 2} days in the cell` },
+  ];
+  else if (K.tier >= 2) o = [
+    { key: 'cell', label: `${d} days in the cell, then probation` },
+    { key: 'service', label: 'Community service and probation' },
+    { key: ['embezzle', 'fraud'].includes(C.type) && A.job ? 'fired' : 'harsh', label: ['embezzle', 'fraud'].includes(C.type) && A.job ? 'Lose their job, pay it all back, probation' : `${d * 2} days in the cell` },
+  ];
+  else o = [
+    { key: 'service', label: C.type === 'graffiti' ? 'Scrub the wall: community service' : 'Community service' },
+    { key: 'apology', label: 'A public apology and probation' },
+    { key: again ? 'cell' : 'warning', label: again ? '1 day in the cell (they did it again)' : 'Just pay it back, with a warning' },
+  ];
+  return o;
+}
+// the sentence itself: returns lines for the scene
+function applySentence(C, A, key) {
+  const K = CRIME_TYPES[C.type], L = [], V = C.victim && person(C.victim), days = Math.max(1, K.days || 1);
+  const repeat = onProbation(A);
+  A.record = A.record || [];
+  let text;
+  const cell = (n, extra) => { A.jail = { until: W.day + n + (repeat ? 2 : 0), crime: C.id, label: K.label, ...extra }; A.task = { kind: 'jail', phase: 'do' }; };
+  const probation = (n) => { A.probation = { until: W.day + n, crime: C.id }; };
+  const stayAway = (n) => { if (!V) return; W.apart = W.apart || {}; W.apart[[A.id, V.id].sort().join('|')] = W.day + n; A.stayAway = { pid: V.id, name: V.name, until: W.day + n }; };
+  const service = (n) => { A.service = { until: W.day + n, crime: C.id }; startService(A); };
+  switch (key) {
+    case 'prison': cell(99999, { untilReal: Date.now() + YEAR_MS, nextHearing: Date.now() + PAROLE_GAP, hearingGap: PAROLE_GAP }); text = 'one real year in the cell under Glimmer Hall, with a parole hearing every month'; break;
+    case 'life': cell(99999, { untilReal: Date.now() + 50 * YEAR_MS, life: true, nextHearing: Date.now() + 3 * PAROLE_GAP, hearingGap: 3 * PAROLE_GAP }); text = 'life in the cell under Glimmer Hall. Parole hearings every three months'; break;
+    case 'exile': text = 'exile. They leave on the ferry and may never come back'; break;
+    case 'cell': cell(K.tier <= 1 ? 1 : days); probation(days * 2); if (['assault', 'arson', 'poison'].includes(C.type)) { A.program = { kind: 'anger', left: 3 }; stayAway(14); } text = `${K.tier <= 1 ? 1 : days} days in the cell${repeat ? ' (plus 2 for breaking probation)' : ''}, then probation${A.program ? ', anger management, and staying away from ' + (V?.name || 'the victim') : ''}`; break;
+    case 'harsh': cell(days * 2); probation(days * 2); if (V && K.tier >= 2) stayAway(28); text = `${days * 2} days in the cell, then probation`; break;
+    case 'probation': probation(days * 3); A.program = { kind: 'anger', left: 4 }; stayAway(21); text = `probation with an ankle monitor, anger management, and staying away from ${V?.name || 'the victim'}`; break;
+    case 'fired': { const was = A.job ? JOBS[A.job].short : null; A.jobBeforeFired = A.job; A.job = null; probation(days * 2); text = `losing their job${was ? ` as a ${was}` : ''}, paying everything back, and probation`; break; }
+    case 'service': service(K.tier >= 2 ? 5 : 3); if (K.tier >= 2) probation(8); text = `${K.tier >= 2 ? 5 : 3} days of community service${K.tier >= 2 ? ' and probation' : ''}`; break;
+    case 'apology': probation(4); A.owesApology = V ? V.id : 'town'; text = 'a public apology and four days of probation'; break;
+    default: text = 'paying it back, with a warning'; break;
+  }
+  if (C.restitution) text = `${text}, plus ${C.restitution} coins to make it right`;
+  C.sentence = text; C.sentenceKey = key;
+  A.record.push({ day: W.day, crime: K.label, sentence: key });
+  A.remorse = A.remorse ?? (C.culprit === A.id ? clamp(0.25 + personaOf(A).warmth * 0.3 + rand() * 0.3, 0, 1) : 0);
+  L.push(jline(`${A.name}, the court sentences you to ${text}. Hoo.`, 'gavel'));
+  if (key === 'apology' && V) { L.push(pline(A.id, C.culprit === A.id ? `${V.name}… I'm sorry. I really am.` : `I'm sorry for what happened to you, ${V.name}. But I didn't do it.`)); L.push(pline(V.id, pick(['…Okay.', 'I heard you.', "Words are easy. We'll see."]))); if (C.culprit === A.id) feel(V, A, 1, true); }
+  L.push(pline(A.id, C.culprit === A.id ? pick(['…I deserve this.', 'This is not over.', 'I just wanted…', '…']) : pick(['I DIDN\'T DO IT! You are making a mistake!', 'Somebody help me. Please. I didn\'t do this.', 'You got the wrong person!']), null, { emote: C.culprit === A.id ? '💧' : '💢' }));
+  for (const q of W.people) if (q !== A && adult(q)) { remember(q, `${A.name} was found guilty of ${K.label.toLowerCase()} and got ${text}.`, 2, 'verdict', A.name); if (fscore(q, A) > 2 && rand() < 0.5) feel(q, A, -1.5, true); }
+  remember(A, `I was found guilty of ${K.label.toLowerCase()} and got ${text}. ${C.wrong ? "I DIDN'T DO IT." : 'It is over.'}`, 4, 'convicted');
+  diary(`⚖ <b>${esc(A.name)}</b>'s sentence for ${esc(K.label.toLowerCase())}: ${esc(text)}.`);
+  if (key === 'exile') setTimeout(() => exileResident(A, C), 2500);
+  markDirty();
+  return L;
+}
+function exileResident(p, C) {
+  if (!W.people.includes(p)) return;
+  crimeState().exiled = [...(crimeState().exiled || []), { id: p.id, name: p.name, day: W.day, crime: CRIME_TYPES[C.type].label }];
+  if (typeof depart === 'function' && RT.db && typeof OTHER !== 'undefined') { depart(p, 'I was banished.'); return; }
+  W.people.splice(W.people.indexOf(p), 1);
+  const m = meshes.get(p.id); if (m) { scene.remove(m.root); m.tag.remove(); meshes.delete(p.id); }
+  for (const q of W.people) { const f = q.feelings[p.id]; if (f && Math.abs(f.score) >= 3) remember(q, `${p.name} was banished from the island. ${f.score > 0 ? 'I never got to say goodbye.' : 'Good.'}`, 3, 'exiled', p.name); }
+  diary(`⛴ <b>${esc(p.name)}</b> was banished. They left on the ferry and won't be back.`);
+  if (typeof Sound !== 'undefined') try { Sound.horn(); } catch (e) {}
+  markDirty();
+}
+function startService(p) {
+  if (!onService(p) || p.task || typeof autoSpot !== 'function') return;
+  const sp = autoSpot(); if (!sp) return;
+  setTask(p, 'service', Math.hypot(sp[0] - DT.x, sp[1] - DT.z) < DT.R ? 'downtown' : 'plaza', [sp[0] + 1.2, sp[1]], { x: sp[0], z: sp[1] });
+}
+
+// ---- every morning: service, programs, probation ending, parole hearings ----
+function sentenceMorning() {
+  for (const p of W.people) {
+    if (onService(p) && p.grow >= 1) startService(p);
+    if (p.service && W.day > p.service.until) { remember(p, 'I finished my community service.', 2, 'served'); p.service = null; }
+    if (p.program?.left > 0 && !jailed(p) && rand() < 0.7) {
+      p.program.left--;
+      remember(p, pick(['Went to anger management. We practiced breathing. It helped a little.', 'Anger management again. I talked about that night. It was hard.', 'At anger management they asked what I would do differently. I had an answer this time.']), 2, 'program');
+      p.remorse = clamp((p.remorse || 0) + 0.12, 0, 1);
+      if (!p.program.left) { diary(`🌱 <b>${esc(p.name)}</b> finished anger management.`); p.program = null; }
+    }
+    if (p.probation && W.day > p.probation.until) { remember(p, 'My probation is over. The ankle monitor is off.', 3, 'probationOver'); diary(`🔓 <b>${esc(p.name)}</b>'s probation ended.`); p.probation = null; }
+    if (p.stayAway && W.day > p.stayAway.until) p.stayAway = null;
+    if (jailed(p)) {
+      p.remorse = clamp((p.remorse || 0) + (p.jail.crime && crimeById(p.jail.crime)?.culprit === p.id ? 0.015 : 0), 0, 1);
+      if (p.jail.nextHearing && Date.now() >= p.jail.nextHearing && !CUT.queue.some((q) => q.kind === 'parole')) paroleCut(p);
+    }
+  }
+}
+// ---- the parole hearing ----
+function lovedOneOf(C) { return C?.victim ? W.people.filter((q) => adult(q) && !jailed(q) && (q.feelings[C.victim]?.score || 0) >= 3).sort((a, b) => (b.feelings[C.victim].score) - (a.feelings[C.victim].score))[0] : null; }
+function paroleCut(p) {
+  if (!jailed(p) || !p.jail.nextHearing) return 'There is nothing to hear.';
+  const C = crimeById(p.jail.crime), K = C ? CRIME_TYPES[C.type] : { label: 'their crime' }, lo = lovedOneOf(C), guilty = C && C.culprit === p.id;
+  p.jail.nextHearing = Date.now() + (p.jail.hearingGap || PAROLE_GAP);
+  const rem = p.remorse || 0, L = [];
+  L.push(jline(`Order. Hoo. This is the parole hearing of ${p.name}, serving time for ${K.label.toLowerCase()}${C?.victimName ? ` in the death of ${C.victimName}` : ''}.`, 'gavel'));
+  L.push(pline(p.id, !guilty ? pick(["I'll say it again. I didn't do it. I've lost all this time for nothing.", "I don't know what you want me to say. I'm innocent."]) : rem > 0.6 ? pick([`I think about ${C?.victimName || 'what I did'} every single day. I'm so sorry.`, "I'm not the same person who did that. I know sorry doesn't bring anyone back."]) : rem > 0.35 ? pick(["I made a mistake. A huge one. I'm trying to be better in here.", "I want to go home. I know I don't deserve it yet."]) : pick(['I did my time. Let me out.', "Everyone makes mistakes. Mine was just bigger."]), null, { emote: rem > 0.6 ? '💧' : null }));
+  if (lo) { const warm = personaOf(lo).warmth; L.push(pline(lo.id, warm > 0.4 && rem > 0.5 ? pick([`I don't know if I can forgive you. But I don't want to carry this forever either.`, `${C?.victimName} wouldn't want me to hate you. I'm trying.`]) : pick([`${C?.victimName} is gone. Why should you get to walk around?`, `Keep ${p.name} away from us. Please.`, 'Every time I see that fountain I think of them. No.']), null, { emote: '💧' })); }
+  const det = detectiveOf(); if (det && det.id !== p.id) L.push(pline(det.id, rem > 0.5 ? `For the record, ${p.name} has kept their head down in there. No trouble.` : `${p.name} hasn't shown much remorse, if you ask me.`));
+  const odds = (guilty ? rem : 0.55) - (lo && personaOf(lo).warmth < 0.2 ? 0.2 : 0) - (p.jail.life ? 0.25 : 0);
+  L.push(jline('Creator, the board needs your decision. Hoo.'));
+  L[L.length - 1].choice = { prompt: `Parole for ${p.name}?`, options: [['grant', 'Grant parole'], ['deny', 'Deny, for now'], ['board', 'Let the parole board decide']], timeout: 30, fallback: 'board',
+    pick: (k) => { const yes = k === 'grant' || (k === 'board' && odds + (rand() - 0.5) * 0.3 > 0.45); return paroleResult(p, C, yes, lo); } };
+  queueCut({ kind: 'parole', icon: '🕊', title: `Parole Hearing: ${p.name}`, sub: K.label, music: 'trial', lines: L, stage: courtStage, unstage: courtUnstage, shot: courtShot, trial: { kind: 'parole', def: p.id, pros: det?.id || null, witness: lo?.id || null, jury: [], gallery: onlookers([p.id, lo?.id, det?.id].filter(Boolean), 6) } });
+  return 'The parole board is gathering.';
+}
+function paroleResult(p, C, yes, lo) {
+  const L = [];
+  if (yes) {
+    L.push(jline(`Parole granted. ${p.name} will go home on probation, with an ankle monitor. Hoo.`, 'gavel'));
+    releaseFromJail(p, 'parole'); p.probation = { until: W.day + 60, crime: C?.id }; if (lo) { W.apart = W.apart || {}; W.apart[[p.id, lo.id].sort().join('|')] = W.day + 30; }
+    L.push(pline(p.id, pick(['Thank you. I won\'t waste it.', '…I get to go home?', 'I don\'t know how to face everyone.']), null, { emote: '💧' }));
+    if (lo) L.push(pline(lo.id, pick(['…', 'I hope you meant every word.', "I can't watch this."])));
+    for (const q of W.people) if (q !== p && adult(q)) remember(q, `${p.name} got parole and came home.`, 2, 'parole', p.name);
+  } else {
+    L.push(jline(`Parole denied. ${p.name} stays in the cell. The board will hear the case again later. Hoo.`, 'gavel'));
+    L.push(pline(p.id, pick(['…Okay.', 'Of course.', 'I understand.']), null, { emote: '💧' }));
+    remember(p, 'My parole was denied.', 3, 'paroleDenied');
+  }
+  markDirty();
+  return L;
+}
+// ---- words for the minds, so they know where someone stands ----
+function recordContext(p) {
+  const r = p.record || [], bits = [];
+  if (jailed(p)) bits.push(p.jail.untilReal ? `You are in the cell under Glimmer Hall for ${p.jail.label.toLowerCase()}. It is a long sentence.` : `You are in the cell under Glimmer Hall for ${p.jail.label.toLowerCase()}.`);
+  if (onProbation(p)) bits.push('You are on probation and wear an ankle monitor. Everyone can see it.');
+  if (onService(p)) bits.push('You are doing community service in an orange vest.');
+  if (p.stayAway && W.day <= p.stayAway.until) bits.push(`A court order says you must stay away from ${p.stayAway.name}.`);
+  if (p.program?.left) bits.push('You go to anger management sessions.');
+  if (r.length && !jailed(p)) bits.push(`You have a record: ${r.map((x) => x.crime.toLowerCase()).join(', ')}.`);
+  return bits.length ? `\nTHE LAW AND YOU: ${bits.join(' ')}` : '';
+}
+function compensateWrong(p, C) {
+  const days = Math.max(1, W.day - (C.verdictDay || W.day)), pay = Math.min(60, 5 + days * 2);
+  p.coins += pay; p.probation = null; p.service = null; p.program = null; p.stayAway = null;
+  const lab = CRIME_TYPES[C.type].label;
+  p.record = (p.record || []).filter((r) => !(r.crime === lab && r.day >= (C.verdictDay || 0) - 1));
+  for (const q of W.people) if (q !== p && adult(q) && rand() < 0.6) feel(q, p, 1, true);
+  remember(p, `The town paid me ${pay} coins for the time I lost. It doesn't give the time back.`, 3, 'compensated');
+  diary(`💰 The town paid <b>${esc(p.name)}</b> ${pay} coins for being wrongly convicted.`);
+}
+function jailLeftText(p) {
+  const J = p.jail; if (!J) return '';
+  if (J.life) return 'life';
+  if (J.untilReal) { const d = Math.max(0, Math.ceil((J.untilReal - Date.now()) / 864e5)); return `${d} real day${d === 1 ? '' : 's'} left`; }
+  return `${plural(J.until - W.day, 'day')} left`;
+}
+// AI lines about a case are only kept if they don't state facts: the game states the facts itself
+const FACT_WORDS = /(\d|\b(thread|hair|strand|footprints?|prints?|fibers?|silhouette|shadow|ears|shoes?|boots|shirt|dress|seen|saw|witness|alibi|exhibit|midnight|o'clock|knife|weapon|blood|poison|stairs|pier|beach|garden|park|tower|caf[eé]|door|lock|window|bucket|lamp|tide|home)\b)/i;
+function factSafe(text, allowedIds) {
+  const low = String(text || '').toLowerCase(); if (!low || FACT_WORDS.test(low)) return false;
+  const colors = [...Object.keys(COLORS), ...Object.keys(HAIR_COLORS), 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'brown', 'pink', 'grey', 'silver', 'gold'];
+  if (colors.some((c) => new RegExp(`\\b${c}\\b`).test(low))) return false;
+  const ok = new Set(allowedIds.filter(Boolean).map((id) => String(nameOf(id)).toLowerCase()));
+  for (const q of W.people) { const n = q.name.toLowerCase(); if (n.length > 2 && new RegExp(`\\b${n}\\b`).test(low) && !ok.has(n)) return false; }
+  return true;
+}
+function sentencesBoot() {
+  W.added = W.added || {}; if (W.added.sentences1) return; W.added.sentences1 = true;
+  if (typeof logUpdate === 'function') logUpdate('build', 'When someone is found guilty now, you pick the sentence. Small crimes get community service in an orange vest, a public apology, or a warning. Bigger ones get time in the cell and probation with an ankle monitor. Violent ones come with anger management and an order to stay away from the victim. Murder means a real year in the cell with a parole hearing every month, life, or exile from the island. People who get convicted by mistake are paid back when the truth comes out. I also stopped the AI from making up facts in trials: the game states every clue itself now.', 'sentences and parole');
+}
 // ============================================================
 // MILI (a piece of the Creator, living down here) and CLAUDE (a little helper)
 // ============================================================
@@ -11127,7 +11818,7 @@ function renderTexts() {
     const msgs = T.filter((m) => textThreadKey(m.from, m.to) === textThread);
     const title = textThread === 'town' ? `${ISL.name} group chat` : textThread.split('|').map((id) => person(id)?.name || '?').join(' & ');
     const left = textThread === 'town' ? null : textThread.split('|')[0];
-    pane.innerHTML = `<button class="back" type="button" data-thread="">&larr; All texts</button><p class="label">${esc(title)}</p><div class="chat">${msgs.slice(-60).map((m) => { const p = person(m.from); const side = textThread === 'town' ? 'l' : m.from === left ? 'l' : 'r'; return `<div class="msg ${side}${['bully', 'mean'].includes(m.tone) ? ' bad' : ''}"><span class="msg-n" style="color:${p ? skinCss(p) : 'var(--dim)'}">${esc(m.fromName)}</span><span class="msg-t">${esc(m.text)}</span><span class="msg-d">Day ${m.day} · ${clockAt(m.t)}</span></div>`; }).join('') || '<p class="hint">No texts yet.</p>'}</div>`;
+    pane.innerHTML = `<button class="back thread-exit" type="button" data-thread="">&larr; Back to all texts</button><p class="label">${esc(title)}</p><div class="chat">${msgs.slice(-60).map((m) => { const p = person(m.from); const side = textThread === 'town' ? 'l' : m.from === left ? 'l' : 'r'; return `<div class="msg ${side}${['bully', 'mean'].includes(m.tone) ? ' bad' : ''}"><span class="msg-n" style="color:${p ? skinCss(p) : 'var(--dim)'}">${esc(m.fromName)}</span><span class="msg-t">${esc(m.text)}</span><span class="msg-d">Day ${m.day} · ${clockAt(m.t)}</span></div>`; }).join('') || '<p class="hint">No texts yet.</p>'}</div><button class="back thread-exit bottom" type="button" data-thread="">&larr; Exit this chat</button>`;
     const ch = pane.querySelector('.chat'); if (ch) pane.scrollTop = pane.scrollHeight;
     return;
   }
@@ -11423,6 +12114,7 @@ function visuals(dt) {
     const praying = p.task?.kind === 'pray' && p.task.phase === 'do';
     if (praying) { m.head.rotation.x = -0.45; m.arms.forEach((a) => (a.rotation.x = -2.4)); } else m.head.rotation.x = 0;
     const working = p.task?.kind === 'work' && p.task.phase === 'do';
+    lookFrame(p, m);
     m.tools.visible = working || (p.job && p.job !== 'pier' && p.job !== 'garden' && p.task?.kind === 'work');
     m.fig.rotation.x = working && p.job === 'garden' ? 0.25 + Math.sin(now * 2 + p.x) * 0.1 : 0;
     m.head.rotation.z = p.hunger > 0.85 ? 0.2 : Math.sin(now * 0.8 + p.x) * 0.04;
@@ -11550,7 +12242,7 @@ function renderDetail(id) {
     ${goalHtml(p)}
     ${healthDetailHtml(p)}
     ${savingHtml(p)}
-    ${cuteOn() ? hairEditorHtml(p) : ''}
+    ${cuteOn() ? hairEditorHtml(p) + fashionEditorHtml(p) : ''}
     ${isMili(p) ? `<p class="hint">✧ A piece of you, living down here. Her cat is called ${esc(catName())}. <button class="btn" type="button" data-renamecat>Rename the cat</button></p>` : ''}
     ${(() => { const T = (W.texts || []).filter((m) => m.from === p.id || m.to === p.id).slice(-4).reverse(); return T.length ? `<p class="label">Their phone</p>${T.map((m) => `<p class="hint">${m.from === p.id ? `To ${esc(m.to === 'town' ? 'the group chat' : person(m.to)?.name || '?')}` : `From ${esc(m.fromName)}`}: "${esc(m.text)}"</p>`).join('')}` : ''; })()}
     <div class="creator">
@@ -11730,6 +12422,7 @@ sheet.addEventListener('click', (e) => {
   if (d.openlab) { openLab(d.openlab); return; }
   if (d.care) { openCare(d.care); return; }
   if (d.hair) { send({ t: 'hair', pid: d.hair, style: d.style, color: d.hcolor }); return; }
+  if (d.fashion) { send({ t: 'fashion', pid: d.fashion, fashion: d.fstyle }); return; }
   if (d.laptopgift) { send({ t: 'laptopgift', pid: d.laptopgift }); return; }
   if (d.openperson) { openDetail = d.openperson; showTab('people'); return; }
   if (d.clinicview !== undefined) { send({ t: 'clinicview' }); if (MODE === 'host') sheet.hidden = true; return; }
@@ -11961,7 +12654,7 @@ function startRemote() {
 // has to change ?v= by hand. build.mjs stamps BUILD_ID and writes
 // version.json next to index.html.
 // ============================================================
-const BUILD_ID = '04feb85578';
+const BUILD_ID = '6c3d915e51';
 const UPDATE_KEY = 'glimmer-update';
 // on the local dev server, check every few seconds so saving a file reloads the page
 const updateLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -11978,6 +12671,21 @@ async function checkForUpdate() {
     if (r.ok) latest = String((await r.json()).build || '');
   } catch (e) { return; }
   if (!latest || latest === BUILD_ID) return;
+  // version.json only says something changed. Before reloading, make sure the published page
+  // really is a different build: if version.json and index.html were uploaded out of step,
+  // reloading would just bring back this same page, over and over.
+  let ignore = {};
+  try { ignore = JSON.parse(localStorage.getItem(UPDATE_KEY + '-ignore') || '{}'); } catch (e) {}
+  if (ignore.build === latest && Date.now() - ignore.at < 6 * 3600e3) return;
+  let pageBuild = null;
+  try {
+    const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('t', Date.now());
+    const r = await fetch(u.href, { cache: 'no-store', headers: { Range: 'bytes=0-4095' } });
+    const head = (await r.text()).slice(0, 8000);
+    pageBuild = (head.match(/<meta name="glimmer-build" content="([^"]+)"/) || [])[1] || null;
+  } catch (e) { return; }
+  if (!pageBuild || pageBuild === BUILD_ID) { try { localStorage.setItem(UPDATE_KEY + '-ignore', JSON.stringify({ build: latest, at: Date.now() })); } catch (e) {} return; }
+  latest = pageBuild;
   // the page itself can lag behind version.json on the CDN; don't chase the same build in a loop
   let tried = {};
   try { tried = JSON.parse(localStorage.getItem(UPDATE_KEY) || '{}'); } catch (e) {}
@@ -12032,7 +12740,7 @@ async function boot() {
   W = (await loadWorld()) || newWorld();
   applyMods();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); crimeClarityBoot(); sentencesBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
