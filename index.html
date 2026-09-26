@@ -7077,7 +7077,7 @@ function dramaBoot() {
 // ============================================================
 // CUTE LOOK: hair, faces that react, hands, shoes, grass and flowers
 // ============================================================
-const HAIR_STYLES = { short: 'Short', bob: 'Bob', long: 'Long', spiky: 'Spiky', bun: 'Bun', twintails: 'Pigtails', curly: 'Curly', buzz: 'Buzz', none: 'None' };
+const HAIR_STYLES = { short: 'Short', pixie: 'Pixie', bob: 'Bob', long: 'Long', spiky: 'Spiky', bun: 'Bun', twintails: 'Pigtails', curly: 'Curly', buzz: 'Buzz', none: 'None' };
 const HAIR_COLORS = { cocoa: '#5a3a2e', chestnut: '#8a5a3a', ink: '#2a2230', honey: '#e0b060', ginger: '#c8643a', ash: '#9a98a6', snow: '#f1ede6', bubblegum: '#ff9fc4', ocean: '#7fb3ff', lavender: '#b9a3f0', mint: '#8fdcc0' };
 const SHOE_COLORS = ['#ff6f5e', '#3d4f86', '#fffaf2', '#ffb347', '#8a84a8', '#5a3a2e', '#ff9fbf', '#6fbf6a'];
 const cuteOn = () => cfg.cute !== false;
@@ -7089,7 +7089,7 @@ function hairOf(p) {
     const natural = ['cocoa', 'cocoa', 'chestnut', 'ink', 'ink', 'honey', 'ginger', 'ash'], fun = Object.keys(HAIR_COLORS);
     const styles = ['short', 'short', 'bob', 'long', 'spiky', 'bun', 'twintails', 'curly', 'buzz', 'bob'];
     p.body.hair = { style: styles[h % styles.length], color: (h >> 8) % 4 === 0 ? fun[(h >> 12) % fun.length] : natural[(h >> 12) % natural.length], shoe: SHOE_COLORS[(h >> 16) % SHOE_COLORS.length] };
-    if (typeof isMili === 'function' && isMili(p)) p.body.hair = { style: 'bob', color: 'ink', shoe: '#fffaf2' };
+    if (typeof isMili === 'function' && isMili(p)) p.body.hair = { style: 'pixie', color: 'ink', shoe: '#fffaf2' };
     if (p.lovesMili) p.body.hair = { style: 'short', color: 'ink', shoe: '#ff6f5e' };
   }
   return p.body.hair;
@@ -7107,6 +7107,17 @@ function hairMesh(style, color) {
     case 'spiky': cap(0.66, 0.42, -0.3); for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2, sp = mesh(new T3.ConeGeometry(0.13, 0.36, 6), c, Math.sin(a) * 0.36, 0.56, Math.cos(a) * 0.36 - 0.05); sp.rotation.set(Math.cos(a) * 0.7, 0, -Math.sin(a) * 0.7); g.add(sp); } break;
     case 'bun': cap(); bangs(1.4); g.add(mesh(sph(0.24, 14, 10), c, 0, 0.64, -0.24)); break;
     case 'twintails': cap(); bangs(); for (const s of [-1, 1]) { g.add(mesh(sph(0.13, 10, 8), toon('#ff9fbf'), s * 0.55, 0.28, -0.2)); const tl = mesh(new T3.CapsuleGeometry(0.15, 0.5, 4, 10), c, s * 0.7, -0.08, -0.22); tl.rotation.z = s * 0.25; g.add(tl); } break;
+    case 'pixie': {
+      // wispy, medium-length layered pixie: soft crown, a side-swept fringe from a left part,
+      // tapered layers over the ears and at the nape
+      cap(0.672, 0.47, -0.3);
+      for (const [x, y, z, k] of [[-0.2, 0.53, -0.06, 1], [0.17, 0.54, -0.12, 0.9], [0, 0.5, -0.32, 1.05]]) { const t = mesh(sph(0.21, 10, 8), c, x, y, z); t.scale.set(1.2 * k, 0.38 * k, 1.05 * k); g.add(t); }
+      const lock = (len, rad, x, y, z, rx, rz, flat = 0.5) => { const m = mesh(new T3.ConeGeometry(rad, len, 7), c, x, y, z); m.rotation.set(rx, 0, rz); m.scale.z = flat; g.add(m); return m; };
+      for (let i = 0; i < 6; i++) { const x = -0.34 + i * 0.11, y = 0.37 - i * 0.03; lock(0.34 - Math.abs(i - 2) * 0.025, 0.09, x, y, Math.sqrt(Math.max(0.02, 0.62 * 0.62 - x * x - y * y)) + 0.03, -0.5, -1.9 + i * 0.06, 0.4); }
+      for (const sd of [-1, 1]) for (let j = 0; j < 3; j++) lock(0.44 - j * 0.04, 0.085, sd * (0.6 - j * 0.03), 0.02 - j * 0.03, 0.2 - j * 0.2, 0.15, Math.PI + sd * (0.18 + j * 0.05));
+      for (let k = 0; k < 5; k++) lock(0.38, 0.09, -0.3 + k * 0.15, -0.06 - Math.abs(k - 2) * 0.02, -0.52 + Math.abs(k - 2) * 0.05, 0.35, Math.PI + (k - 2) * 0.12);
+      break;
+    }
     case 'curly': for (let i = 0; i < 11; i++) { const a = (i / 11) * Math.PI * 2, y = 0.38 + (i % 2) * 0.12; g.add(mesh(sph(0.2, 10, 8), c, Math.sin(a) * 0.5, y, Math.cos(a) * 0.5 - 0.08)); } g.add(mesh(sph(0.42, 14, 10), c, 0, 0.42, -0.08)); break;
     default: cap();
   }
@@ -7222,7 +7233,7 @@ function setHair(pid, style, color) {
   markDirty(); return '';
 }
 function selfHaircut(p) {
-  if (rand() > 0.02 || p.grow < 1) return;
+  if (rand() > 0.02 || p.grow < 1 || (typeof isRealish === 'function' && isRealish(p))) return;
   const h = hairOf(p), styles = Object.keys(HAIR_STYLES).filter((k) => k !== 'none' && k !== h.style);
   h.style = pick(styles); if (rand() < 0.3) h.color = pick(Object.keys(HAIR_COLORS));
   restyleHair(p); remember(p, `Got a new haircut: ${HAIR_STYLES[h.style].toLowerCase()}.`, 2, 'haircut');
@@ -10340,6 +10351,13 @@ function cutChoiceHtml() {
   return `<div class="creator" style="border-color:#ffd36b"><h3>🎬 ${esc(c.title || 'A scene is playing')}</h3><p>${esc(c.prompt || 'The court is waiting for you.')}</p>
     <div class="btns">${c.options.map(([k, l]) => `<button class="btn gold" type="button" data-cutpick="${esc(k)}">${esc(l)}</button>`).join('')}</div></div>`;
 }
+// Mili lost her pixie cut to a random morning haircut; put it back once (the color stays hers)
+function miliHairFix() {
+  W.added = W.added || {}; if (W.added.miliPixie) return; W.added.miliPixie = true;
+  const m = typeof findMili === 'function' && findMili(); if (!m || !m.body) return;
+  const h = hairOf(m); h.style = 'pixie'; if (typeof restyleHair === 'function') restyleHair(m);
+  if (typeof logUpdate === 'function') logUpdate('build', `${m.name} has her own haircut back: a wispy layered pixie, a little longer on top and swept to one side. The random morning haircuts also leave Mili, Red, Tim and invited residents alone now, so their hair only changes when you change it.`, 'Mili\'s pixie cut');
+}
 function v25Boot() {
   W.added = W.added || {}; if (W.added.v25) return; W.added.v25 = true;
   { const S = crimeState(), yr = Math.floor((W.day - 1) / YEAR); S.murderYear[yr] = { day: Math.max(W.day + 4, yr * YEAR + 9 + Math.floor(rand() * 14)), done: false }; S.lastSerious = W.day; S.lastPetty = W.day - 1; }
@@ -11943,7 +11961,7 @@ function startRemote() {
 // has to change ?v= by hand. build.mjs stamps BUILD_ID and writes
 // version.json next to index.html.
 // ============================================================
-const BUILD_ID = 'd366aa2eb2';
+const BUILD_ID = '04feb85578';
 const UPDATE_KEY = 'glimmer-update';
 // on the local dev server, check every few seconds so saving a file reloads the page
 const updateLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -12014,7 +12032,7 @@ async function boot() {
   W = (await loadWorld()) || newWorld();
   applyMods();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
