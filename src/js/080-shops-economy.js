@@ -89,6 +89,15 @@ function eatAt(p, shop) {
   if (cook && Math.abs(joy) > 0.45 && rand() < 0.6) { line = joy > 0 ? `${cook.name} makes the best ${f.name}!` : `${cook.name} ruined the ${f.name} again.`; feel(p, cook, joy > 0 ? 0.5 : -0.5, true); remember(cook, `${p.name} ${joy > 0 ? 'loved' : 'complained about'} the ${f.name} I made.`, 1, joy > 0 ? 'praised' : 'criticized', p.name); }
   bubble(p, line, 2.6); emote(p, joy > 0.35 ? '♥' : joy < -0.3 ? '☁' : '…', 2);
   remember(p, `Ate ${f.name} at ${SHOPS[shop].name}${cook ? ` (${cook.name} made it)` : ''}${joy > 0.35 ? ' and loved it' : joy < -0.3 ? ' and hated it' : ''}.`, first ? 2 : 1, 'ate', cook?.name, { food: f.name, joy, first });
-  if (first) diary(`<b>${esc(p.name)}</b> tried ${f.name} for the first time${joy > 0.35 ? ' and loved it' : joy < -0.3 ? ' and made a face' : ''}.`);
+  if (first) firstTaste(p, f, joy);
 }
 
+// first tastes share one diary line a day, so they don't bury the big moments
+function firstTaste(p, f, joy) {
+  const how = joy > 0.35 ? `loved ${f.name}` : joy < -0.3 ? `made a face at ${f.name}` : `tried ${f.name}`;
+  const e = W.log.slice(-40).reverse().find((x) => x.day === W.day && x.tastes);
+  const bit = `<b>${esc(p.name)}</b> ${how}`;
+  if (e) { e.tastes.push(bit); e.text = `🍽 First tastes: ${e.tastes.join(', ')}.`; markDirty(); return; }
+  diary(`🍽 First tastes: ${bit}.`);
+  W.log[W.log.length - 1].tastes = [bit];
+}
