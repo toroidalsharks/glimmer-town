@@ -9,7 +9,7 @@
     "check": "node build.mjs --check",
     "watch": "node build.mjs --watch",
     "dev": "node tools/serve.mjs",
-    "test": "node build.mjs --check && node tests/smoke.mjs && node tests/update.mjs",
+    "test": "node build.mjs --check && node tests/smoke.mjs && node tests/update.mjs && node tests/music.mjs",
     "shots": "node tests/look.mjs",
     "assets": "python3 tools/blender/assets.py && node build.mjs --check"
   },

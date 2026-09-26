@@ -139,7 +139,7 @@ function applyCmd(c) {
     case 'crime': return crimeCmd(c);
     case 'hallview': if (MODE === 'host') openInterior({ kind: 'hall' }); return '';
     case 'debate': { const a = person(c.a), b = person(c.b); if (!a || !b) return ''; const k = fileCase('debate', a, b, { topic: String(c.topic || pick(DEBATES)).slice(0, 80), byCreator: true }); return k ? `⚖ ${a.name} and ${b.name} have been summoned to debate: ${k.topic}` : 'They already have a debate waiting.'; }
-    case 'skip': { const t = Sound.skip(); return t ? `♪ Now playing: ${t}` : 'The box has music turned off.'; }
+    case 'skip': { const t = Sound.skip(); return t ? `♪ Now playing: ${t}` : Sound.blocked() ? 'The box needs one tap on its screen before it can play music.' : 'The box has music turned off.'; }
     case 'gather': return gatherCmd(c);
     case 'landtap': {
       const M = mats(), key = 'lt' + c.id;

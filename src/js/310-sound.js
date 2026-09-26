@@ -5,9 +5,12 @@ const Sound = (() => {
   let ctx = null, master, music, sfx, voiceBus, started = false, noiseBuf = null, nextBeat = 0, beat = 0, lastVoice = 0, lastStep = 0;
   const ok = () => ctx && ctx.state === 'running';
   function ensure() {
+    if (ctx && ctx.state === 'closed') { ctx = null; cur = null; lastCtx = ''; }
     if (ctx) return ctx;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
-    ctx = new AC();
+    try { ctx = new AC(); } catch (e) { return null; }
+    // once sound has played, a phone call, the lock screen or another app can pause it; start it again when allowed
+    ctx.onstatechange = () => { if (ctx.state === 'running') { started = true; showNp(); } else if (started && ctx.state !== 'closed') setTimeout(retry, 500); };
     master = ctx.createGain(); master.connect(ctx.destination);
     music = ctx.createGain(); sfx = ctx.createGain(); voiceBus = ctx.createGain();
     const soft = ctx.createBiquadFilter(); soft.type = 'lowpass'; soft.frequency.value = 3200; music.connect(soft); soft.connect(master); try { const verb = ctx.createConvolver(), len = ctx.sampleRate * 2.2, ir = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); } verb.buffer = ir; const wet = ctx.createGain(); wet.gain.value = 0.32; soft.connect(wet); wet.connect(verb); verb.connect(master); } catch (e) {}
@@ -73,14 +76,58 @@ const Sound = (() => {
     mystery: { title: 'Footprints in the Fog', key: 52, sc: 'minor', bpm: 72, swing: 0.3, p: [0, 5, 3, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R.......R..5....', k: 'x.........x.....', rim: '....x.......x...', h: '..x...x...x...x.', hv: 0.25, dens: 0.3 },
     funeral: { title: 'Flowers by the Stone', key: 57, sc: 'minor', bpm: 58, meter: 12, p: [0, 5, 3, 4], lead: 'musicbox', pad: 'pad', b: 'R...........', dens: 0.25 },
     uproar: { title: 'Uproar', key: 57, sc: 'minor', bpm: 138, p: [0, 5, 3, 4], lead: 'saw', pad: 'pad', arp: 'pluck', arpP: '0.1.2.1.', b: 'R.R.R.R.R.R.R.R.', k: 'x...x...x..x.x..', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.35, dens: 0.5 },
+    // --- more songs for the town outside ---
+    dewdrop: { title: 'Dewdrop Hop', key: 67, sc: 'major', bpm: 100, p: [0, 3, 4, 0], lead: 'kalimba', arp: 'pluck', arpP: '0.1.2.1.', pad: 'pad', b: 'R...5...R...5...', k: 'x.......x.......', h: '..x...x...x...x.', hv: 0.5, dens: 0.55 },
+    kite: { title: 'Kite String', key: 69, sc: 'mixo', bpm: 108, p: [0, 6, 3, 0], lead: 'whistle', arp: 'uke', arpP: '0.12.1.2', b: 'R..5..R.R..5..8.', k: 'x.......x.......', rim: '....x.......x...', dens: 0.45 },
+    tulip: { title: 'Tulip Row', key: 72, sc: 'major', bpm: 92, meter: 12, p: [0, 4, 5, 3], lead: 'glock', arp: 'harp', arpP: '0.1.2.1.2.1.', pad: 'pad', b: 'R.....5.....', dens: 0.45 },
+    bicycle: { title: 'Bicycle Bell', key: 65, sc: 'major', bpm: 116, p: [0, 5, 1, 4], sev: true, lead: 'steel', arp: 'marimba', arpP: '0.2.1.2.', b: 'R.R.5...R.R.5.8.', k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.', hv: 0.4, dens: 0.55 },
+    blossom: { title: 'Blossom Breeze', key: 64, sc: 'lydian', bpm: 80, p: [0, 1, 5, 4], lead: 'harp', pad: 'strings', arp: 'glock', arpP: '0...1...2...1...', b: 'R.......5.......', dens: 0.4 },
+    puddle: { title: 'Puddle Jumper', key: 70, sc: 'major', bpm: 124, p: [0, 3, 0, 4], lead: 'marimba', arp: 'pizz', arpP: '0.2.1.2.', b: 'R...R...5...8...', bass: 'pizzbass', k: 'x.......x.x.....', s: '....x.......x...', dens: 0.65 },
+    coconut: { title: 'Coconut Radio', key: 67, sc: 'mixo', bpm: 104, swing: 0.25, p: [0, 3, 6, 0], lead: 'steel', arp: 'uke', arpP: '..0...1...2...1.', pad: 'epad', b: 'R..R..5.R..R..5.', k: 'x.....x.x.......', rim: '...x..x....x..x.', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.5 },
+    sandcastle: { title: 'Sandcastle', key: 62, sc: 'major', bpm: 110, p: [0, 4, 5, 3], lead: 'uke', arp: 'kalimba', arpP: '0.1.2.1.', b: 'R...5...R...5...', k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.', hv: 0.4, dens: 0.55 },
+    popsicle: { title: 'Popsicle Stick', key: 69, sc: 'major', bpm: 128, p: [0, 5, 3, 4], lead: 'chip', arp: 'glock', arpP: '0.1.2.1.', b: 'R.R.5.5.R.R.8.5.', bass: 'chipbass', k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', dens: 0.65 },
+    tidepool: { title: 'Tide Pool', key: 64, sc: 'lydian', bpm: 86, meter: 12, p: [0, 1, 0, 4], lead: 'harp', pad: 'epad', arp: 'kalimba', arpP: '0..1..2..1..', b: 'R.....5.....', dens: 0.4 },
+    hammock: { title: 'Hammock Hours', key: 65, sc: 'major', bpm: 82, swing: 0.3, p: [3, 4, 2, 5], sev: true, lead: 'epiano', pad: 'epad', b: 'R.......5...3...', k: 'x......x..x.....', rim: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.35 },
+    surf: { title: 'Glimmer Surf', key: 64, sc: 'mixo', bpm: 140, p: [0, 6, 3, 4], lead: 'saw', arp: 'pluck', arpP: '0.1.2.1.', pad: 'pad', b: 'R.R.R.R.5.5.8.5.', k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.4, dens: 0.5 },
+    acorn: { title: 'Acorn Collector', key: 62, sc: 'dorian', bpm: 96, p: [0, 3, 0, 4], lead: 'pizz', arp: 'pluck', arpP: '0.2.1.2.', pad: 'pad', b: 'R...5...R...3...', bass: 'pizzbass', k: 'x.......x.......', rim: '....x.......x...', dens: 0.5 },
+    pumpkin: { title: 'Pumpkin Patch', key: 60, sc: 'dorian', bpm: 88, p: [0, 5, 3, 4], lead: 'ocarina', pad: 'pad', arp: 'harp', arpP: '0...1...2...1...', b: 'R.......5.......', k: 'x.......x.......', h: '..x...x...x...x.', hv: 0.35, dens: 0.45 },
+    scarf: { title: 'Long Scarf', key: 65, sc: 'major', bpm: 76, meter: 12, p: [0, 5, 3, 4], sev: true, lead: 'harp', pad: 'strings', b: 'R.....5.....', dens: 0.4 },
+    cider: { title: 'Apple Cider', key: 67, sc: 'mixo', bpm: 100, p: [0, 6, 3, 0], lead: 'uke', arp: 'uke', arpP: '0.1.2.1.', b: 'R...5...R...5...', k: 'x.......x.......', s: '....x.......x...', dens: 0.5 },
+    crunch: { title: 'Leaf Crunch', key: 64, sc: 'dorian', bpm: 110, p: [0, 3, 6, 4], lead: 'marimba', arp: 'kalimba', arpP: '0.2.1.2.', b: 'R..5..R.R..5..8.', k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.35, dens: 0.55 },
+    harvestmoon: { title: 'Harvest Moon', key: 57, sc: 'minor', bpm: 68, p: [0, 5, 2, 6], sev: true, lead: 'bell', pad: 'strings', arp: 'harp', arpP: '0.....2.....1...', b: 'R...............', dens: 0.3 },
+    mittens: { title: 'Mittens', key: 69, sc: 'major', bpm: 84, p: [0, 3, 4, 0], lead: 'glock', pad: 'pad', arp: 'musicbox', arpP: '0.1.2.1.', b: 'R.......5.......', k: 'x.......x.......', dens: 0.45 },
+    sled: { title: 'Sled Hill', key: 67, sc: 'major', bpm: 132, p: [0, 4, 5, 3], lead: 'chip', arp: 'glock', arpP: '0122', b: 'R.8.R.8.5.8.5.8.', bass: 'chipbass', k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', dens: 0.7 },
+    fireplace: { title: 'Fireplace', key: 62, sc: 'major', bpm: 66, swing: 0.3, p: [3, 2, 1, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R.......5.......', k: 'x.........x.....', rim: '....x.......x...', hv: 0.3, dens: 0.3, crackle: true },
+    icicle: { title: 'Icicle Chimes', key: 72, sc: 'lydian', bpm: 72, meter: 12, p: [0, 1, 5, 4], lead: 'glock', arp: 'musicbox', arpP: '0.1.2.1.2.1.', pad: 'strings', b: 'R...........', dens: 0.35 },
+    snowday: { title: 'Snow Day', key: 65, sc: 'major', bpm: 96, p: [0, 5, 3, 4], lead: 'kalimba', arp: 'glock', arpP: '0...2...1...2...', pad: 'pad', b: 'R...5...R...5...', k: 'x.......x.......', h: '..x...x...x...x.', hv: 0.4, dens: 0.5 },
+    wool: { title: 'Wool Socks', key: 60, sc: 'major', bpm: 78, swing: 0.25, p: [0, 3, 1, 4], sev: true, lead: 'organ', pad: 'epad', b: 'R..5....R..3....', k: 'x.......x.......', rim: '....x.......x...', dens: 0.35 },
+    porch: { title: 'Porch Light', key: 64, sc: 'major', bpm: 80, swing: 0.28, p: [0, 3, 5, 4], sev: true, lead: 'uke', pad: 'epad', b: 'R......5R.......', k: 'x.......x.......', rim: '....x.......x...', dens: 0.4 },
+    dusk: { title: 'Dusk Bus', key: 62, sc: 'dorian', bpm: 88, swing: 0.3, p: [0, 3, 1, 4], sev: true, lead: 'epiano', pad: 'epad', b: 'R..R......5..R..', bassWalk: true, k: 'x......x..x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.4 },
+    goldenhour: { title: 'Golden Hour', key: 65, sc: 'lydian', bpm: 74, p: [0, 1, 5, 4], sev: true, lead: 'harp', pad: 'strings', arp: 'kalimba', arpP: '0...1...2...3...', b: 'R.......5.......', dens: 0.35 },
+    streetlamp: { title: 'Streetlamp Stroll', key: 67, sc: 'major', bpm: 84, meter: 12, p: [0, 5, 3, 4], lead: 'ocarina', arp: 'harp', arpP: '0..1..2..1..', pad: 'pad', b: 'R.....5.....', dens: 0.4 },
+    owl: { title: 'Owl on the Roof', key: 57, sc: 'minor', bpm: 64, p: [0, 3, 5, 4], sev: true, lead: 'kalimba', pad: 'pad', b: 'R...............', dens: 0.3 },
+    stargazer: { title: 'Stargazer', key: 64, sc: 'lydian', bpm: 58, meter: 12, p: [0, 1, 0, 4], lead: 'glock', pad: 'strings', arp: 'harp', arpP: '0.....2.....', b: 'R...........', dens: 0.25, hi: 12 },
+    tide: { title: 'Night Tide', key: 55, sc: 'minor', bpm: 52, p: [0, 5, 2, 6], sev: true, lead: 'harp', pad: 'strings', b: 'R...............', dens: 0.25, hi: 12 },
+    sleepy: { title: 'Sleepy Streetlights', key: 62, sc: 'major', bpm: 60, swing: 0.3, p: [3, 4, 2, 5], sev: true, lead: 'epiano', pad: 'epad', b: 'R.......5.......', rim: '....x.......x...', dens: 0.25, crackle: true },
+    crickets: { title: 'Cricket Choir', key: 60, sc: 'lydian', bpm: 70, p: [0, 1, 0, 4], lead: 'kalimba', pad: 'pad', arp: 'glock', arpP: '0...1.......2...', b: 'R.......5.......', h: '..x...x...x...x.', hv: 0.2, dens: 0.3 },
+    drizzle: { title: 'Drizzle Café', key: 63, sc: 'dorian', bpm: 84, swing: 0.34, p: [1, 4, 0, 0], sev: true, lead: 'epiano', pad: 'epad', b: 'R...3...5...8...', bassWalk: true, rim: '....x.......x...', h: 'x..xx..xx..xx..x', hv: 0.3, dens: 0.4 },
+    windowsill: { title: 'Windowsill', key: 64, sc: 'major', bpm: 70, meter: 12, p: [0, 5, 3, 4], sev: true, lead: 'harp', pad: 'epad', b: 'R.....5.....', dens: 0.3, crackle: true },
+    galoshes: { title: 'Galoshes', key: 62, sc: 'dorian', bpm: 92, p: [0, 3, 0, 4], lead: 'marimba', pad: 'pad', b: 'R..5..R.R..5..3.', k: 'x.......x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.3, dens: 0.45 },
+    gale: { title: 'Gale Warning', key: 52, sc: 'minor', bpm: 96, p: [0, 5, 6, 4], lead: 'ocarina', pad: 'pad', arp: 'pluck', arpP: '0.1.2.1.', b: 'R.R.....R.R..5..', k: 'x.....x.x.......', tom: '............xxxx', dens: 0.35 },
+    lighthouse: { title: 'Lighthouse Keeper', key: 55, sc: 'minor', bpm: 72, p: [0, 3, 4, 0], sev: true, lead: 'organ', pad: 'strings', b: 'R.......5.......', k: 'x.........x.....', dens: 0.3 },
+    crosswalk: { title: 'Crosswalk', key: 65, sc: 'major', bpm: 104, swing: 0.25, p: [3, 4, 2, 5], sev: true, lead: 'epiano', b: 'R..5..R.R..5..R.', k: 'x......x..x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', hv: 0.35, dens: 0.45 },
+    trolley: { title: 'Trolley Bell', key: 67, sc: 'mixo', bpm: 112, p: [0, 6, 3, 0], lead: 'steel', arp: 'marimba', arpP: '0.2.1.2.', b: 'R.R.5...R.R.5.8.', k: 'x...x...x...x...', rim: '...x..x....x..x.', h: '..x...x...x...x.', hv: 0.4, dens: 0.5 },
+    neon: { title: 'Neon Noodles', key: 62, sc: 'minor', bpm: 118, p: [0, 5, 6, 4], lead: 'saw', pad: 'pad', arp: 'chip', arpP: '0120', b: '..R...R...R...R.', k: 'x...x...x...x...', h: '..x...x...x...x.', clap: '....x.......x...', dens: 0.45 },
+    rooftop: { title: 'Rooftop Garden', key: 64, sc: 'major', bpm: 96, p: [0, 4, 5, 3], lead: 'uke', arp: 'kalimba', arpP: '0.1.2.1.', pad: 'epad', b: 'R...5...R...5...', k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.', hv: 0.35, dens: 0.5 },
   };
   const PLAYLISTS = {
-    spring: ['petal', 'toast', 'lantern'], summer: ['lemonade', 'scooter', 'petal'], autumn: ['cinnamon', 'sweater', 'toast'], winter: ['snowglobe', 'cocoa', 'sweater'],
-    evening: ['lantern', 'cocoa', 'roomtone'], night: ['moon', 'lullaby', 'firefly'], summernight: ['firefly', 'moon'], rain: ['umbrella', 'cocoa'], storm: ['thunder', 'umbrella'],
-    festival: ['starfall'], wedding: ['promises'], bday: ['cake'], meeting: ['order'], city: ['pigeons', 'aisle', 'scooter'],
+    spring: ['petal', 'toast', 'lantern', 'dewdrop', 'kite', 'tulip', 'bicycle', 'blossom', 'puddle', 'rooftop'], summer: ['lemonade', 'scooter', 'petal', 'coconut', 'sandcastle', 'popsicle', 'tidepool', 'hammock', 'surf', 'kite'], autumn: ['cinnamon', 'sweater', 'toast', 'acorn', 'pumpkin', 'scarf', 'cider', 'crunch', 'harvestmoon'], winter: ['snowglobe', 'cocoa', 'sweater', 'mittens', 'sled', 'fireplace', 'icicle', 'snowday', 'wool'],
+    evening: ['lantern', 'cocoa', 'roomtone', 'porch', 'dusk', 'goldenhour', 'streetlamp', 'hammock'], night: ['moon', 'lullaby', 'firefly', 'owl', 'stargazer', 'tide', 'sleepy'], summernight: ['firefly', 'moon', 'crickets', 'stargazer', 'tide', 'owl'], rain: ['umbrella', 'cocoa', 'drizzle', 'windowsill', 'galoshes'], storm: ['thunder', 'umbrella', 'gale', 'lighthouse'],
+    festival: ['starfall'], wedding: ['promises'], bday: ['cake'], meeting: ['order'], city: ['pigeons', 'aisle', 'scooter', 'crosswalk', 'trolley', 'neon', 'rooftop'],
     cafe: ['jazz', 'cocoa'], arcade: ['rush', 'scooter'], bakery: ['oven', 'toast'], books: ['pages', 'lullaby'], mart: ['aisle'], clothes: ['runway'], nook: ['sawdust'], icecream: ['sprinkles'],
     room: ['roomtone', 'cocoa'], hall: ['order'], labs: ['pigeons', 'roomtone'], labsci: ['beakers', 'pigeons'], labeng: ['gears', 'scooter'], clinic: ['waiting', 'roomtone'], uproar: ['uproar'], trial: ['trial'], mystery: ['mystery'], funeral: ['funeral'], roomnight: ['lullaby', 'moon'], mili: ['fixed', 'roomtone'],
   };
+  let inCity = false;
   function contextKey() {
     if (!W) return 'spring';
     if (CUT.live && CUT.live.music && PLAYLISTS[CUT.live.music]) return CUT.live.music;
@@ -102,7 +149,8 @@ const Sound = (() => {
     const night = W.t >= 0.63 || W.t < 0.03;
     if (night) return seasonOf().id === 'summer' ? 'summernight' : 'night';
     if (W.t >= 0.52) return 'evening';
-    if (controls && Math.hypot(controls.target.x - DT.x, controls.target.z - DT.z) < 26) return 'city';
+    // a wider circle to leave downtown than to enter it, so a spinning camera near the edge doesn't flip songs
+    if (controls) { const d = Math.hypot(controls.target.x - DT.x, controls.target.z - DT.z); inCity = d < (inCity ? 34 : 26); if (inCity) return 'city'; }
     return seasonOf().id;
   }
   // seeded melodies so each song has its own tune that repeats like a real song
@@ -148,6 +196,15 @@ const Sound = (() => {
       case 'bass': tone(f, t, dur, { type: 'sine', vol: 0.12 * v, attack: 0.01, release: 0.08, ...o }); tone(f * 2, t, dur * 0.4, { type: 'triangle', vol: 0.018 * v, release: 0.05, ...o }); break;
       case 'chipbass': tone(f, t, dur, { type: 'triangle', vol: 0.09 * v, attack: 0.002, release: 0.02, ...o }); break;
       case 'pizzbass': tone(f, t, 0.05, { type: 'triangle', vol: 0.1 * v, attack: 0.001, release: 0.2, ...o }); break;
+      case 'kalimba': tone(f, t, 0.03, { type: 'sine', vol: 0.08 * v, attack: 0.001, release: 0.55, ...o }); tone(f * 5.4, t, 0.01, { type: 'sine', vol: 0.012 * v, release: 0.12, ...o }); break;
+      case 'harp': tone(f, t, 0.04, { type: 'triangle', vol: 0.06 * v, attack: 0.002, release: 0.9, ...o }); tone(f * 2, t, 0.02, { type: 'sine', vol: 0.015 * v, release: 0.5, ...o }); break;
+      case 'glock': tone(f * 2, t, 0.02, { type: 'sine', vol: 0.05 * v, attack: 0.001, release: 0.7, ...o }); tone(f * 5.93, t, 0.01, { type: 'sine', vol: 0.01 * v, release: 0.25, ...o }); break;
+      case 'steel': tone(f, t, 0.05, { type: 'sine', vol: 0.06 * v, attack: 0.004, release: 0.45, ...o }); tone(f * 2, t, 0.04, { type: 'sine', vol: 0.025 * v, release: 0.35, ...o }); tone(f * 3.98, t, 0.02, { type: 'sine', vol: 0.01 * v, release: 0.2, ...o }); break;
+      case 'uke': tone(f, t, 0.04, { type: 'triangle', vol: 0.055 * v, attack: 0.002, release: 0.35, ...o }); tone(f * 1.003, t + 0.012, 0.03, { type: 'triangle', vol: 0.03 * v, release: 0.3, ...o }); break;
+      case 'ocarina': tone(f, t, dur, { type: 'sine', vol: 0.06 * v, attack: 0.05, release: 0.2, vib: 4.5, ...o }); break;
+      case 'whistle': tone(f * 2, t, dur, { type: 'sine', vol: 0.03 * v, attack: 0.03, release: 0.12, vib: 6, ...o }); break;
+      case 'organ': tone(f, t, dur, { type: 'sine', vol: 0.035 * v, attack: 0.02, release: 0.15, ...o }); tone(f * 2, t, dur, { type: 'sine', vol: 0.015 * v, attack: 0.02, release: 0.15, ...o }); tone(f * 3, t, dur, { type: 'sine', vol: 0.008 * v, attack: 0.02, release: 0.15, ...o }); break;
+      case 'strings': tone(f, t, dur, { type: 'sawtooth', vol: 0.012 * v, attack: 0.4, release: 0.9, lp: 1300, vib: 5, ...o }); tone(f * 0.997, t, dur, { type: 'sawtooth', vol: 0.01 * v, attack: 0.5, release: 1.0, lp: 1100, ...o }); break;
     }
   }
   const drum = {
@@ -160,26 +217,58 @@ const Sound = (() => {
   };
   const BREAKS = [['x.........x.....', '....x..x.x..x..x'], ['x.x.......xx....', '....x.x.....x.x.'], ['x.....x...x.....', '....x...x.xxx.x.'], ['x..x..x...x..x..', '..x.x..x..x.xxxx']];
   let cur = null, pending = null, nextStep = 0, songBars = 0, beatClock = { t0: 0, spb: 0.5 }, npTitle = '', lastCtx = '', rot = {};
-  function pickSong(ctxKey, skip) {
+  // each playlist deals its songs like a shuffled deck, and never the same song twice in a row
+  function pickSong(ctxKey) {
     const L = PLAYLISTS[ctxKey] || PLAYLISTS.spring;
-    rot[ctxKey] = rot[ctxKey] === undefined ? Math.floor(Math.random() * L.length) : (rot[ctxKey] + 1) % L.length;
-    return L[rot[ctxKey]];
+    if (L.length === 1) return L[0];
+    let bag = rot[ctxKey];
+    if (!bag || !bag.length) { bag = rot[ctxKey] = L.slice().sort(() => Math.random() - 0.5); if (cur && bag[bag.length - 1] === cur.key) bag.unshift(bag.pop()); }
+    let k = bag.pop();
+    if (cur && k === cur.key && bag.length) { const k2 = bag.pop(); bag.unshift(k); k = k2; }
+    return k;
   }
   function startSong(key) {
     if (cur && cur.bus) { const b = cur.bus; b.gain.setTargetAtTime(0, ctx.currentTime, 0.4); setTimeout(() => { try { b.disconnect(); } catch (e) {} }, 3000); }
     cur = buildSong(key); cur.bus = ctx.createGain(); cur.bus.gain.value = 0; cur.bus.connect(music); cur.bus.gain.setTargetAtTime(1, ctx.currentTime + 0.3, 0.6);
-    nextStep = Math.max(nextStep, ctx.currentTime + 0.12); songBars = 0; npTitle = cur.S.title;
+    nextStep = ctx.currentTime + 0.15; songBars = 0; npTitle = cur.S.title;
     beatClock = { t0: nextStep, spb: 60 / cur.S.bpm };
-    try { const np = document.getElementById('np'); if (np) np.textContent = `♪ ${npTitle}`; } catch (e) {}
+    showNp();
     try { if (typeof onSongChange === 'function') onSongChange(npTitle); } catch (e) {}
+  }
+  function showNp() {
+    try {
+      const np = document.getElementById('np'); if (!np) return;
+      np.textContent = cfg.music === false ? '' : ok() ? (npTitle ? `♪ ${npTitle}` : '') : (typeof MODE === 'undefined' || MODE === 'host') && W ? '🔇 Tap anywhere for music' : '';
+    } catch (e) {}
+  }
+  // weather, time of day, season and downtown only change the song once they have held for a while,
+  // and not at all when the song playing already belongs to the new playlist
+  const AMBIENT = new Set(['spring', 'summer', 'autumn', 'winter', 'evening', 'night', 'summernight', 'rain', 'storm', 'city']);
+  let wantCtx = '', wantSince = 0;
+  function pickContext() {
+    const c = contextKey();
+    if (!cur) {
+      // on the box, an iPhone plays the music through the silent switch like a music app would
+      if (MODE === 'host') try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+      lastCtx = c; startSong(pickSong(c)); return;
+    }
+    if (c === lastCtx) { wantCtx = ''; return; }
+    if (AMBIENT.has(c) && AMBIENT.has(lastCtx)) {
+      if ((PLAYLISTS[c] || []).includes(cur.key)) { lastCtx = c; wantCtx = ''; return; }
+      if (c !== wantCtx) { wantCtx = c; wantSince = ctx.currentTime; return; }
+      if (ctx.currentTime - wantSince < 8) return;
+    }
+    wantCtx = ''; lastCtx = c; startSong(pickSong(c));
   }
   function schedule() {
     if (!ok() || cfg.music === false || !W) return;
-    const c = contextKey();
-    if (!cur || c !== lastCtx) { lastCtx = c; startSong(pickSong(c)); }
+    try { scheduleNotes(); } catch (e) { console.warn('music', e); cur = null; }
+  }
+  function scheduleNotes() {
+    pickContext();
     const S = cur.S, meter = cur.meter, sd = 60 / S.bpm / 4, b = cur.bus, sc = SC[S.sc];
     if (nextStep < ctx.currentTime) nextStep = ctx.currentTime + 0.05;
-    while (nextStep < ctx.currentTime + 0.9) {
+    while (nextStep < ctx.currentTime + 1.5) {
       const i = cur.step % meter, bar = Math.floor(cur.step / meter), sec = bar % 32;
       const intro = sec < 2, brk = sec >= 20 && sec < 24, big = sec >= 24;
       const t = nextStep + (S.swing && i % 4 === 2 ? S.swing * sd : 0);
@@ -225,16 +314,36 @@ const Sound = (() => {
         }
       }
       nextStep += sd; cur.step++;
-      if (cur.step % meter === 0) { songBars++; if (songBars >= 64) { startSong(pickSong(lastCtx, true)); break; } }
+      if (cur.step % meter === 0) { songBars++; if (songBars >= 64) { startSong(pickSong(lastCtx)); break; } }
     }
   }
   setInterval(schedule, 120);
+  // try to start (or restart) sound. Browsers only let a page make sound after the person has
+  // tapped it at least once, so this can quietly fail until then.
+  function retry() {
+    const c = ensure(); if (!c || c.state === 'running') return;
+    try { const pr = c.resume(); if (pr && pr.then) pr.then(showNp, () => {}); } catch (e) {}
+  }
+  // keep checking: this catches a tap the browser didn't count and sound paused by the phone
+  setInterval(() => {
+    if (!ctx || ctx.state === 'running' || ctx.state === 'closed') return;
+    if (started || navigator.userActivation?.hasBeenActive) retry();
+    showNp();
+  }, 3000);
   const at = () => ctx.currentTime + 0.01;
   return {
-    unlock() { const c = ensure(); if (!c) return; if (c.state === 'suspended') c.resume(); started = true; },
-    levels,
+    unlock: retry,
+    // at boot: make the audio ready and try to play right away. After a reload, or on a site the
+    // browser trusts, this works with no tap at all; otherwise the first tap anywhere starts it.
+    boot() {
+      retry();
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') retry(); });
+      setTimeout(() => { showNp(); if (!ok() && cfg.music !== false && MODE === 'host' && typeof toast === 'function') toast('🎵 Tap the screen once to start the music. Browsers wait for one tap before playing sound.'); }, 6000);
+    },
+    levels() { levels(); showNp(); },
     nowPlaying() { return npTitle; },
-    skip() { if (!ok() || cfg.music === false) return ''; startSong(pickSong(lastCtx || contextKey(), true)); return npTitle; },
+    blocked() { return cfg.music !== false && !ok(); },
+    skip() { if (!ok() || cfg.music === false) return ''; lastCtx = lastCtx || contextKey(); startSong(pickSong(lastCtx)); return npTitle; },
     beatPhase() { if (!ok() || !cur) return (now * 1.5) % 1; return (((ctx.currentTime - beatClock.t0) / beatClock.spb) % 1 + 1) % 1; },
     beatCount() { if (!ok() || !cur) return Math.floor(now * 1.5); return Math.floor((ctx.currentTime - beatClock.t0) / beatClock.spb); },
     ui() { if (!ok()) return; tone(1180, at(), 0.025, { type: 'triangle', vol: 0.06 }); },
@@ -284,7 +393,8 @@ function hearable(p) {
   if (p.inside) return false;
   return Math.hypot(p.x - controls.target.x, p.z - controls.target.z) < 22;
 }
-['pointerdown', 'keydown', 'touchstart'].forEach((ev) => addEventListener(ev, () => Sound.unlock(), { passive: true }));
+// phones only count touchend / pointerup / click as a real tap for sound, so listen to all of them
+['pointerdown', 'pointerup', 'mousedown', 'keydown', 'touchstart', 'touchend', 'click'].forEach((ev) => addEventListener(ev, () => Sound.unlock(), { passive: true, capture: true }));
 document.addEventListener('click', (e) => { if (e.target.closest('button, .tab')) Sound.ui(); });
 $('#uproarBox').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !W.scene) return; if (b.dataset.upx !== undefined) { upHidden = W.scene.id; renderUproarBox(); return; } if (b.dataset.upwatch !== undefined) { if (interior) closeInterior(); camGoal = { x: W.scene.center[0], z: W.scene.center[1], r: 26 }; lastTouch = now; return; } if (b.dataset.upc) { send({ t: 'uproar', choice: b.dataset.upc }); b.disabled = true; } });
 setInterval(() => { try { renderUproarBox(); } catch (e) {} }, 800);
