@@ -24,7 +24,7 @@ function step(dt) {
     if (jailHold(p)) continue;
     if (p.state === 'talk') continue;
     if (asleep) {
-      if (W.t >= 0.008 + (p.room % 9) * 0.0012 && W.t < 0.6) { p.inside = false; p.task = null; p.at = homeKey(p); p.x = TOWN[homeKey(p)].spot[0] + (rand() - 0.5) * 2; p.z = TOWN[homeKey(p)].spot[1] + 0.3; }
+      if (W.t >= 0.008 + (p.room % 9) * 0.0012 && W.t < 0.6) { p.inside = false; p.task = null; p.at = homeKey(p); p.hunger = Math.max(0, p.hunger - 0.25); /* breakfast at home */ p.x = TOWN[homeKey(p)].spot[0] + (rand() - 0.5) * 2; p.z = TOWN[homeKey(p)].spot[1] + 0.3; }
       else continue;
     }
     if (!p.task && p.inside) { p.task = { kind: 'home', phase: 'do' }; p.busyUntil = Infinity; continue; }
