@@ -2,6 +2,11 @@
 // SIMULATION STEP
 // ============================================================
 const isNight = () => W.t >= 0.63;
+// safety net: someone whose position went bad (NaN) is invisible and drags anyone they bump into along, so walk them home
+function strandedHome(p) {
+  const s = TOWN[homeKey(p)]?.spot || TOWN.plaza.spot;
+  p.x = s[0] + (rand() - 0.5) * 2; p.z = s[1] + 0.3; p.at = homeKey(p); p.path = []; p.task = null; p.pose = null; p.stuckT = 0; p.lastD = Infinity;
+}
 function step(dt) {
   if (!W.meeting) W.t += dt / cfg.daySec;
   if (W.t >= 0.018 && W.meetingDay !== W.day && !W.meeting && W.t < 0.2) { W.meetingDay = W.day; townMeeting().catch((e) => { console.error(e); W.meeting = null; }); }
@@ -10,6 +15,7 @@ function step(dt) {
   const dDay = dt / cfg.daySec;
   for (const p of W.people) {
     if (p.task?.kind === 'away') continue;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) strandedHome(p);
     const asleep = p.inside && p.task?.kind === 'home';
     if (!W.meeting) p.hunger = clamp(p.hunger + p.body.hungerRate * dDay * (asleep ? 0.35 : 1.15), 0, 1);
     if (p.hunger > 0.88 && !p.today.some((m) => m.tag === 'hungry')) remember(p, 'Went hungry for a long stretch.', 2, 'hungry');
@@ -27,6 +33,7 @@ function step(dt) {
     if (!p.task) { if (!W.meeting) plan(p); continue; }
     if (p.task?.kind === 'walkwith') { walkWithStep(p, dt); continue; }
     if (p.path.length) {
+      if (!Number.isFinite(p.path[0]?.x) || !Number.isFinite(p.path[0]?.z)) { p.path.shift(); continue; }
       const tgt = p.path[0], dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
       const achy = p.body.ailments?.length && W.t < 0.15 && !(p.healedUntil >= W.day) ? 0.75 : 1;
       if (achy < 1 && p.sickDay !== W.day && /sick/.test(p.body.ailments.join(' ')) && rand() < 0.01) { p.sickDay = W.day; bubble(p, pick(['Ugh. Sick again.', 'Mornings are the worst.', 'My joints. Man.']), 2.6); remember(p, 'Felt sick this morning, like always.', 1, 'sick'); }

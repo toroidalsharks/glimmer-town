@@ -26,7 +26,7 @@ function goTo(p, dest, spot) {
   const sp0 = spot || TOWN[dest].spot, fromIsle = bridgedAt(p.x, p.z), toIsle0 = bridgedAt(sp0[0], sp0[1]);
   if (fromIsle && fromIsle !== toIsle0) pts.push(...bridgeVia(fromIsle, true));
   const cur = TOWN[p.at] || TOWN.plaza, d = TOWN[dest];
-  const E = (x) => (!x ? [] : Array.isArray(x[0]) ? x : [x]);
+  const E = (x) => (!x || !x.length ? [] : Array.isArray(x[0]) ? x : [x]);
   if (dest !== p.at) {
     if (cur.zone === 'dt' && d.zone === 'dt') pts.push(...E(cur.local).slice().reverse(), ...E(d.local));
     else pts.push(...E(cur.entry).slice().reverse(), ...E(d.entry));
@@ -34,10 +34,12 @@ function goTo(p, dest, spot) {
   if (toIsle0 && toIsle0 !== fromIsle) pts.push(...bridgeVia(toIsle0, false));
   pts.push(spot || d.spot);
   const out = []; let prev = [p.x, p.z];
-  for (const q of pts) { const det = routeAround(prev, q); const ordered = det.length ? orderDetour(prev, det) : []; out.push(...ordered, q); prev = q; }
+  // a waypoint without real numbers turns the walker's position into NaN: they vanish and their name tag freezes
+  for (const q of pts.filter(routePointOk)) { const det = routeAround(prev, q); const ordered = det.length ? orderDetour(prev, det) : []; out.push(...ordered, q); prev = q; }
   p.path = out.map(([x, z]) => ({ x, z }));
   p.dest = dest; p.stuckT = 0; p.lastD = Infinity;
 }
+function routePointOk(q) { return Array.isArray(q) && Number.isFinite(q[0]) && Number.isFinite(q[1]); }
 function orderDetour(from, pts) { const [a, b, c] = pts; return Math.hypot(a[0] - from[0], a[1] - from[1]) <= Math.hypot(c[0] - from[0], c[1] - from[1]) ? [a, b, c] : [c, b, a]; }
 const jitter = ([x, z], r) => [x + (rand() - 0.5) * r, z + (rand() - 0.5) * r];
 function workSpot(job) {
