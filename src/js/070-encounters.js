@@ -42,7 +42,7 @@ async function encounter(a, b) {
   spaceOut(a, b);
   if (aiReady() && aiBusy < 2) { if (intent) { a.makeup = null; a.befriend = null; a.confront = null; } await aiEncounter(a, b, intent); }
   else await ruleEncounter(a, b);
-  afterChat(a, b); goalAfterEncounter(a, b, intent);
+  afterChat(a, b); goalAfterEncounter(a, b, intent); socialAfterChat(a, b);
 }
 async function ruleEncounter(a, b) {
   a.state = b.state = 'talk';

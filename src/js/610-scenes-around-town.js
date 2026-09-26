@@ -272,7 +272,7 @@ function admirerReveal(C, pid, self) {
   queueCut({ kind: 'mystery', icon: '💌', title: 'The Admirer Revealed', sub: `${real.name} → ${V.name}`, music: 'wedding', lines: L,
     stage: (S) => { townStage(S, [0, 7], castFrom(onlookers([real.id, V.id], 4), 4), { r: 3.2, marks: [[real.id, -0.7, 7, Math.PI / 2], [V.id, 0.7, 7, -Math.PI / 2]] }); CUT.focus = { x: 0, z: 7 }; },
     onEnd: () => { feel(V, real, likes ? 2 : 0.8, true); feel(real, V, 1, true); remember(V, `${real.name} was my secret admirer!`, 3, 'admirerRevealed', real.name); remember(real, `I told ${V.name} I was the one leaving the flowers.`, 3, 'admirerRevealed', V.name); if (likes && !real.partner && !V.partner) real.confessTo = V.id; } });
-  diary(`💌 The secret admirer was <b>${esc(real.name)}</b>, all along, for <b>${esc(V.name)}</b>.`);
+  diary(`💌 The secret admirer was <b>${esc(real.name)}</b>, all along, for <b>${esc(V.name)}</b>.`); townRecord('admirer', [real.id, V.id], `The secret admirer leaving flowers for ${V.name} turned out to be ${real.name}.`);
   markDirty();
   return `It was ${real.name}!`;
 }

@@ -126,6 +126,7 @@ function applyRuling(c, choice, byJury) {
     const v = juryVotes(c), townSaid = v.yes > v.no ? P : D;
     for (const q of v.jurors) { const agrees = townSaid === win ? rand() < 0.7 : rand() < 0.3; creatorShift(q, agrees ? 0.1 : -0.15); if (!agrees && rand() < 0.4) remember(q, `I don't think the Creator's ruling in ${title} was fair.`, 1, 'unfair'); }
   }
+  if (c.kind !== 'license' || choice !== 'fountain') townRecord(choice === 'grant' ? 'divorce' : choice === 'now' ? 'married' : 'court', [P.id, D.id], choice === 'now' ? `${P.name} and ${D.name} got married at Glimmer Hall.` : `${title}: ${text}${byJury ? ' The jury decided.' : ' The Creator decided.'}`);
   diary(`⚖ Ruling in <b>${esc(title)}</b>${byJury && c.jury ? ` (jury ${c.jury})` : ''}: ${esc(text)}`);
   Sound.bell(); markDirty();
   return `⚖ ${text}`;
@@ -216,7 +217,7 @@ function renderCourt() {
       <p>${esc(c.summary)}</p>
       <p class="note"><b>${esc(c.pName)}:</b> "${esc(c.args.p || '…')}"</p><p class="note"><b>${esc(c.dName)}:</b> "${esc(c.args.d || '…')}"</p>
       <div class="btns">${(RULINGS[c.kind] || []).map(([k, l]) => `<button class="btn ${k === 'jury' ? '' : 'gold'}" type="button" data-rule="${c.id}" data-choice="${k}">${esc(l.replace('#P', c.pName).replace('#D', c.dName))}</button>`).join('')}${c.kind !== 'license' ? `<button class="btn" type="button" data-rule="${c.id}" data-choice="jury">Let the jury decide</button>` : ''}</div></div>`).join('') : '<p class="hint">No cases right now. Peace on the island. For now.</p>'}
-    ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}`;
+    ${past.length ? `<p class="label">Past rulings</p>${past.map((c) => `<p class="note"><span class="chip">day ${c.ruled}</span> <b>${esc(caseTitle(c))}</b>: ${esc(c.result || '')} <span class="hint">${c.byJury ? `(jury${c.jury ? ` ${c.jury}` : ''})` : '(you)'}</span></p>`).join('')}` : ''}${townRecordHtml()}`;
   $('#detSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'detective', pid: e.target.value }));
   $('#paceSel')?.addEventListener('change', (e) => send({ t: 'crime', a: 'pace', pace: e.target.value }));
 }

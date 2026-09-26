@@ -1,6 +1,12 @@
 // ============================================================
 // SETTINGS: minds and sync
 // ============================================================
+// one-tap model sets for Settings. The first one is the game's default list.
+const MODEL_PICKS = [
+  { key: 'default', label: 'The usual mix', models: DEFAULT_MODELS, judge: 'deepseek/deepseek-v4-flash', why: 'three cheap roleplay models, so residents sound a little different from each other' },
+  { key: 'ds41', label: 'DeepSeek V4.1 Flash', models: ['deepseek/deepseek-v4.1-flash'], judge: 'deepseek/deepseek-v4.1-flash', why: 'newer and smarter than V4 Flash, better at keeping facts straight, still cheap (a little over V4 Flash)' },
+  { key: 'glm', label: 'GLM 5.3 Flash', models: ['z-ai/glm-5.3-flash'], judge: 'z-ai/glm-5.3-flash', why: 'scores well on reasoning for its price and stays in character' },
+];
 function renderBrainSettings() {
   const el = $('#brainBox'); if (!el) return;
   const left = aiLeft();
@@ -13,6 +19,7 @@ function renderBrainSettings() {
     <div class="field"><label for="orModels">Models residents can have (one per line)</label><textarea id="orModels" rows="4" style="font:14px ui-monospace,monospace;color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px">${esc(brainCfg.models.join('\n'))}</textarea></div>
     <div class="field"><label for="orJudge">Model that judges how conversations went</label><input id="orJudge" type="text" value="${esc(brainCfg.judge)}" style="font:14px ui-monospace,monospace;color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
     <div class="field"><label for="orBudget">Most model calls per real day (about 3 or 4 per conversation)</label><input id="orBudget" type="number" min="0" max="5000" value="${brainCfg.budget}" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
+    <div class="field"><label>Quick switch (everyone gets the same model, and you can switch back any time)</label><div class="btns">${MODEL_PICKS.map((m) => `<button class="btn${brainCfg.models.length === m.models.length && m.models.every((x, i) => brainCfg.models[i] === x) ? ' gold' : ''}" type="button" data-usemodels="${esc(m.key)}" title="${esc(m.why)}">${esc(m.label)}</button>`).join('')}</div><p class="hint">${MODEL_PICKS.map((m) => `<b>${esc(m.label)}</b>: ${esc(m.why)}`).join('<br>')}</p></div>
     <div class="btns"><button class="btn gold" type="button" id="orSave">Save minds</button><button class="btn" type="button" id="orFind">Find cheap roleplay models</button><button class="btn" type="button" id="orShuffle">Give everyone a new model</button></div>
     <p class="status">${aiDown ? esc(aiDown) : lastAiError ? esc(lastAiError) + ' · ' + aiStats.n + ' calls today' : brainCfg.key ? `${aiStats.n} calls today, ${Math.max(0, left)} left · about $${aiStats.cost.toFixed(3)} spent today` : 'No key yet, so residents run on rules.'}</p>
     <div id="orList"></div></div>
@@ -37,6 +44,12 @@ document.addEventListener('click', async (e) => {
     if (MODE === 'host') RT.sample = brainCfg.key ? makeSample() : null;
     badModels.clear(); lastAiError = ''; checkModels(); if (W) W.people.forEach(modelOf);
     toast(brainCfg.key ? 'Saved. Residents will start thinking for themselves.' : 'Saved.'); renderBrainSettings();
+  }
+  if (b.dataset.usemodels) {
+    const m = MODEL_PICKS.find((x) => x.key === b.dataset.usemodels); if (!m) return;
+    brainCfg.models = m.models.slice(); brainCfg.judge = m.judge; saveBrain();
+    badModels.clear(); lastAiError = ''; checkModels(); if (W) { W.people.forEach((p) => { p.model = null; modelOf(p); }); markDirty(); }
+    toast(`Switched to ${m.label}.`); renderBrainSettings();
   }
   if (b.id === 'orShuffle' && W) { W.people.forEach((p) => { p.model = pick(brainCfg.models); }); markDirty(); toast('Everyone got a new model.'); refreshPanel(true); }
   if (b.id === 'orFind') {

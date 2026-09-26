@@ -187,6 +187,7 @@ function renderBoard() {
     ${laptopsHtml()}
     ${dramaHtml()}
     ${goalsBoardHtml()}
+    ${socialBoardHtml()}
     ${suggestionsHtml()}
     ${healthHtml()}
     <p class="label">📚 What everyone is reading</p>${(() => { const L = W.people.filter((p) => (p.toRead || []).length && BOOKS[p.toRead[0]]).map((p) => `<p class="note" style="margin:2px 0">📖 <b>${esc(p.name)}</b>: <i>${esc(BOOKS[p.toRead[0]].title)}</i></p>`); return L.length ? `<div>${L.join('')}</div>` : '<p class="hint">Nobody is reading anything right now. The bookstore sells books by subject.</p>'; })()}
