@@ -79,15 +79,16 @@ function eatAt(p, shop) {
   const unknown = menu.filter((f) => p.tastes[f.id] === undefined);
   const f = unknown.length && (rand() < 0.35 || Object.keys(p.tastes).length < 2) ? pick(unknown) : [...menu].sort((a, b) => (p.tastes[b.id] ?? 0) - (p.tastes[a.id] ?? 0) + (rand() - 0.5) * 0.3)[0];
   const P = p.body.palate, fl = f.fl, sum = fl.sweet + fl.salty + fl.spicy;
-  const joy = clamp((P.sweet * fl.sweet + P.salty * fl.salty + P.spicy * fl.spicy) / sum + (rand() - 0.5) * 0.4, -1, 1);
+  // most food is at least okay: a small lift, so a face means they really don't like it
+  const joy = clamp((P.sweet * fl.sweet + P.salty * fl.salty + P.spicy * fl.spicy) / sum + 0.15 + (rand() - 0.5) * 0.4, -1, 1);
   const first = p.tastes[f.id] === undefined;
   p.tastes[f.id] = first ? joy : p.tastes[f.id] * 0.7 + joy * 0.3;
   spend(p, f.price); p.hunger = clamp(p.hunger - f.fill, 0, 1);
   const cook = W.keeper[shop] && W.keeper[shop] !== p.id ? person(W.keeper[shop]) : null;
-  let line = joy > 0.35 ? pick([`Mmm, ${f.name}!`, `${cap(f.name)} is the best.`]) : joy < -0.2 ? pick([`Blegh. ${cap(f.name)}…`, `I don't like ${f.name}.`]) : `${cap(f.name)}. It's fine.`;
+  let line = joy > 0.35 ? pick([`Mmm, ${f.name}!`, `${cap(f.name)} is the best.`]) : joy < -0.3 ? pick([`Blegh. ${cap(f.name)}…`, `I don't like ${f.name}.`]) : `${cap(f.name)}. It's fine.`;
   if (cook && Math.abs(joy) > 0.45 && rand() < 0.6) { line = joy > 0 ? `${cook.name} makes the best ${f.name}!` : `${cook.name} ruined the ${f.name} again.`; feel(p, cook, joy > 0 ? 0.5 : -0.5, true); remember(cook, `${p.name} ${joy > 0 ? 'loved' : 'complained about'} the ${f.name} I made.`, 1, joy > 0 ? 'praised' : 'criticized', p.name); }
-  bubble(p, line, 2.6); emote(p, joy > 0.35 ? '♥' : joy < -0.2 ? '☁' : '…', 2);
-  remember(p, `Ate ${f.name} at ${SHOPS[shop].name}${cook ? ` (${cook.name} made it)` : ''}${joy > 0.35 ? ' and loved it' : joy < -0.2 ? ' and hated it' : ''}.`, first ? 2 : 1, 'ate', cook?.name, { food: f.name, joy, first });
-  if (first) diary(`<b>${esc(p.name)}</b> tried ${f.name} for the first time${joy > 0.35 ? ' and loved it' : joy < -0.2 ? ' and made a face' : ''}.`);
+  bubble(p, line, 2.6); emote(p, joy > 0.35 ? '♥' : joy < -0.3 ? '☁' : '…', 2);
+  remember(p, `Ate ${f.name} at ${SHOPS[shop].name}${cook ? ` (${cook.name} made it)` : ''}${joy > 0.35 ? ' and loved it' : joy < -0.3 ? ' and hated it' : ''}.`, first ? 2 : 1, 'ate', cook?.name, { food: f.name, joy, first });
+  if (first) diary(`<b>${esc(p.name)}</b> tried ${f.name} for the first time${joy > 0.35 ? ' and loved it' : joy < -0.3 ? ' and made a face' : ''}.`);
 }
 

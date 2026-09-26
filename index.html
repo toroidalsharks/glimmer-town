@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Glimmer Town</title>
-<meta name="glimmer-build" content="ef96e103f9">
+<meta name="glimmer-build" content="86e5c504d3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@400;700&display=swap">
@@ -70,7 +70,7 @@
   .hud b { display: block; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: .01em; }
   .toggle { position: fixed; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); font: 700 14px var(--body); color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; cursor: pointer; }
 
-  .sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 62%; display: flex; flex-direction: column; background: rgba(17, 14, 28, .97); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 62%; display: flex; flex-direction: column; background: rgb(17, 14, 28); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px); }
   @media (min-width: 820px) { .sheet { left: auto; right: 16px; bottom: 16px; top: 16px; width: 410px; max-height: none; border: 1px solid var(--line); border-radius: 20px; } }
   .sheet-head { display: flex; align-items: center; gap: 6px; padding-bottom: 10px; }
   .tabs { display: flex; gap: 2px; flex: 1; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; scroll-snap-type: x proximity; }
@@ -411,7 +411,7 @@ const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const a_an = (w) => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+const a_an = (w) => (/headphones$/i.test(w) ? '' : /^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; // "a lamp", "an owl", but plain "headphones"
 const uid = () => Math.random().toString(36).slice(2, 10);
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
@@ -958,16 +958,17 @@ function eatAt(p, shop) {
   const unknown = menu.filter((f) => p.tastes[f.id] === undefined);
   const f = unknown.length && (rand() < 0.35 || Object.keys(p.tastes).length < 2) ? pick(unknown) : [...menu].sort((a, b) => (p.tastes[b.id] ?? 0) - (p.tastes[a.id] ?? 0) + (rand() - 0.5) * 0.3)[0];
   const P = p.body.palate, fl = f.fl, sum = fl.sweet + fl.salty + fl.spicy;
-  const joy = clamp((P.sweet * fl.sweet + P.salty * fl.salty + P.spicy * fl.spicy) / sum + (rand() - 0.5) * 0.4, -1, 1);
+  // most food is at least okay: a small lift, so a face means they really don't like it
+  const joy = clamp((P.sweet * fl.sweet + P.salty * fl.salty + P.spicy * fl.spicy) / sum + 0.15 + (rand() - 0.5) * 0.4, -1, 1);
   const first = p.tastes[f.id] === undefined;
   p.tastes[f.id] = first ? joy : p.tastes[f.id] * 0.7 + joy * 0.3;
   spend(p, f.price); p.hunger = clamp(p.hunger - f.fill, 0, 1);
   const cook = W.keeper[shop] && W.keeper[shop] !== p.id ? person(W.keeper[shop]) : null;
-  let line = joy > 0.35 ? pick([`Mmm, ${f.name}!`, `${cap(f.name)} is the best.`]) : joy < -0.2 ? pick([`Blegh. ${cap(f.name)}…`, `I don't like ${f.name}.`]) : `${cap(f.name)}. It's fine.`;
+  let line = joy > 0.35 ? pick([`Mmm, ${f.name}!`, `${cap(f.name)} is the best.`]) : joy < -0.3 ? pick([`Blegh. ${cap(f.name)}…`, `I don't like ${f.name}.`]) : `${cap(f.name)}. It's fine.`;
   if (cook && Math.abs(joy) > 0.45 && rand() < 0.6) { line = joy > 0 ? `${cook.name} makes the best ${f.name}!` : `${cook.name} ruined the ${f.name} again.`; feel(p, cook, joy > 0 ? 0.5 : -0.5, true); remember(cook, `${p.name} ${joy > 0 ? 'loved' : 'complained about'} the ${f.name} I made.`, 1, joy > 0 ? 'praised' : 'criticized', p.name); }
-  bubble(p, line, 2.6); emote(p, joy > 0.35 ? '♥' : joy < -0.2 ? '☁' : '…', 2);
-  remember(p, `Ate ${f.name} at ${SHOPS[shop].name}${cook ? ` (${cook.name} made it)` : ''}${joy > 0.35 ? ' and loved it' : joy < -0.2 ? ' and hated it' : ''}.`, first ? 2 : 1, 'ate', cook?.name, { food: f.name, joy, first });
-  if (first) diary(`<b>${esc(p.name)}</b> tried ${f.name} for the first time${joy > 0.35 ? ' and loved it' : joy < -0.2 ? ' and made a face' : ''}.`);
+  bubble(p, line, 2.6); emote(p, joy > 0.35 ? '♥' : joy < -0.3 ? '☁' : '…', 2);
+  remember(p, `Ate ${f.name} at ${SHOPS[shop].name}${cook ? ` (${cook.name} made it)` : ''}${joy > 0.35 ? ' and loved it' : joy < -0.3 ? ' and hated it' : ''}.`, first ? 2 : 1, 'ate', cook?.name, { food: f.name, joy, first });
+  if (first) diary(`<b>${esc(p.name)}</b> tried ${f.name} for the first time${joy > 0.35 ? ' and loved it' : joy < -0.3 ? ' and made a face' : ''}.`);
 }
 
 // ============================================================
@@ -1267,6 +1268,12 @@ function strollSpot() {
   if (r < 0.8) return ['park', jitter(TOWN.park.spot, 6)];
   return ['garden', jitter(TOWN.garden.spot, 5)];
 }
+function planEat(p) {
+  if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || p.saving || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return true; }
+  const i = W.bushes.findIndex((n) => n > 0);
+  if (i >= 0) { setTask(p, 'forage', 'plaza', [BUSHES[i][0] * 0.86, BUSHES[i][1] * 0.86], { bush: i }); return true; }
+  return false;
+}
 function plan(p) {
   const t = W.t;
   const ev = W.event && W.event.day === W.day ? EVENTS[W.event.id] : null;
@@ -1274,6 +1281,8 @@ function plan(p) {
   if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
   if (healthPlan(p)) return;
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
+  // really hungry comes before work, goals and books
+  if (p.hunger > 0.7 && planEat(p)) return;
   if (planPicket(p)) return;
   if (planBuyLaptop(p)) return;
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
@@ -1286,11 +1295,7 @@ function plan(p) {
   if (planRead(p)) return;
   if (planBrowse(p)) return;
   if (planSurf(p)) return;
-  if (p.hunger > 0.45) {
-    if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || p.saving || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return; }
-    const i = W.bushes.findIndex((n) => n > 0);
-    if (i >= 0) { setTask(p, 'forage', 'plaza', [BUSHES[i][0] * 0.86, BUSHES[i][1] * 0.86], { bush: i }); return; }
-  }
+  if (p.hunger > 0.45 && planEat(p)) return;
   if (!p.saving && purse(p) >= (sharing() && !p.visitor ? 15 : 7) && rand() < 0.3) { setTask(p, 'shop', pick(['clothes', 'nook', 'nook', 'books'])); return; }
   if (!p.saving && purse(p) >= 2 && rand() < (/game|League/i.test(p.interests || '') ? 0.3 : 0.08)) { setTask(p, 'arcade', 'arcade'); return; }
   if (W.project && p.coins >= 9 && (!p.saving || W.project.id === 'computer') && rand() < 0.2) { setTask(p, 'donate', 'plaza', jitter([0, 4.6], 1)); return; }
@@ -1528,7 +1533,7 @@ function step(dt) {
     if (jailHold(p)) continue;
     if (p.state === 'talk') continue;
     if (asleep) {
-      if (W.t >= 0.008 + (p.room % 9) * 0.0012 && W.t < 0.6) { p.inside = false; p.task = null; p.at = homeKey(p); p.x = TOWN[homeKey(p)].spot[0] + (rand() - 0.5) * 2; p.z = TOWN[homeKey(p)].spot[1] + 0.3; }
+      if (W.t >= 0.008 + (p.room % 9) * 0.0012 && W.t < 0.6) { p.inside = false; p.task = null; p.at = homeKey(p); p.hunger = Math.max(0, p.hunger - 0.25); /* breakfast at home */ p.x = TOWN[homeKey(p)].spot[0] + (rand() - 0.5) * 2; p.z = TOWN[homeKey(p)].spot[1] + 0.3; }
       else continue;
     }
     if (!p.task && p.inside) { p.task = { kind: 'home', phase: 'do' }; p.busyUntil = Infinity; continue; }
@@ -5003,11 +5008,17 @@ function applyRuling(c, choice, byJury) {
   Sound.bell(); markDirty();
   return `⚖ ${text}`;
 }
+// a debate topic the town hasn't argued about lately
+function freshDebate() {
+  const recent = new Set((W.cases || []).filter((c) => c.kind === 'debate').slice(-8).map((c) => c.topic));
+  const left = DEBATES.filter((t) => !recent.has(t));
+  return pick(left.length ? left : DEBATES);
+}
 function courtMorning() {
   if (ISLE !== 'isle1' && ISLE !== 'isle2') return;
   const ppl = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 1);
   if (ppl.length < 2) return;
-  if (rand() < 0.35) { const a = pick(ppl), b = pick(ppl.filter((q) => q !== a)); if (b) fileCase('debate', a, b, { topic: pick(DEBATES) }); }
+  if (rand() < 0.35) { const a = pick(ppl), b = pick(ppl.filter((q) => q !== a)); if (b) fileCase('debate', a, b, { topic: freshDebate() }); }
   const sour = [];
   for (const a of ppl) for (const b of ppl) if (a !== b && fscore(a, b) <= -3) sour.push([a, b]);
   if (sour.length && rand() < 0.4) { const [a, b] = pick(sour); fileCase('complaint', a, b, { grievance: pick(GRIEVANCES) }); }
@@ -13693,6 +13704,7 @@ function renderBoard() {
   const P2 = W.paper && W.paper.day === W.day ? W.paper : null;
   $('#pane-board').innerHTML = `
     <div class="paper"><p class="p-mast">The ${esc(ISL.name)} Gazette · Day ${W.day}</p>${P2 ? `<h3>${esc(P2.headline)}</h3>${P2.stories.map((st) => `<p><b>${esc(st.title)}</b> ${esc(st.text)}</p>`).join('')}` : `<p class="hint" style="color:#6d6488">Today's paper hasn't been printed yet.</p><div class="btns"><button class="btn gold" type="button" data-paper>Read today's paper</button></div>`}</div>
+    ${wishBoardHtml()}
     <p class="label">How ${esc(ISL.name)} works</p><p class="hint">${esc(CULT.long)}${sharing() ? ` The pantry holds ${W.pantry || 0} coins.` : ''}</p>
     <p class="label">Today's plan</p>
     ${ev ? `<p>${esc(cap(EVENTS[ev.id].name))} at ${EVENTS[ev.id].at}. Going: ${ev.going.map((id) => esc(person(id)?.name || '')).filter(Boolean).join(', ')}.</p>` : '<p class="hint">No event planned today.</p>'}
@@ -13905,7 +13917,7 @@ sheet.addEventListener('submit', async (e) => {
   const inp = document.getElementById('talk-' + id); if (inp) inp.focus();
 });
 document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-function openSheet() { sheet.hidden = false; showTab(activeTab); }
+function openSheet() { if (placing) cancelPlacing(); sheet.hidden = false; showTab(activeTab); }
 // a taller panel, for dressing people up or reading long letters; remembered on this device
 {
   const g = $('#growSheet'), setTall = (on) => { sheet.classList.toggle('tall', on); g.setAttribute('aria-pressed', String(on)); g.textContent = on ? '⤡' : '⤢'; g.setAttribute('aria-label', on ? 'Make the panel shorter' : 'Make the panel taller'); };
@@ -13943,6 +13955,54 @@ $('#resetBtn').addEventListener('click', () => {
   $('#resetBtn').textContent = 'Start a new town'; $('#resetHint').textContent = 'New neighbors just moved in.';
 });
 
+// ============================================================
+// WISH BOARD: everyone's wishes on the Town board, with a way to grant each one
+// ============================================================
+// a gift you already hold, or one in a shop, that would come true for this wish (best match first)
+function wishFinds(p) {
+  const w = p.cr.wish; if (!w) return {};
+  const best = (list) => list.map((it) => [it, wishMatch(p, it)]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1] || itemPrice(a[0]) - itemPrice(b[0]))[0]?.[0] || null;
+  const own = best(W.creator.items || []);
+  let shop = null, forSale = null;
+  for (const k of Object.keys(W.stock || {})) { const it = best(W.stock[k] || []); if (it && (!forSale || wishMatch(p, it) > wishMatch(p, forSale) || itemPrice(it) < itemPrice(forSale))) { forSale = it; shop = k; } }
+  return { own, shop, forSale };
+}
+function wishBoardHtml() {
+  const wishers = W.people.filter((p) => p.cr?.wish && !p.visitor);
+  if (!wishers.length) return '<p class="label">Wishes</p><p class="hint">Nobody is wishing for anything right now.</p>';
+  const C = W.creator;
+  const rows = wishers.map((p) => {
+    const w = p.cr.wish, left = Math.max(0, 3 - (W.day - w.day));
+    const when = left <= 1 ? 'last day' : `${left} days left`;
+    let act;
+    if (w.kind === 'coins') act = `<button class="btn gold" type="button" data-coins="3" data-to="${p.id}" ${C.coins < 3 ? 'disabled' : ''}>Send 3 coins</button>`;
+    else if (w.kind === 'food') {
+      const f = foodById(w.id), f2 = f && SHOPS[f.shop] && f.shop !== 'plot';
+      act = f2 ? `<button class="btn gold" type="button" data-wishbuy="${f.shop}" data-food="${f.id}" data-to="${p.id}" ${C.coins < f.price ? 'disabled' : ''}>Buy and give (${f.price} ✦)</button>` : '<span class="hint">Grow it in your garden plot.</span>';
+    } else {
+      const { own, shop, forSale } = wishFinds(p);
+      if (own) act = `<button class="btn gold" type="button" data-give="${own.uid}" data-to="${p.id}">Give your ${esc(itemName(own))}</button>`;
+      else if (forSale) act = `<button class="btn gold" type="button" data-wishbuy="${shop}" data-uid="${forSale.uid}" data-to="${p.id}" ${C.coins < itemPrice(forSale) ? 'disabled' : ''}>Buy at ${esc(SHOPS[shop].name)} and give (${itemPrice(forSale)} ✦)</button>`;
+      else if (w.kind === 'book') act = `<button class="btn" type="button" data-wishbooks="${w.subj}">Look at Paper Moon Books</button>`;
+      else act = `<button class="btn" type="button" data-wishmake="1">Make it in your workshop</button>`;
+    }
+    return `<div class="item"><div class="item-top"><span class="dot" style="background:${skinCss(p)};border-color:${COLORS[p.outfit.shirt]}"></span><b>${esc(p.name)}</b><span class="chip ${left <= 1 ? 'bad' : 'gold'}">${when}</span></div>
+      <span>✧ Wishing for ${esc(wishText(w))}</span><div class="btns">${act}</div></div>`;
+  }).join('');
+  return `<p class="label">Wishes</p><p class="hint">Grant a wish before it runs out and they'll remember it. Wishes nobody answers leave them a little hurt.</p><div class="wishes" style="display:flex;flex-direction:column;gap:8px">${rows}</div>`;
+}
+// the board's own buttons; the rest (coins, give) go through the panel's usual handlers
+sheet.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  const d = t.dataset;
+  if (d.wishbuy) { send(d.food ? { t: 'buy', shop: d.wishbuy, id: d.food, to: d.to } : { t: 'buy', shop: d.wishbuy, uid: d.uid, to: d.to }); return; }
+  if (d.wishbooks !== undefined) { shopTab = 'books'; bookSubj = d.wishbooks || null; showTab('shops'); refreshPanel(true); return; }
+  if (d.wishmake !== undefined) { showTab('gifts'); refreshPanel(true); }
+});
+function wishBoardBoot() {
+  W.added = W.added || {}; if (W.added.wishBoard) return; W.added.wishBoard = true;
+  if (typeof logUpdate === 'function') logUpdate('build', "Everyone's wishes are on the Town board now, with how many days each one has left and a button to grant it: send coins, buy the thing and give it, or make it in your workshop. Residents also stop skipping meals, eat breakfast at home, and like more of the food in town.", 'the wish board');
+}
 // ============================================================
 // HOST: taps in the 3D town
 // ============================================================
@@ -14078,7 +14138,7 @@ function startRemote() {
 // has to change ?v= by hand. build.mjs stamps BUILD_ID and writes
 // version.json next to index.html.
 // ============================================================
-const BUILD_ID = 'ef96e103f9';
+const BUILD_ID = '86e5c504d3';
 const UPDATE_KEY = 'glimmer-update';
 // on the local dev server, check every few seconds so saving a file reloads the page
 const updateLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -14165,7 +14225,7 @@ async function boot() {
   W = (await loadWorld()) || newWorld();
   applyMods();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
-  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); townRecordBoot(); socialBoot(); lifeBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
+  W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); wishBoardBoot(); townRecordBoot(); socialBoot(); lifeBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
