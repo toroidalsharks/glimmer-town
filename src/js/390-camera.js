@@ -82,7 +82,7 @@ function wireCamBar() {
   $('#cbGo').addEventListener('click', () => { const g = $('#goto'); if (g.hidden) renderGoto(); g.hidden = !g.hidden; });
   $('#goto').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (!b) return; camGo(b.dataset.go); $('#goto').hidden = true; });
   $('#cbPhoto').addEventListener('click', () => { wantPhoto = true; });
-  $('#cbSong').addEventListener('click', () => { Sound.unlock(); const t = Sound.skip(); toast(t ? `♪ Now playing: ${t}` : 'Music is off in Settings.'); });
+  $('#cbSong').addEventListener('click', () => { Sound.unlock(); const t = Sound.skip(); toast(t ? `♪ Now playing: ${t}` : Sound.blocked() ? '♪ Starting the music…' : 'Music is off in Settings.'); });
   $('#fishReel').addEventListener('click', () => reel());
   $('#fishCast').addEventListener('click', () => openFishing());
   $('#fishClose').addEventListener('click', () => closeFishing());
