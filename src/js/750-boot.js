@@ -12,6 +12,7 @@ async function boot() {
   loadPrefs();
   if (![...$('#dayLen').options].some((o) => o.value === String(cfg.daySec))) cfg.daySec = 300;
   syncSettingsUI();
+  Sound.boot();
   await initRuntime();
   // decide whether this device runs the town or acts as its remote
   if (RT.db && RT.room) {

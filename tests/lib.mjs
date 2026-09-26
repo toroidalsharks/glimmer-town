@@ -9,10 +9,10 @@ export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const OUT = join(ROOT, 'tests', 'out');
 mkdirSync(OUT, { recursive: true });
 
-export async function openGame({ gfx = 'lite', width = 900, height = 600, prefs = {} } = {}) {
+export async function openGame({ gfx = 'lite', width = 900, height = 600, prefs = {}, args = [] } = {}) {
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM || undefined,
-    args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
+    args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', ...args],
   });
   const ctx = await browser.newContext();
   await ctx.addInitScript((p) => { try { if (!localStorage.getItem('glimmer-town-v3-prefs')) localStorage.setItem('glimmer-town-v3-prefs', JSON.stringify(p)); } catch (e) {} }, { gfx, spin: false, ...prefs });

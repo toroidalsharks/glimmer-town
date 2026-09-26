@@ -23,6 +23,7 @@ src/
 tests/
   smoke.mjs             boots the game in a headless browser and runs a crime, a trial, a wedding
   update.mjs            checks that the game updates itself exactly once when a new build appears
+  music.mjs             checks that music starts on its own and the playlists rotate
   look.mjs              takes screenshots of the town into tests/out/
 tools/
   serve.mjs             local server that rebuilds as you edit
