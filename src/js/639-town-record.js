@@ -12,7 +12,7 @@
 // back into prompts. Other features (the relationship chart, the paper) can read it with
 // townRecordFor(pid) and townRecordText(entry).
 const TOWN_RECORD_KINDS = {
-  dating: '💕', engaged: '💍', married: '💒', separated: '💔', breakup: '💔', divorce: '💔', admirer: '💌',
+  dating: '💕', engaged: '💍', married: '💒', separated: '💔', breakup: '💔', divorce: '💔', admirer: '💌', cheating: '🤫',
   crime: '🚨', verdict: '⚖', acquitted: '⚖', exonerated: '🆕', court: '⚖', trend: '📣', freeze: '🧊', tradition: '🎏', memorial: '🕯',
   born: '👶', grewup: '🌱', arrival: '⛴', job: '💼', released: '🔓', exiled: '⛴', achievement: '🏅', role: '🔎',
   friends: '🤝', madeup: '🕊', rejected: '💔', fight: '💢', defended: '🛡', uproar: '🔥', party: '🎉', club: '🧩',
@@ -20,7 +20,7 @@ const TOWN_RECORD_KINDS = {
 };
 // small everyday things are dropped first when the record gets long, and read last
 const TOWN_RECORD_MINOR = new Set(['friends', 'madeup', 'rejected', 'fight', 'defended', 'uproar', 'party', 'club', 'discovery', 'role', 'strike', 'meeting', 'built', 'court', 'trend']);
-const TOWN_RECORD_LOVE = new Set(['dating', 'engaged', 'married', 'separated', 'breakup', 'divorce', 'admirer']);
+const TOWN_RECORD_LOVE = new Set(['dating', 'engaged', 'married', 'separated', 'breakup', 'divorce', 'admirer', 'cheating']);
 const TOWN_RECORD_MAX = 320;
 function townRecord(kind, ids, text, day = W.day) {
   if (!W || !text) return null;

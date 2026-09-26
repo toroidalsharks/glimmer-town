@@ -3,6 +3,8 @@
 // ============================================================
 const related = (a, b) => a.parents.includes(b.name) || b.parents.includes(a.name) || (a.parents.length > 0 && a.parents.some((n) => b.parents.includes(n)));
 const fscore = (a, b) => a.feelings[b.id]?.score ?? 0;
+// one partner each: a and b can pair up only if neither is with someone else
+const canPair = (a, b) => a !== b && (!a.partner || a.partner === b.id) && (!b.partner || b.partner === a.id);
 function relStatus(p) {
   const q = p.partner && person(p.partner);
   if (!q) return (p.exes || []).length ? `Single (used to date ${p.exes.slice(-1)[0]})` : 'Single';
@@ -47,7 +49,9 @@ function spawnBurst(cx, cy, cz, colors, n = 60, speed = 4, size = 0.45) {
   scene.add(pts); bursts.push({ pts, vel, age: 0 });
 }
 async function romanceScene(a, b, intent) {
-  a.confessTo = a.proposeTo = a.breakWith = null;
+  const why = a.breakWhy; a.confessTo = a.proposeTo = a.breakWith = a.breakWhy = null;
+  // things can change while someone walks over to say it: they may have started dating someone else
+  if (intent === 'confess' ? a.partner || b.partner || a === b : a.partner !== b.id || b.partner !== a.id) return;
   a.state = b.state = 'talk';
   a.face = Math.atan2(b.x - a.x, b.z - a.z); b.face = Math.atan2(a.x - b.x, a.z - b.z);
   const say = async (p, text) => { bubble(p, text, 3.2 + text.length / 14); await sleep((2.8 + text.length / 15) * 1000); };
@@ -99,7 +103,7 @@ async function romanceScene(a, b, intent) {
         diary(`💍 <b>${esc(a.name)}</b> proposed to <b>${esc(b.name)}</b>, who said they're not ready yet.`);
       }
     } else if (intent === 'breakup') {
-      const l1 = await romLine(a, b, `You and ${b.name} have been ${a.married ? 'married' : 'dating'}, but it isn't working anymore. Right now, you're breaking up with them.`, pick(["I think… we should break up.", "This isn't working. I'm sorry.", "I don't feel the same anymore."]));
+      const l1 = await romLine(a, b, why ? `You and ${b.name} have been ${a.married ? 'married' : 'dating'}. ${why} Right now, you're breaking up with them.` : `You and ${b.name} have been ${a.married ? 'married' : 'dating'}, but it isn't working anymore. Right now, you're breaking up with them.`, pick(["I think… we should break up.", "This isn't working. I'm sorry.", "I don't feel the same anymore."]));
       await say(a, l1);
       const l2 = await romLine(b, a, `${a.name} just broke up with you: "${l1}". React honestly.`, fb >= 4 ? pick(['…Oh. Okay.', "Wait, what? Why?", "I didn't see that coming."]) : pick(['Honestly? Fine.', 'Yeah. I felt it too.']));
       await say(b, l2);
@@ -135,7 +139,7 @@ function weddingFrame(dt) {
   if (W.t >= E.t0 + 0.02 && !ev.done) {
     ev.done = true;
     const a = person(ev.couple[0]), b = person(ev.couple[1]);
-    if (a && b) {
+    if (a && b && canPair(a, b)) {
       a.married = b.married = true; a.partner = b.id; b.partner = a.id;
       Sound.bell();
       addJoy(a, 50); addJoy(b, 50);

@@ -106,6 +106,7 @@ function applyRuling(c, choice, byJury) {
     case 'counsel': P.separated = D.separated = false; feel(P, D, 2.5, true); feel(D, P, 2.5, true); text = `${P.name} and ${D.name} are going to counseling. They're still married, for now.`; break;
     case 'fountain': text = `License approved. ${P.name} and ${D.name} will marry at the fountain.`; win = P; break;
     case 'now': {
+      if (!canPair(P, D)) { W.wedding = null; c.result = `Dismissed. ${P.name} and ${D.name} aren't together anymore.`; return c.result; }
       W.wedding = null; P.married = D.married = true; P.partner = D.id; D.partner = P.id; P.separated = D.separated = false;
       addJoy(P, 45); addJoy(D, 45);
       for (const q of [P, D]) if (!q.inside) setTask(q, 'court', 'hall', jitter(TOWN.hall.spot, 1.2), { wed: true });
