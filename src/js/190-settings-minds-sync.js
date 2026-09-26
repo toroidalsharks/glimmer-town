@@ -74,6 +74,7 @@ function serialize() {
 function trimForSize(obj) {
   let s = JSON.stringify(obj);
   while (s.length > 230000 && obj.log.length > 40) { obj.log.splice(0, 40); s = JSON.stringify(obj); }
+  while (s.length > 230000 && (obj.records || []).length > 120) { obj.records.splice(0, 20); s = JSON.stringify(obj); }
   if (s.length > 230000) for (const p of obj.people) { p.past = p.past.slice(0, 12); p.today = p.today.slice(-15); }
   return obj;
 }

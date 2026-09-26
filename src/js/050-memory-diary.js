@@ -7,6 +7,7 @@ function remember(p, text, weight = 1, tag = 'misc', who = null, meta = null) {
 }
 function diary(text) {
   W.log.push({ day: W.day, text });
+  if (typeof recordFromDiary === 'function') { try { recordFromDiary(text); } catch (e) {} }
   if (typeof notifyWatch === 'function') { try { notifyWatch(text); } catch (e) {} }
   if (W.log.length > 220) W.log.splice(0, W.log.length - 220);
   markDirty();

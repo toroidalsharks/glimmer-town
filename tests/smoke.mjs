@@ -168,6 +168,19 @@ try {
     return true;
   })()`) === true, 'rumors bend, favors are owed, moods spread, regulars warm up, anniversaries and traditions happen, the storyteller paces');
   ok(await E(`(() => { for (let i = 0; i < 3; i++) { lifeNight(); lifeMorning(); lifeSample(); } return true; })()`), 'a few nights of town life run cleanly');
+  ok(await E(`(() => {
+    const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p));
+    const n0 = W.records.length;
+    diary('<b>' + esc(a.name) + '</b> asked <b>' + esc(b.name) + '</b> to be friends, and they said yes.');
+    const fr = W.records.slice(n0).find((r) => r.kind === 'friends'); if (!fr || !fr.who.includes(a.id) || !fr.who.includes(b.id)) return 'friendship not recorded';
+    diary('Nothing much happened at the pier.'); if (W.records.length !== n0 + 1) return 'recorded a boring line';
+    diary('💼 <b>' + esc(a.name) + '</b> left their job as a baker and got hired as a <b>gardener</b>.');
+    for (let i = 0; i < 30; i++) diary('💢 <b>' + esc(a.name) + '</b> and <b>' + esc(b.name) + '</b> got into a fight.');
+    if (!/got hired as a gardener/.test(townRecordContext(a, null))) return 'a big moment got buried';
+    W.log.push({ day: W.day, text: '🎉 <b>' + esc(b.name) + '</b> threw a party in the park. 5 people came.' }); W.records = W.records.filter((r) => r.kind !== 'party');
+    W.added.townRecord2 = false; townRecordDiaryBoot(); if (!W.records.some((r) => r.kind === 'party' && r.who.includes(b.id))) return 'old diary not read back';
+    return true;
+  })()`) === true, 'the diary feeds the town record, and big moments stay in view');
   // a trial lost to a reload gets held again, and the accused stays in custody until then
   ok(await E(`(() => { const id = __g.crime('burglary') || __g.crime('pickpocket'); const X = crimeById(id); if (!X) return 'no crime'; const A = person(X.suspects.find((q) => !jailed(person(q)))); X.status = 'charged'; X.accused = A.id; X.chargedDay = W.day - 1; trialsQueued.delete(X.id); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); const realTrial = crimeTrialNow; crimeTrialNow = (Y) => trialsQueued.add(Y.id); custodyCheck(false); crimeTrialNow = realTrial; const held = jailed(A) && A.jail.remand && trialsQueued.has(X.id); crimeVerdict(X, { def: A.id, jury: [] }, 'innocent', true); CUT.queue = CUT.queue.filter((q) => q.crimeId !== X.id); return held && !jailed(A) && X.status !== 'charged'; })()`) === true, 'lost trials come back, and not guilty means free');
   // letters: at most two a night, no exact repeats, and you can page through them
