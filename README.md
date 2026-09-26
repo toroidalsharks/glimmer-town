@@ -7,8 +7,8 @@ The game is one HTML page. It runs on an old phone with Three.js r147 from a CDN
 ## Folder map
 
 ```
-index.html              the built game (this is what GitHub Pages serves)
-version.json            the build's fingerprint; the game checks it to update itself
+index.html              the built game (made by the build, not committed)
+version.json            the build's fingerprint (made by the build, not committed)
 build.mjs               joins src/ into index.html
 src/
   index.html            the page skeleton, with two markers where CSS and JS go
@@ -31,14 +31,14 @@ tools/
 docs/
   HISTORY.md            what each version added
 .github/workflows/
-  pages.yml             builds and publishes the site on every push
+  pages.yml             checks pull requests and publishes the site on every push to main
 ```
 
 ## Making a change
 
 1. Edit a file in `src/js/` (or `src/styles.css`).
-2. Run `npm run build`. That rewrites `index.html` and `version.json`.
-3. Commit the `src/` change together with the new `index.html` and `version.json`.
+2. Run `npm run build` (or `npm test`). That writes `index.html` and `version.json` so you can try the game locally.
+3. Commit only the `src/` change. The built files are in `.gitignore`; GitHub builds the site itself when a change reaches `main`, so pull requests never conflict over them.
 
 `npm run dev` is nicer while you work: it serves the game at http://localhost:8080, rebuilds every time you save, and the open page reloads itself a few seconds later. It also prints an address you can open on the box's phone over Wi-Fi.
 
@@ -63,9 +63,9 @@ Your OpenRouter key, Firebase URL and town code are typed into Settings on the b
 
 ## Publishing
 
-Nothing to set up. With Pages on **Deploy from a branch** (the usual setting), GitHub serves the committed `index.html` and `version.json`, so pushing a rebuilt game is enough.
+**Settings → Pages → Source** must be **GitHub Actions**. The built game isn't committed, so "Deploy from a branch" would have nothing to serve.
 
-The workflow in `.github/workflows/pages.yml` also builds the game on every push and fails loudly if it doesn't parse. If you switch **Settings → Pages → Source** to **GitHub Actions**, the same workflow publishes a fresh build from `src/` on every push, so a change pushed without rebuilding still goes live.
+On every push to `main`, `.github/workflows/pages.yml` runs `node build.mjs --check` and publishes the result: the whole repo plus the fresh `index.html` and `version.json`, uploaded together. The box and the remote see the new `version.json` and update themselves. A build that doesn't parse fails the workflow and nothing is published. Pull requests get the same build and check, without publishing.
 
 ## Tests
 
