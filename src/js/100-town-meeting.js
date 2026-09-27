@@ -37,7 +37,7 @@ function voteOn(v, prop, proposer) {
   return s > 0;
 }
 async function townMeeting() {
-  const att = W.people.filter((p) => p.state !== 'talk' && p.task?.kind !== 'away');
+  const att = W.people.filter((p) => p.state !== 'talk' && p.task?.kind !== 'away' && !isBaby(p));
   if (att.length < 2) return;
   W.meeting = { day: W.day };
   att.forEach((p, i) => { p.inside = false; setTask(p, 'meeting', 'plaza', meetSpot(i, att.length)); });
@@ -55,7 +55,7 @@ async function townMeeting() {
     const prop = proposalFor(sp, att);
     await say(sp, prop.text, 3400);
     let yes = 1, no = 0; const yesers = [sp];
-    for (const v of att) { if (v === sp) continue; const y = voteOn(v, prop, sp); emote(v, y ? '○' : '✕', 2.6); if (y) { yes++; yesers.push(v); } else { no++; if (v.grow >= 1) feel(sp, v, -0.3, true); } }
+    for (const v of att) { if (v === sp || v.grow < 1) continue; const y = voteOn(v, prop, sp); emote(v, y ? '○' : '✕', 2.6); if (y) { yes++; yesers.push(v); } else { no++; if (v.grow >= 1) feel(sp, v, -0.3, true); } }
     await sleep(1600);
     const passed = yes > no;
     if (prop.kind === 'complaint') {

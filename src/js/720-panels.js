@@ -9,7 +9,9 @@ function doing(p) {
   const k = p.task?.kind;
   if (k === 'away' && p.away) return `visiting ${ISLES[p.away.to].name}`;
   if (p.inside && k === 'home') return W.t >= 0.63 || W.t < 0.008 ? 'asleep' : 'at home';
-  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service', rest: 'resting in bed', doctor: 'at the clinic', therapy: 'at the clinic', ritual: 'double-checking something at home', buylaptop: 'buying a laptop', browse: 'browsing books', write: 'writing', crowd: W.scene?.kind === 'uproar' ? 'in the uproar at the fountain' : 'chatting in a group' }[k] || cityDoing(k) || 'wandering';
+  if (k === 'carried') return `in ${person(p.task.who)?.name || 'a parent'}'s arms`;
+  if (k === 'nap') return p.task.snack ? 'having a snack at home' : 'napping';
+  return { play: 'playing', fetchkid: 'picking up the baby', dropkid: 'putting the baby down for a nap', arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service', rest: 'resting in bed', doctor: 'at the clinic', therapy: 'at the clinic', ritual: 'double-checking something at home', buylaptop: 'buying a laptop', browse: 'browsing books', write: 'writing', crowd: W.scene?.kind === 'uproar' ? 'in the uproar at the fountain' : 'chatting in a group' }[k] || cityDoing(k) || 'wandering';
 }
 function showTab(t) {
   activeTab = t;
@@ -72,7 +74,7 @@ function renderDetail(id) {
     <button class="back" type="button" data-back>&larr; Everyone</button>
     <div class="d-head"><span class="dot" style="background:${skinCss(p)};border-color:${COLORS[p.outfit.shirt]}"></span>
       <div><div class="d-name">${esc(p.name)}</div>
-      <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}${p.job && JOBS[p.job] ? ` · ${JOBS[p.job].short}, ${payOf(p)}/day` : ''}</div></div></div>
+      <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''}${stageLabel(p) ? ` · ${stageLabel(p)}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}${p.job && JOBS[p.job] ? ` · ${JOBS[p.job].short}, ${payOf(p)}/day` : ''}</div></div></div>
     ${lookStudioHtml(p)}
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>

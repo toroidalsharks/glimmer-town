@@ -95,7 +95,7 @@ function shell(S, wall, floor, opts = {}) {
 function addPerson(S, p, x, z, faceY, opts = {}) {
   const f = makeFigure(p);
   if (p.health) healthLook(p, f);
-  f.fig.scale.setScalar(1.05 * p.body.size * (0.6 + 0.4 * p.grow));
+  kidShape(p, f.fig, f.head, 1.05 * p.body.size * growScale(p));
   f.fig.position.set(x, opts.y || 0, z); f.fig.rotation.y = faceY;
   if (opts.lying) { f.fig.rotation.set(-Math.PI / 2, 0, 0); f.eyes.forEach((e) => (e.scale.y = 0.2)); }
   f.fig.traverse((o) => { o.userData.tap = { kind: 'person', pid: p.id }; if (o.isMesh) o.castShadow = true; });

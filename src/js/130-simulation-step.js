@@ -23,6 +23,7 @@ function step(dt) {
     poseStep(p, dt);
     if (jailHold(p)) continue;
     if (p.state === 'talk') continue;
+    if (p.task?.kind === 'carried') { carryStep(p, dt); continue; }
     if (asleep) {
       if (W.t >= 0.008 + (p.room % 9) * 0.0012 && W.t < 0.6) { p.inside = false; p.task = null; p.at = homeKey(p); p.hunger = Math.max(0, p.hunger - 0.25); /* breakfast at home */ p.x = TOWN[homeKey(p)].spot[0] + (rand() - 0.5) * 2; p.z = TOWN[homeKey(p)].spot[1] + 0.3; }
       else continue;
@@ -52,7 +53,7 @@ function step(dt) {
     if (p.task.phase === 'go') { p.at = p.dest || p.at; startDo(p); continue; }
     if (p.task.phase === 'do' && now >= p.busyUntil) { if (finishDo(p) !== false) p.task = null; }
   }
-  personalSpace(dt); textTick(); chirpTick(); healthTick(dt); dramaTick(); showTick(); clubTick(); socialTick(); lifeTick(); notifyTick(); if (Math.floor(now) % 5 === 0 && Math.floor(now - dt) % 5 !== 0) laptopTick(); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
+  personalSpace(dt); textTick(); chirpTick(); healthTick(dt); dramaTick(); showTick(); clubTick(); socialTick(); lifeTick(); kidTick(); notifyTick(); if (Math.floor(now) % 5 === 0 && Math.floor(now - dt) % 5 !== 0) laptopTick(); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
   const festNight = W.event?.id === 'festival' && W.event.day === W.day && W.t < 0.665;
   if ((!isNight() || festNight) && !W.meeting) {
     const ok = W.people.filter(canChat);

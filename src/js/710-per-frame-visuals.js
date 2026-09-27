@@ -65,11 +65,11 @@ function visuals(dt) {
     m.eyes.forEach((e) => (e.scale.y = blink ? 0.2 : 1.45));
     m.mouth.scale.set(1, p.bubble && p.bubble.until > now && p.bubble.text !== '…' ? 1 + Math.abs(Math.sin(now * 14)) * 0.8 : 1, 1);
     faceUpdate(p, m, blink);
-    poseFigure(p, m);
+    poseFigure(p, m); growFrame(p, m);
     const tag = m.tag, show = !p.inside && !interior;
     tag.style.display = show ? '' : 'none';
     if (!show) continue;
-    vec.set(p.x, m.root.position.y + 2.55 * m.root.scale.x + (p.outfit.hat ? 0.4 : 0), p.z).project(camera);
+    vec.set(p.x, m.root.position.y + (m.tagK || 2.55) * m.root.scale.x + (p.outfit.hat ? 0.4 : 0), p.z).project(camera);
     if (!(vec.z <= 1) || !Number.isFinite(vec.x) || !Number.isFinite(vec.y)) { tag.style.display = 'none'; continue; }
     m.sx = (vec.x * 0.5 + 0.5) * w; m.sy = (-vec.y * 0.5 + 0.5) * h;
     const b = p.bubble && p.bubble.until > now ? p.bubble.text : '';
