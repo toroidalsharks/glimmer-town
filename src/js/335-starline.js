@@ -223,7 +223,7 @@ function buildCity() {
   }
   const pave = gfxOn() ? worldMat('pave', '#efe6da', gfxTextures().cobble, 0.3, 0.74, 1.06, 0.05) : toon('#e8e0d4');
   const road = gfxOn() ? worldMat('road', '#7c7686', gfxTextures().sand, 0.6, 0.86, 1.1, 0.05) : toon('#6e6a7a');
-  L.add(mesh(cyl(SL.R - 2.2, SL.R - 2.2, 0.07, 72), pave, 0, 0.035, 0, false));
+  L.add(mesh(cyl(20, 20, 0.07, 72), pave, 0, 0.035, 0, false));
   {
     const rr = (a, b, r) => { const s = new T3.Shape(); s.moveTo(-a + r, -b); s.lineTo(a - r, -b); s.quadraticCurveTo(a, -b, a, -b + r); s.lineTo(a, b - r); s.quadraticCurveTo(a, b, a - r, b); s.lineTo(-a + r, b); s.quadraticCurveTo(-a, b, -a, b - r); s.lineTo(-a, -b + r); s.quadraticCurveTo(-a, -b, -a + r, -b); return s; };
     const ring = rr(10.3, 7.3, 4.3); ring.holes.push(rr(7.7, 4.7, 1.7));
@@ -272,7 +272,7 @@ function buildCity() {
     L.add(slMerged(bits, 'slProps', true));
     const bl = []; ['#ff6f9c', '#6fe3ff', '#ffd36b', '#9fe3a0', '#c9b3ff'].forEach((c, i) => { const a = i * 1.26, x = 5.6 + Math.cos(a) * 0.45, z = -1.8 + Math.sin(a) * 0.35, y = 2.9 + (i % 2) * 0.35; bl.push({ geo: new T3.SphereGeometry(0.32, 10, 8), x, y, z, color: c }, { geo: new T3.CylinderGeometry(0.01, 0.01, y - 1.2, 3), x, y: (y + 1.2) / 2, z, color: '#ffffff' }); });
     slBalloons = slMerged(bl, 'slBalloons'); L.add(slBalloons);
-    for (const [x, z, s, c] of [[-6, 22, 1, '#8fd48a'], [6, 21, 0.9, '#f7b6c8'], [0, 25, 0.85, '#5fae5a'], [-27, -6, 0.8, '#8fd48a'], [-27, 6, 0.8, '#f7b6c8']]) {
+    for (const [x, z, s, c] of [[-6, 22, 1, '#8fd48a'], [6, 21, 0.9, '#f7b6c8'], [0, 25, 0.85, '#5fae5a'], [-27, -6, 0.8, '#8fd48a'], [-27, 6, 0.8, '#f7b6c8'], [-19, 19, 0.9, '#5fae5a'], [16, 22, 0.85, '#8fd48a'], [-5.5, -27, 0.75, '#f7b6c8'], [26, -4, 0.7, '#5fae5a']]) {
       if (gfxOn()) L.add(gfxTree(x, z, s, c));
       else { const g = new T3.Group(); g.add(mesh(cyl(0.3, 0.4, 2.4, 8), toon('#9a6f4e'), 0, 1.2, 0)); g.add(mesh(new T3.IcosahedronGeometry(1.8, 0), toon(c), 0, 3.3, 0)); g.position.set(x, 0, z); L.add(g); }
     }
@@ -344,8 +344,8 @@ function slBuildRadio(L, at) {
   const g = new T3.Group();
   const body = mesh(box(7, 6, 7), wallMat('#3d4f86'), 0, 3, 0); g.add(body);
   const bits = [{ geo: new T3.BoxGeometry(7.6, 0.4, 7.6), y: 6.2, color: '#ffd36b' }, { geo: new T3.BoxGeometry(2, 3, 0.2), y: 1.5, z: 3.55, color: '#2a2238' }, { geo: new T3.BoxGeometry(2.2, 1.4, 0.12), x: -2.2, y: 3.4, z: 3.55, color: '#bfe8ff' }, { geo: new T3.BoxGeometry(2.2, 1.4, 0.12), x: 2.2, y: 3.4, z: 3.55, color: '#bfe8ff' }];
-  for (let i = 0; i < 6; i++) { const y = 7 + i * 1.6, w = 1.4 - i * 0.18; for (const [x, z] of [[-w, -w], [w, -w], [-w, w], [w, w]]) bits.push({ geo: new T3.CylinderGeometry(0.06, 0.06, 1.7, 5), x: x + 1.5, y: y + 0.4, z: z - 1.5, color: '#e8e0f0' }); for (const [x, z, rot] of [[0, -w, 0], [0, w, 0], [-w, 0, 1], [w, 0, 1]]) bits.push({ geo: new T3.BoxGeometry(rot ? 0.08 : w * 2, 0.08, rot ? w * 2 : 0.08), x: x + 1.5, y: y + 1.2, z: z - 1.5, color: i % 2 ? '#ffffff' : '#ff6f5e' }); }
-  bits.push({ geo: new T3.SphereGeometry(1.1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.5), x: -2, y: 6.5, z: -1.8, rx: -0.6, color: '#fbf8f4' });
+  bits.push({ geo: new T3.CylinderGeometry(0.16, 0.42, 10.5, 8), x: 1.5, y: 6.4 + 5.25, z: -1.5, color: '#fbf8f4' });
+  for (let i = 0; i < 4; i++) bits.push({ geo: new T3.CylinderGeometry(0.4 - i * 0.07, 0.42 - i * 0.07, 0.9, 8), x: 1.5, y: 8 + i * 2.4, z: -1.5, color: '#ff6f5e' });
   g.add(slMerged(bits, 'slRadio', true));
   slOnAir = mesh(box(1.8, 0.6, 0.12), toon('#5a2030', { emissive: new T3.Color('#000000') }), 0, 5.2, 3.6, false); g.add(slOnAir);
   { const oa = sign('ON AIR', '#5a2030', '#ffffff', 1.6); oa.position.set(0, 5.2, 3.68); g.add(oa); }
@@ -388,8 +388,9 @@ function slBuildSkyline(L) {
   const blocks = [[-10.5, -23, 4.5, 16, '#b8c4e8'], [10.5, -23, 4.5, 19, '#e8c4d8'], [21, -13, 4, 14, '#c4e0d8'], [21, 13, 4, 11, '#d8d0f0'], [-24, -10, 4, 13, '#f0dcc4']];
   const bits = [], wins = [];
   for (const [x, z, w, h, c] of blocks) {
-    bits.push({ geo: new T3.BoxGeometry(w, h, w), x, y: h / 2, z, color: c }, { geo: new T3.BoxGeometry(w + 0.4, 0.4, w + 0.4), x, y: h + 0.2, z, color: '#6f73c9' }, { geo: new T3.BoxGeometry(w * 0.4, 1.2, w * 0.4), x, y: h + 1, z, color: '#8a84a8' });
-    for (let y = 2.5; y < h - 1; y += 2.2) for (let i = -1; i <= 1; i++) for (const [dx, dz, ry] of [[0, w / 2 + 0.02, 0], [w / 2 + 0.02, 0, Math.PI / 2], [0, -w / 2 - 0.02, 0], [-w / 2 - 0.02, 0, Math.PI / 2]]) {
+    const roofC = ['#ff9f7a', '#7fb8e8', '#9fd49a', '#f2c46b', '#c9a3e8'][hashStr(`${x}${z}`) % 5];
+    bits.push({ geo: new T3.BoxGeometry(w, h, w), x, y: h / 2, z, color: c }, { geo: new T3.BoxGeometry(w + 0.12, 2.3, w + 0.12), x, y: 1.15, z, color: '#fbf1e2' }, { geo: new T3.BoxGeometry(w + 0.9, 0.18, w + 0.9), x, y: 2.5, z, color: roofC }, { geo: new T3.BoxGeometry(w + 0.5, 0.5, w + 0.5), x, y: h + 0.25, z, color: roofC }, { geo: new T3.BoxGeometry(w * 0.4, 1.2, w * 0.4), x, y: h + 1, z, color: '#8a84a8' });
+    for (let y = 4; y < h - 1; y += 2.2) for (let i = -1; i <= 1; i++) for (const [dx, dz, ry] of [[0, w / 2 + 0.02, 0], [w / 2 + 0.02, 0, Math.PI / 2], [0, -w / 2 - 0.02, 0], [-w / 2 - 0.02, 0, Math.PI / 2]]) {
       if (hashStr(`${x}${z}${y}${i}${ry}${dx}`) % 5 === 0) continue;
       wins.push({ geo: new T3.BoxGeometry(0.8, 1.1, 0.06), x: x + dx + (ry ? 0 : i * 1.2), y, z: z + dz + (ry ? i * 1.2 : 0), ry });
     }
