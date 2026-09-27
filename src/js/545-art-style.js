@@ -23,7 +23,7 @@ const MOODS = {
     ui: { accent: '#d8e48a', accent2: '#ffb48a', glow: '210, 170, 90', bg: '#15120f', panel: '30, 25, 21' },
   },
   golden: {
-    name: 'Golden hour', blurb: 'Peach skies, lavender water and honey-colored trees.', facets: true,
+    name: 'Golden hour', blurb: 'Peach skies, lavender water and golden trees.', facets: true,
     top: ['#d98f6a', '#c27a88', '#1a1238'], hor: ['#f0bf96', '#ff9c78', '#2c2050'], duskK: [0.45, 0.9], fog: [140, 460], lowSun: 0.5,
     sun: ['#ffdcb0', '#ff9058', '#a0a8ff'], hemi: ['#f0dcd0', '#ffb094', '#6a68d0'], ground: ['#b8a888', '#3a3060'],
     rim: ['#fff0f6', '#ffc0a0', '#9fb8ff'], rimK: 0, light: [1, 1.1],
@@ -109,7 +109,7 @@ function wireMoodSettings() {
 function moodBoot() {
   W.added = W.added || {};
   if (W.added.moods1) return; W.added.moods1 = true;
-  if (typeof logUpdate === 'function') logUpdate('build', 'The town is a little diorama now: the trees are stacked low-poly tiers, bushes, rocks and clouds are chunky facets, the grass is a soft meadow and the light is warm. Everyone still looks exactly like themselves. Settings has a Town look picker: Meadow (the new look), Golden hour (peach haze, lavender water and honey trees), Candy, Hologram for the box, and Storybook, the smooth look from before. The Look studio has new styles, haircuts and accessories too.', 'a low-poly town');
+  if (typeof logUpdate === 'function') logUpdate('build', 'The town is a little diorama now: the trees are chunky stacked clumps, the cherry trees and bushes are faceted puffs, rocks and clouds are low-poly, the grass is a soft meadow, the sea is bright aqua and the light is warm. Everyone still looks exactly like themselves. Settings has a Town look picker: Meadow (the new look), Golden hour (peach haze, lavender water and golden trees), Candy, Hologram for the box, and Storybook, the smooth look from before. The Look studio has new styles, haircuts and accessories too.', 'a low-poly town');
 }
 
 // ---------- the low-poly town ----------
