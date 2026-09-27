@@ -93,10 +93,10 @@ function newDay() {
   W.babies = [];
   for (const p of W.people) {
     p.workedToday = false;
-    if (p.grow < 1) { p.grow = Math.min(1, p.grow + 0.1); if (p.grow >= 1 && !p.job) { p.job = randomJob(); diary(`<b>${esc(p.name)}</b> grew up and started work as a ${JOBS[p.job].short}.`); } scaleMesh(p); }
+    growUp(p);
     morningOutfit(p); selfHaircut(p); styleDrift(p);
   }
-  importStock();
+  growMorning(); importStock();
   dailyWishes();
   cityDaily();
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);

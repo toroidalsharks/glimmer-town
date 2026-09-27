@@ -29,7 +29,7 @@ function feel(me, them, delta, quiet = false) {
 }
 const tagFor = (kind, giver) => (kind > 0 ? (giver ? 'gaveKind' : 'gotKind') : kind < 0 ? (giver ? 'wasMean' : 'gotMean') : 'talk');
 function canChat(p) {
-  if (p.inside || p.state !== 'free' || W.meeting) return false;
+  if (p.inside || p.state !== 'free' || W.meeting || isBaby(p)) return false;
   if (W.t >= 0.6 && p.task?.kind !== 'event') return false;
   const k = p.task?.kind;
   if ((k === 'work' || k === 'event') && p.task.phase === 'go') return false;
@@ -38,6 +38,7 @@ function canChat(p) {
 async function encounter(a, b) {
   const rom = a.confessTo === b.id ? 'confess' : a.proposeTo === b.id ? 'propose' : a.breakWith === b.id ? 'breakup' : null;
   if (rom) return romanceScene(a, b, rom);
+  if (stageOf(a) === 'toddler' || stageOf(b) === 'toddler') return toddlerChat(a, b);
   const intent = a.makeup === b.id ? 'makeup' : a.befriend === b.id ? 'befriend' : a.confront === b.id ? 'confront' : null;
   spaceOut(a, b);
   if (aiReady() && aiBusy < 2) { if (intent) { a.makeup = null; a.befriend = null; a.confront = null; } await aiEncounter(a, b, intent); }
@@ -50,7 +51,7 @@ async function ruleEncounter(a, b) {
   const secsFor = (s) => 2.4 + s.length / 16;
   try {
     bubble(a, '…', 30);
-    const op = specialOpening(a, b) || daydream(a, b, { opening: true });
+    const op = specialOpening(a, b) || kidOpening(a, b) || daydream(a, b, { opening: true });
     await sleep(500);
     bubble(a, op.say, secsFor(op.say));
     await sleep(900);

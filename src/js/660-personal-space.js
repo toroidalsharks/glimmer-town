@@ -2,7 +2,7 @@
 // PERSONAL SPACE (no more standing inside each other)
 // ============================================================
 function personalSpace(dt) {
-  const out = W.people.filter((p) => !p.inside && p.task?.kind !== 'away');
+  const out = W.people.filter((p) => !p.inside && p.task?.kind !== 'away' && p.task?.kind !== 'carried');
   for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) {
     const a = out[i], b = out[j];
     if ((a.pose && a.pose.with === b.id) || (b.pose && b.pose.with === a.id)) continue;

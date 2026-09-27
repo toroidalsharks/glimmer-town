@@ -382,7 +382,7 @@ const Sound = (() => {
 function voiceOf(p) {
   if (p.body.voice) return p.body.voice;
   const h = (parseInt(String(p.id).replace(/\D/g, '')) || 1) * 7919;
-  const kid = p.grow < 1 ? 1.35 : 1;
+  const kid = { baby: 1.6, toddler: 1.5, kid: 1.35, teen: 1.12 }[stageOf(p)] || 1;
   p.body.voice = { base: (160 + (h % 220)) * kid / p.body.size, spread: 0.12 + ((h >> 3) % 20) / 100, wave: ['square', 'triangle', 'sawtooth', 'sine'][(h >> 5) % 4], len: 0.055 + ((h >> 7) % 5) / 100 };
   return p.body.voice;
 }

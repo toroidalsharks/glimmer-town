@@ -46,7 +46,7 @@ function birth(a, b) {
   const p = {
     id: 'k' + (W.nextId++), name: uniqueName(), bornDay: W.day,
     gen: a ? Math.max(a.gen, b.gen) + 1 : 1, parents: a ? [a.name, b.name] : [],
-    body, grow: a ? 0.55 : 1, hunger: 0.3, coins: a ? 1 : 5 + Math.floor(rand() * 5),
+    body, grow: a ? LIFE_STAGES.baby.grow : 1, stage: a ? 'baby' : undefined, hunger: 0.3, coins: a ? 1 : 5 + Math.floor(rand() * 5),
     room: freeRoom(), job: a ? null : randomJob(), jobDays: 0, jobMood: 0, workedToday: false,
     tastes: {}, likes: { [shirt]: 0.4 },
     wardrobe: { hats: [], shirts: [shirt] }, outfit: { hat: null, shirt }, decor: [],

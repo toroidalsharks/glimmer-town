@@ -45,14 +45,14 @@ function buildKin(p) {
   if (MODE !== 'host') return;
   const root = new T3.Group(), f = makeFigure(p);
   root.add(f.fig);
-  if (gfxOn()) { const bs = blobShadow(1.5, 1.5, 0.3); bs.position.y = 0.03; root.add(bs); }
+  let bs = null; if (gfxOn()) { bs = blobShadow(1.5, 1.5, 0.3); bs.position.y = 0.03; root.add(bs); }
   const tools = new T3.Group(); f.fig.add(tools);
   root.traverse((o) => { o.userData.pid = p.id; });
   scene.add(root);
   const tag = document.createElement('div'); tag.className = 'tag';
   tag.innerHTML = '<div class="thought" hidden></div><div class="emo"></div><div class="bub" hidden></div><div class="nm"></div>';
   $('#tags').appendChild(tag);
-  const m = { root, ...f, tools, tag, tagTh: tag.children[0], tagEmo: tag.children[1], tagBub: tag.children[2], tagNm: tag.children[3], nmKey: '' };
+  const m = { root, ...f, tools, tag, tagTh: tag.children[0], tagEmo: tag.children[1], tagBub: tag.children[2], tagNm: tag.children[3], nmKey: '', shadow: bs };
   meshes.set(p.id, m);
   dressMesh(p); scaleMesh(p);
 }
@@ -67,6 +67,6 @@ function dressMesh(p) {
   else if (p.job === 'garden') m.tools.add(mesh(cyl(0.16, 0.2, 0.3, 10), toon('#9fd3ff'), 0.55, 0.62, 0.2));
   else if (p.job) m.tools.add(mesh(box(0.3, 0.24, 0.05), toon({ dev: '#3d4f86', ai: '#5a7fd8', lawyer: '#6b4a3a', bio: '#3d8a6a', chem: '#9fe3c4', phys: '#3d4f86', robo: '#b86b3a', civil: '#ffb347', doctor: '#ffffff', therapist: '#c9b3ff', builder: '#ffb347', janitor: '#9fd3ff', cafe: '#5a3a2e', mart: '#e2566b', clothes: '#6f73c9', nook: '#5f7f4a', bakery: '#f3b67a', icecream: '#ff9fbf', books: '#5f4a6b', arcade: '#3a2f63' }[p.job] || '#ffffff'), 0.3, 0.5, 0.44));
 }
-function scaleMesh(p) { const m = meshes.get(p.id); if (m) m.root.scale.setScalar(p.body.size * (0.6 + 0.4 * p.grow)); }
+function scaleMesh(p) { const m = meshes.get(p.id); if (!m) return; m.root.scale.setScalar(p.body.size * growScale(p)); m.tagK = kidShape(p, m.fig, m.head); }
 function removeAllMeshes() { for (const [, m] of meshes) { scene.remove(m.root); m.tag.remove(); } meshes.clear(); }
 

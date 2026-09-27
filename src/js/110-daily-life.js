@@ -52,7 +52,7 @@ function workSpot(job) {
   if (job === 'cafe') return jitter(polar(212, 16.4), 0.8);
   return jitter(TOWN[JOBS[job].place].spot, 1.2);
 }
-function setTask(p, kind, dest, spot, extra = {}) { p.task = { kind, phase: 'go', ...extra }; goTo(p, dest, spot); }
+function setTask(p, kind, dest, spot, extra = {}) { if (babyHold(p, kind)) return; p.task = { kind, phase: 'go', ...extra }; goTo(p, dest, spot); }
 function strollSpot() {
   { const c = cityStroll(); if (c) return c; }
   if ((W.placed || []).length && rand() < 0.35) { const ps = placeStrollSpot(); if (ps) return ['plaza', ps.spot]; }
@@ -75,11 +75,14 @@ function plan(p) {
   const t = W.t;
   const ev = W.event && W.event.day === W.day ? EVENTS[W.event.id] : null;
   const going = ev && W.event.going.includes(p.id);
+  if (isBaby(p)) { babyNap(p); return; }
   if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
   if (healthPlan(p)) return;
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
+  if (kidPlan(p)) return;
   // really hungry comes before work, goals and books
   if (p.hunger > 0.7 && planEat(p)) return;
+  if (parentPlan(p)) return;
   if (planPicket(p)) return;
   if (planBuyLaptop(p)) return;
   if (cityCrewPlan(p)) return;
@@ -144,6 +147,7 @@ function startDo(p) {
   if (k === 'write') { writeStart(p); return; }
   if (k === 'crowd') { p.busyUntil = Infinity; if (W.scene) faceCenter(p, W.scene); return; }
   if (cityStart(p, k)) return;
+  if (growStart(p, k)) return;
   p.busyUntil = now + (2 + rand() * 4) * ts();
 }
 function finishDo(p) {
