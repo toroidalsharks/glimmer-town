@@ -190,6 +190,23 @@ try {
     W.added.townRecord2 = false; townRecordDiaryBoot(); if (!W.records.some((r) => r.kind === 'party' && r.who.includes(b.id))) return 'old diary not read back';
     return true;
   })()`) === true, 'the diary feeds the town record, and big moments stay in view');
+  // one partner each: a confession can't land on someone taken, old tangles get untangled, and flings leave real people out
+  ok(await E(`(async () => {
+    const [a, b, c] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p) && !p.partner);
+    if (!c) return 'not enough single residents';
+    a.partner = b.id; b.partner = a.id;
+    await romanceScene(c, b, 'confess'); if (b.partner !== a.id || c.partner) return 'confessed to someone taken';
+    b.partner = c.id; c.partner = b.id; W.added.loveOneToOne = false; loveRepairBoot();
+    if (a.partner || b.partner !== c.id || c.partner !== b.id || !(a.exes || []).includes(b.name)) return 'tangle not untangled';
+    const m = findMili(); if (m && !m.partner) { m.partner = c.id; W.people.forEach((x) => { if (x !== b) x.feelings[m.id] = { name: m.name, score: 8 }; }); m.feelings[a.id] = { name: a.name, score: 9 }; }
+    for (let i = 0; i < 200; i++) { const f = flingPick(); if (f && [f.a, f.b, f.q].some(isRealish)) return 'a real person in a fling'; }
+    if (m && m.partner === c.id) m.partner = null;
+    b.feelings[c.id] = { name: c.name, score: 2 }; b.feelings[a.id] = { name: a.name, score: 8 }; a.feelings[b.id] = { name: b.name, score: 6 };
+    W.fling = { a: b.id, b: a.id, q: c.id, day: W.day - FLING_FOUND_BY, found: false }; flingMorning();
+    if (!W.fling.found || c.breakWith !== b.id || !W.records.some((r) => r.kind === 'cheating')) return 'fling never came out';
+    c.breakWith = c.breakWhy = null; b.partner = c.partner = null; flingMorning(); if (W.fling) return 'fling outlived the couple';
+    return true;
+  })()`) === true, 'one partner each, and cheating only between made-up residents');
   // everyday crimes follow the real calendar: a week of game nights before the clock is due adds none
   ok(await E(`(() => { const S = crimeState(); S.crimePace = 'week'; S.nextCrimeAt = Date.now() + 864e5; const n = S.list.length, day = W.day; for (let i = 0; i < 7; i++) { W.day++; crimeNight(); } const quiet = S.list.filter((C) => C.tier > 0).length === S.list.slice(0, n).filter((C) => C.tier > 0).length; S.nextCrimeAt = Date.now() - 1; crimeNight(); const one = S.list.filter((C) => C.tier > 0).length === S.list.slice(0, n).filter((C) => C.tier > 0).length + 1 && S.nextCrimeAt > Date.now() + 3 * 864e5; W.day = day; return quiet && one; })()`), 'everyday crimes wait for the real-week clock');
   ok(await E(`(() => { const t = fitLine('One two three. ' + 'word '.repeat(80), 60); const j = parseLoose('{"lines":[{"who":"A","say":"hi"},{"who":"B","sa'); return t.length <= 61 && !/\\bwor$/.test(t) && j.lines.length === 1; })()`), 'long lines end on a whole word and cut-off replies still parse');
