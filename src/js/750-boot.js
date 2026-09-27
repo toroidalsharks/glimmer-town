@@ -30,6 +30,7 @@ async function boot() {
   selRing = mesh(new T3.RingGeometry(0.8, 1.0, 32), new T3.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }), 0, 0.1, 0, false);
   selRing.rotation.x = -Math.PI / 2; selRing.visible = false; scene.add(selRing);
   W = (await loadWorld()) || newWorld();
+  if (rescuedSave) { diary('The saved town on this phone would not open, so it was put aside safely instead of being written over, and a new town started.'); setTimeout(() => toast('Your saved town would not open. It is kept safe on this phone, and nothing was erased.'), 3000); }
   applyMods();
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
   W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); wishBoardBoot(); creatorTreatsBoot(); townRecordBoot(); townRecordDiaryBoot(); loveRepairBoot(); socialBoot(); lifeBoot(); awayOnBoot(); buildLand(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
