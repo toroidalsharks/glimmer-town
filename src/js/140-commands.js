@@ -137,6 +137,7 @@ function applyCmd(c) {
     case 'buybook': { const B = BOOKS[c.id]; if (!B) return ''; if (C.coins < B.price) return `You need ${plural(B.price, 'coin')}.`; C.coins -= B.price; C.items.push(newItem('book', c.id, null, null, 1)); Sound.coin(); markDirty(); return `You bought "${B.title}". It's in Your gifts.`; }
     case 'rule': { const k = (W.cases || []).find((x) => x.id === c.id); if (!k) return 'That case is gone.'; const r = applyRuling(k, c.choice, false); if (k.status === 'closed' && cutsOn()) verdictMini(k); return r; }
     case 'cut': return cutCmd(c);
+    case 'city': return cityCmd(c);
     case 'crime': return crimeCmd(c);
     case 'hallview': if (MODE === 'host') openInterior({ kind: 'hall' }); return '';
     case 'debate': { const a = person(c.a), b = person(c.b); if (!a || !b) return ''; const k = fileCase('debate', a, b, { topic: String(c.topic || pick(DEBATES)).slice(0, 80), byCreator: true }); return k ? `⚖ ${a.name} and ${b.name} have been summoned to debate: ${k.topic}` : 'They already have a debate waiting.'; }

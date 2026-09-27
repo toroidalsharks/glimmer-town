@@ -82,6 +82,7 @@ function plan(p) {
   if (p.hunger > 0.7 && planEat(p)) return;
   if (planPicket(p)) return;
   if (planBuyLaptop(p)) return;
+  if (cityCrewPlan(p)) return;
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
   if (goalPlan(p)) return;
   const seek = p.makeup || p.befriend || p.confessTo || p.proposeTo || p.breakWith || p.confront;

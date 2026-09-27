@@ -238,7 +238,7 @@ function cutFrame(dt) {
   if (CUT.typed < txt.length) { CUT.typed = Math.min(txt.length, CUT.typed + dt * 42); el.querySelector('.ctext').textContent = txt.slice(0, Math.floor(CUT.typed)); return; }
   el.querySelector('.cnext').classList.toggle('show', !CUT.waiting);
   if (CUT.waiting) {
-    const left = Math.ceil(CUT.waiting.until - now); const tm = el.querySelector('.cchoice .tmr'); if (tm) tm.textContent = `${CUT.waiting.L.choice.prompt || 'Your call.'} ${left > 0 ? `(the jury decides in ${left}s)` : ''}`;
+    const left = Math.ceil(CUT.waiting.until - now); const tm = el.querySelector('.cchoice .tmr'); if (tm) tm.textContent = `${CUT.waiting.L.choice.prompt || 'Your call.'} ${left > 0 ? `(${CUT.waiting.L.choice.auto || 'the jury decides'} in ${left}s)` : ''}`;
     if (now >= CUT.waiting.until) cutPick(CUT.waiting.L.choice.fallback || 'jury');
     return;
   }
