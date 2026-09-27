@@ -1,10 +1,12 @@
 // ============================================================
 // STARLINE: the busy city quarter across a bridge east of downtown
 // ============================================================
-// It opens once the town is big enough (STARLINE_OPEN), adds Starline Tower
-// with the last four rooms (the town tops out at POP_CAP residents), five new
-// jobs, a cinema, a radio station, food trucks, a dance studio, a monorail
-// and traffic. Everything is built from local coordinates around SL.
+// Once the town is big enough (STARLINE_OPEN) the plans go up, and the city is
+// paid for, argued over and built in 337-starline-build.js. When it opens it
+// adds Starline Tower with the last four rooms (the town tops out at POP_CAP
+// residents), five new jobs, a cinema, a radio station, food trucks, a dance
+// studio, a monorail and traffic. Everything is built from local coordinates
+// around SL.
 const SL = { x: 81, z: -58, R: 30 };
 const POP_CAP = 25;
 const STARLINE_OPEN = { people: 15, day: 40 };
@@ -25,6 +27,8 @@ for (const [k, P] of Object.entries(SL_PLACES)) {
   const local = [SL_HUB, ...P.via.map(([x, z]) => slw(x, z))];
   TOWN[k] = { name: P.name, spot: slw(...P.spot), entry: [...DT_GATE, DT_HUB, ...SL_WALK, slw(-30, 0), ...local], local, fromDT: [...SL_WALK, slw(-30, 0), ...local], zone: 'city' };
 }
+// the downtown end of the bridge, where people wave signs at the building site
+TOWN.bridgehead = { name: 'the Starline bridge', spot: polarDT(83, 28), entry: [...DT_GATE, DT_HUB, SL_WALK[0]], local: [SL_WALK[0]], zone: 'dt' };
 Object.assign(JOBS, {
   conductor: { short: 'Starline conductor', title: 'conductor on the Starline monorail', place: 'station', pay: 4, collar: 'blue', indoor: true, until: 0.58, city: true },
   trucks: { short: 'food truck cook', title: 'cook at the Starline food trucks', place: 'trucks', pay: 3, collar: 'service', until: 0.58, city: true },
@@ -41,7 +45,7 @@ const SL_FOODS = [
 ];
 const SL_FILMS = ['Moonlight Pancakes', 'The Pigeon Who Knew Too Much', 'Starfall 2: Falling Harder', 'Love at First Byte', 'Attack of the Giant Berries', 'Grandma Owl Goes to Space', 'The Great Seashell Heist', 'Fourteen Umbrellas', 'Night Bus to Glimmer', 'The Ferry That Never Came', 'Frog Prince, Esq.', 'Snowman Summer'];
 const SL_SONGS = ['Moonbean Morning', 'Ferry Lights', 'Pigeon Waltz', 'Sundae Drive', 'Starline Nights', 'Low Tide Lullaby', 'Berry Mart Blues', 'Lanterns Over the Plaza'];
-const SL_TASKS = ['movie', 'streetfood', 'dance'];
+const SL_TASKS = ['movie', 'streetfood', 'dance', 'build', 'rally'];
 OBSTACLES.push([SL.x, SL.z, 2.1]);
 
 // ---------- state ----------
@@ -59,31 +63,41 @@ function cityShopOn() {
   for (const f of SL_FOODS) if (!FOODS.some((x) => x.id === f.id)) FOODS.push({ ...f });
 }
 
-// ---------- the one-time opening, and every boot after ----------
+// ---------- every boot, and the opening at the end of the ribbon cutting ----------
 function cityBoot() {
-  if (cityOpen()) { cityShopOn(); if (MODE === 'host') buildCity(); return; }
-  if (cityDue()) cityUnlock();
+  cityMigrate();
+  const st = cityStage();
+  if (st === 'open') { cityShopOn(); if (MODE === 'host') buildCity(); return; }
+  if (st === 'none') { if (cityDue()) cityOffer(); return; }
+  if (MODE === 'host') { if (cityLand()) buildCity(); else slBuildBillboard(); }
+  if (st === 'build' && !W.city.broke) slHearing();
+  if (st === 'ready') slQueueRibbon();
 }
 function cityUnlock() {
   if (cityOpen()) return;
-  W.city = { open: true, day: W.day, film: W.day, market: false };
+  const C = W.city = Object.assign(W.city || {}, { stage: 'open', open: true, day: W.day, film: W.day, market: false });
   W.added = W.added || {};
   cityShopOn();
-  if (MODE === 'host' && typeof scene !== 'undefined' && scene) buildCity();
-  const hired = cityHire(3);
-  diary(`🌃 <b>Starline</b> opened across the new bridge east of downtown: Starline Tower, Starlight Cinema, Glimmer FM, the food trucks, Beat Box Studio and a monorail over the avenue.${hired.length ? ` ${andList(hired.map((p) => `<b>${esc(p.name)}</b> (${JOBS[p.job].short})`))} took the first jobs there.` : ''}`);
-  for (const p of W.people) if (!p.visitor && rand() < 0.6) remember(p, 'A whole new city quarter called Starline opened across the bridge east of downtown. There is a cinema, a radio station, food trucks and a monorail.', 2, 'starline');
+  if (MODE === 'host' && typeof scene !== 'undefined' && scene) { buildCity(); slSiteDone(); }
+  const hired = cityHire(C.promise === 'jobs' ? 4 : 3, C.crew || []);
+  diary(`🎀 <b>Starline</b> is open across the bridge east of downtown: Starline Tower, Starlight Cinema, Glimmer FM, the food trucks, Beat Box Studio and a monorail over the avenue.${hired.length ? ` ${andList(hired.map((p) => `<b>${esc(p.name)}</b> (${JOBS[p.job].short})`))} took the first jobs there.` : ''}`);
+  for (const p of W.people) {
+    if (p.visitor) continue;
+    const was = p.slView;
+    if (was !== undefined) slShift(p, 0.3);
+    if (rand() < 0.7) remember(p, was !== undefined && was < -0.2 ? 'Starline opened today. I was against it, but I have to admit the lights are pretty.' : 'Starline opened today with a ribbon cutting. There is a cinema, a radio station, food trucks and a monorail.', 2, 'starline');
+  }
   if (!W.added.starline) {
     W.added.starline = true;
-    if (typeof logUpdate === 'function') logUpdate('build', `Built Starline, a busy city quarter east of downtown. It has Starline Tower with rooms 22 to 25, a cinema, a radio station, food trucks, a dance studio, a monorail and traffic. Five new jobs came with it. The town now holds at most ${POP_CAP} residents.`, 'Starline');
+    logUpdate('build', `Starline opened: a busy city quarter east of downtown with Starline Tower (rooms 22 to 25), a cinema, a radio station, food trucks, a dance studio, a monorail and traffic. Five new jobs came with it. The town holds at most ${POP_CAP} residents.`, 'Starline');
   }
   if (MODE === 'host') { toast('🌃 Starline is open! Take the bridge east of downtown.'); if (typeof Sound !== 'undefined') Sound.levelup(); if (typeof controls !== 'undefined' && controls && !interior) camGoal = { x: SL.x, z: SL.z + 4, r: 62 }; }
   markDirty();
 }
 // fill the new jobs from people nobody would miss at their old one; real people keep their jobs
-function cityHire(max) {
-  const out = [], count = (j) => W.people.filter((q) => q.job === j).length;
-  const cand = () => W.people.filter((p) => slFree(p) && p.job && !JOBS[p.job].city && !isRealish(p) && !p.style && !p.lovesMili && !p.custom && collarOf(p) !== 'white' && count(p.job) >= 2).sort((a, b) => count(b.job) - count(a.job) || rand() - 0.5)[0];
+function cityHire(max, first = []) {
+  const out = [], count = (j) => W.people.filter((q) => q.job === j).length, crew = (p) => (first.includes(p.id) ? 1 : 0);
+  const cand = () => W.people.filter((p) => slFree(p) && p.job && !JOBS[p.job].city && !isRealish(p) && !p.style && !p.lovesMili && !p.custom && collarOf(p) !== 'white' && count(p.job) >= 2).sort((a, b) => crew(b) - crew(a) || count(b.job) - count(a.job) || rand() - 0.5)[0];
   for (const job of ['conductor', 'trucks', 'projection', 'radio', 'dance']) {
     if (out.length >= max) break;
     if (count(job)) continue;
@@ -98,7 +112,9 @@ function cityHire(max) {
 
 // ---------- every morning ----------
 function cityDaily() {
-  if (!cityOpen()) { if (cityDue()) cityUnlock(); return; }
+  const st = cityStage();
+  if (st === 'none') { if (cityDue()) cityOffer(); return; }
+  if (st !== 'open') { cityProjectDaily(); return; }
   W.city.film = W.day; W.city.market = W.day % 3 === 0; W.city.marketSaid = false;
   if (rand() < 0.3) { const empty = ['conductor', 'trucks', 'projection', 'radio', 'dance'].filter((j) => !W.people.some((q) => q.job === j)); if (empty.length) { const h = cityHire(1)[0]; if (h) diary(`💼 <b>${esc(h.name)}</b> took a job in Starline as the ${JOBS[h.job].short}.`); } }
   radioShow();
@@ -149,13 +165,15 @@ function cityStroll() {
 }
 function cityStart(p, k) {
   if (!SL_TASKS.includes(k)) return false;
+  if (k === 'build' || k === 'rally') { slCrewStart(p, k); return true; }
   if (k === 'movie') { p.inside = true; p.busyUntil = now + 7 * ts(); return true; }
   if (k === 'streetfood') { p.busyUntil = now + 3 * ts(); p.face = Math.PI; const c = slWorking('trucks'); if (c) W.keeper.trucks = c.id; return true; }
   p.busyUntil = now + 5 * ts(); p.face = 0; emote(p, '🎵', 4); bubble(p, pick(['Five, six, seven, eight!', 'Left, right, spin!', 'My feet have a mind of their own.', "I'm getting it. I'm getting it!"]), 2.6);
   return true;
 }
 function cityFinish(p, k) {
-  if (k === 'movie') {
+  if (k === 'build' || k === 'rally') slCrewFinish(p, k);
+  else if (k === 'movie') {
     p.inside = false;
     if (purse(p) < 2) { bubble(p, 'Sold out of tickets for me.', 2.2); return; }
     spend(p, 2); const film = cityFilm(), liked = rand() < 0.55 + (p.body.openness || 0) * 0.2;
@@ -177,9 +195,10 @@ function slTogether(p, kind, how) {
   if (typeof lifeState === 'function') lifeState(); else return;
   for (const q of W.people) if (q !== p && q.task?.kind === kind && q.task.phase === 'do' && Math.hypot(q.x - p.x, q.z - p.z) < 9) { const key = pairKey(p, q); W.familiar[key] = Math.min(100, (W.familiar[key] || 0) + 4); if (rand() < 0.3) remember(p, `${cap(how)} ${q.name}.`, 1, 'familiar', q.name); }
 }
-const cityDoing = (k) => ({ movie: 'at the movies', streetfood: 'at the food trucks', dance: 'at dance class' })[k] || null;
+const cityDoing = (k) => ({ movie: 'at the movies', streetfood: 'at the food trucks', dance: 'at dance class', build: 'building Starline', rally: 'protesting Starline' })[k] || null;
 function cityTap(place) {
   const staff = (job) => W.people.filter((q) => q.job === job).map((q) => q.name);
+  if (!cityOpen() || place === 'site' || place === 'plans') { slSiteTap(); return; }
   const say = {
     tower: () => { const n = W.people.filter((q) => q.room >= MAX_POP && q.room < POP_CAP).length; return `Starline Tower: rooms ${MAX_POP + 1} to ${POP_CAP}. ${n ? `${n} of ${POP_CAP - MAX_POP} taken.` : 'All empty for now.'} The town holds ${POP_CAP} residents at most.`; },
     cinema: () => `Starlight Cinema. Now showing "${cityFilm()}". ${staff('projection').length ? `Projectionist: ${andList(staff('projection'))}.` : 'No projectionist yet, so no shows.'}`,
@@ -188,11 +207,6 @@ function cityTap(place) {
     studio: () => `Beat Box Studio. ${staff('dance').length ? `${andList(staff('dance'))} teaches dance here.` : 'No teacher yet.'} ${W.people.filter((q) => q.task?.kind === 'dance').length ? 'A class is on right now.' : ''}`,
   }[place];
   if (say) { toast(say().trim()); if (typeof Sound !== 'undefined') Sound.ui(); }
-}
-function cityBuildHtml() {
-  const n = residentCount();
-  if (cityOpen()) return `<p class="label">Starline</p><p class="hint">🌃 Open since day ${W.city.day}. Starline Tower adds rooms ${MAX_POP + 1} to ${POP_CAP}, so the town holds ${POP_CAP} residents at most (${n} now). Tap a building there to see who works in it.</p>`;
-  return `<p class="label">Starline</p><p class="hint">🌃 A busy city quarter across a bridge east of downtown, with more rooms, a cinema, a radio station, food trucks, a dance studio and a monorail. It opens when ${STARLINE_OPEN.people} people live here or on day ${STARLINE_OPEN.day}, whichever comes first. Right now: ${plural(n, 'resident')}, day ${W.day}.</p>`;
 }
 // a visitor from the other island can't push the town past the cap; the ferry turns back
 function cityTurnBack(d) {
@@ -206,6 +220,8 @@ function cityTurnBack(d) {
 // ---------- 3D ----------
 let cityGroup = null, slTrain = null, slCars = [], slLoop = null, slBlink = [], slSteam = [], slMarquee = null, slMarqueeFilm = null, slBulbs = null, slDanceMat = null, slDisco = null, slOnAir = null, slBalloons = null, slStar = null, slTrainT = 0;
 const SL_TRACK_Y = 6.6;
+const SL_LAMPS = [[-26, -2.4], [-16, 2.4], [-11, -8], [11, -8], [-11, 8], [11, 8], [16, -3], [3, -17], [-3, 17], [21, 6]];
+const SL_BLOCKS = [[-10.5, -23, 4.5, 16, '#b8c4e8'], [10.5, -23, 4.5, 19, '#e8c4d8'], [21, -13, 4, 14, '#c4e0d8'], [21, 13, 4, 11, '#d8d0f0'], [-24, -10, 4, 13, '#f0dcc4']];
 const slTrackA = () => polarDT(83, 25), slTrackB = () => slw(19, 0);
 function slMerged(list, key, cast = false) { const m = mesh(mergeGeos(list), bakedMat(key, { roughness: 0.75 }), 0, 0, 0, cast); return m; }
 function slTap(o, place) { o.traverse((c) => { if (c.isMesh) { c.userData.tap = place === 'trucks' ? { kind: 'shop', shop: 'trucks' } : { kind: 'city', place }; tappables.push(c); } }); }
@@ -215,16 +231,20 @@ function buildCity() {
   const G = cityGroup = new T3.Group(); scene.add(G);
   const L = new T3.Group(); L.position.set(SL.x, 0, SL.z); G.add(L);
   const at = (o, x, z, ry = 0) => { o.position.set(x, 0, z); o.rotation.y = ry; L.add(o); return o; };
+  // while it's being built, each piece shows up at its own point in the build (see slStage)
+  const stage = (win, fn) => { const nL = L.children.length, nG = G.children.length; fn(); for (const o of [...L.children.slice(nL), ...G.children.slice(nG).filter((o) => o !== L)]) slPart(o, win); };
   // land, pavement, roads
-  if (gfxOn()) G.add(islandPiece(SL.x, SL.z, SL.R, grassMat(true), { dy: -0.008 }));
-  else {
-    G.add(mesh(cyl(SL.R, SL.R - 1.5, 2.4, 72), [toon('#c9a27a'), toon(ISL.grass), toon('#8a6a4e')], SL.x, -1.2, SL.z, false));
-    G.add(mesh(cyl(SL.R + 1.4, SL.R + 1.8, 0.4, 72), toon('#f3dfb0'), SL.x, -0.35, SL.z, false));
-  }
+  stage('land', () => {
+    if (gfxOn()) G.add(islandPiece(SL.x, SL.z, SL.R, grassMat(true), { dy: -0.008 }));
+    else {
+      G.add(mesh(cyl(SL.R, SL.R - 1.5, 2.4, 72), [toon('#c9a27a'), toon(ISL.grass), toon('#8a6a4e')], SL.x, -1.2, SL.z, false));
+      G.add(mesh(cyl(SL.R + 1.4, SL.R + 1.8, 0.4, 72), toon('#f3dfb0'), SL.x, -0.35, SL.z, false));
+    }
+  });
   const pave = gfxOn() ? worldMat('pave', '#efe6da', gfxTextures().cobble, 0.3, 0.74, 1.06, 0.05) : toon('#e8e0d4');
   const road = gfxOn() ? worldMat('road', '#7c7686', gfxTextures().sand, 0.6, 0.86, 1.1, 0.05) : toon('#6e6a7a');
+  stage('pave', () => {
   L.add(mesh(cyl(20, 20, 0.07, 72), pave, 0, 0.035, 0, false));
-  {
     const rr = (a, b, r) => { const s = new T3.Shape(); s.moveTo(-a + r, -b); s.lineTo(a - r, -b); s.quadraticCurveTo(a, -b, a, -b + r); s.lineTo(a, b - r); s.quadraticCurveTo(a, b, a - r, b); s.lineTo(-a + r, b); s.quadraticCurveTo(-a, b, -a, b - r); s.lineTo(-a, -b + r); s.quadraticCurveTo(-a, -b, -a + r, -b); return s; };
     const ring = rr(10.3, 7.3, 4.3); ring.holes.push(rr(7.7, 4.7, 1.7));
     const flat = (geo, x, z, y = 0.08) => { geo.rotateX(-Math.PI / 2); geo.translate(x, y, z); return geo; };
@@ -237,9 +257,9 @@ function buildCity() {
     for (let x = -29; x < -11; x += 2.2) marks.push({ geo: new T3.BoxGeometry(1.1, 0.02, 0.2), x, y: 0.1, color: '#ffe98a' });
     for (const [cx, cz, rot] of [[-11.8, 0, 0], [11.8, 0, 0], [0, -8.6, 1], [0, 8.6, 1]]) for (let s = -2; s <= 2; s++) marks.push({ geo: new T3.BoxGeometry(rot ? 0.4 : 1.8, 0.02, rot ? 1.8 : 0.4), x: cx + (rot ? s * 0.55 : 0), z: cz + (rot ? 0 : s * 0.55), y: 0.1, color: '#ffffff' });
     L.add(slMerged(marks, 'slMarks'));
-  }
+  });
   // bridge from downtown, and a walk across downtown's east lawn
-  {
+  stage('bridge', () => {
     const [ax, az] = SL_WALK[1], [bx, bz] = slw(-30, 0), [wx, wz] = SL_WALK[0];
     const seg = (x1, z1, x2, z2, w, mat, y) => { const len = Math.hypot(x2 - x1, z2 - z1), m = mesh(box(w, 0.07, len + 0.6), mat, (x1 + x2) / 2, y, (z1 + z2) / 2, false); m.rotation.y = Math.atan2(x2 - x1, z2 - z1); G.add(m); };
     seg(wx, wz, ax, az, 2.4, pave, 0.04);
@@ -252,18 +272,18 @@ function buildCity() {
     }
     for (const s of [-1, 1]) { const px = (ax + bx) / 2 + uz * 1.55 * s - SL.x, pz = (az + bz) / 2 - ux * 1.55 * s - SL.z; bits.push({ geo: new T3.BoxGeometry(0.12, 0.12, len), x: px, y: 1.25, z: pz, ry, color: '#c49a6c' }); }
     L.add(slMerged(bits, 'slBridge'));
-  }
+  });
   // buildings
-  slBuildTower(L, at); slBuildCinema(L, at); slBuildStation(L, at); slBuildRadio(L, at); slBuildStudio(L, at); slBuildMarket(L, at); slBuildSkyline(L);
+  stage('tower', () => slBuildTower(L, at)); stage('cinema', () => slBuildCinema(L, at)); stage('station', () => slBuildStation(L, at)); stage('radio', () => slBuildRadio(L, at)); stage('studio', () => slBuildStudio(L, at)); stage('trucks', () => slBuildMarket(L, at)); stage('sky', () => slBuildSkyline(L));
   // the spire in the plaza, with a star that turns
-  {
+  stage('spire', () => {
     L.add(slMerged([{ geo: new T3.CylinderGeometry(1.5, 1.8, 0.6, 8), y: 0.3, color: '#d4cbe0' }, { geo: new T3.CylinderGeometry(0.25, 0.55, 3.6, 8), y: 2.4, color: '#6f73c9' }, { geo: new T3.TorusGeometry(0.7, 0.08, 6, 20), y: 3.2, rx: Math.PI / 2, color: '#ffd36b' }], 'slSpire', true));
     const s = new T3.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.28 : 0.62, a = (i / 10) * Math.PI * 2; s[i ? 'lineTo' : 'moveTo'](Math.sin(a) * r, Math.cos(a) * r); }
     const sg = new T3.ExtrudeGeometry(s, { depth: 0.18, bevelEnabled: false }); sg.translate(0, 0, -0.09);
     slStar = mesh(sg, glow('#ffd36b', 0.8), 0, 4.6, 0, false); L.add(slStar);
-  }
+  });
   // benches, planters and a balloon cart around the plaza; trees in the little south park
-  {
+  stage('props', () => {
     const bits = [];
     for (const [x, z, ry] of [[-4.5, 3.2, 0], [4.5, 3.2, 0], [-4.5, -3.2, Math.PI], [4.5, -3.2, Math.PI], [-3, 20.5, 0], [3, 20.5, 0]]) { bits.push({ geo: new T3.BoxGeometry(2.2, 0.16, 0.7), x, y: 0.55, z, ry, color: '#c49a6c' }, { geo: new T3.BoxGeometry(2.2, 0.55, 0.12), x, y: 0.95, z: z + (ry ? -0.32 : 0.32), ry, color: '#c49a6c' }); for (const s of [-0.9, 0.9]) bits.push({ geo: new T3.BoxGeometry(0.12, 0.55, 0.55), x: x + s, y: 0.27, z, color: '#5a5470' }); }
     for (const [x, z] of [[-24, -3.5], [-24, 3.5], [-19, -3.5], [-19, 3.5], [14, -3.5], [14, 3.5]]) { bits.push({ geo: new T3.BoxGeometry(1.4, 0.6, 1.4), x, y: 0.3, z, color: '#8a84a8' }); for (let k = 0; k < 4; k++) bits.push({ geo: new T3.SphereGeometry(0.24, 8, 6), x: x + (k % 2 - 0.5) * 0.6, y: 0.75, z: z + (Math.floor(k / 2) - 0.5) * 0.6, color: ['#ff9fbf', '#ffe98a', '#c9b3ff', '#9fe3c4'][k] }); }
@@ -272,22 +292,26 @@ function buildCity() {
     L.add(slMerged(bits, 'slProps', true));
     const bl = []; ['#ff6f9c', '#6fe3ff', '#ffd36b', '#9fe3a0', '#c9b3ff'].forEach((c, i) => { const a = i * 1.26, x = 5.6 + Math.cos(a) * 0.45, z = -1.8 + Math.sin(a) * 0.35, y = 2.9 + (i % 2) * 0.35; bl.push({ geo: new T3.SphereGeometry(0.32, 10, 8), x, y, z, color: c }, { geo: new T3.CylinderGeometry(0.01, 0.01, y - 1.2, 3), x, y: (y + 1.2) / 2, z, color: '#ffffff' }); });
     slBalloons = slMerged(bl, 'slBalloons'); L.add(slBalloons);
-    for (const [x, z, s, c] of [[-6, 22, 1, '#8fd48a'], [6, 21, 0.9, '#f7b6c8'], [0, 25, 0.85, '#5fae5a'], [-27, -6, 0.8, '#8fd48a'], [-27, 6, 0.8, '#f7b6c8'], [-19, 19, 0.9, '#5fae5a'], [16, 22, 0.85, '#8fd48a'], [-5.5, -27, 0.75, '#f7b6c8'], [26, -4, 0.7, '#5fae5a']]) {
+    // the promise of a green park at the hearing adds a few more trees by the water
+    const park = W.city?.promise === 'park' ? [[-12, 22, 0.9, '#8fd48a'], [11, 25, 0.8, '#5fae5a'], [-22, 14, 0.85, '#f7b6c8'], [24, 8, 0.75, '#8fd48a']] : [];
+    for (const [x, z, s, c] of [[-6, 22, 1, '#8fd48a'], [6, 21, 0.9, '#f7b6c8'], [0, 25, 0.85, '#5fae5a'], [-27, -6, 0.8, '#8fd48a'], [-27, 6, 0.8, '#f7b6c8'], [-19, 19, 0.9, '#5fae5a'], [16, 22, 0.85, '#8fd48a'], [-5.5, -27, 0.75, '#f7b6c8'], [26, -4, 0.7, '#5fae5a'], ...park]) {
       if (gfxOn()) L.add(gfxTree(x, z, s, c));
       else { const g = new T3.Group(); g.add(mesh(cyl(0.3, 0.4, 2.4, 8), toon('#9a6f4e'), 0, 1.2, 0)); g.add(mesh(new T3.IcosahedronGeometry(1.8, 0), toon(c), 0, 3.3, 0)); g.position.set(x, 0, z); L.add(g); }
     }
-  }
+  });
   // streetlights (posts in one mesh, lamps in another so they glow at night)
-  {
+  stage('lights', () => {
     const posts = [], heads = [];
-    const spots = [[-26, -2.4], [-16, 2.4], [-11, -8], [11, -8], [-11, 8], [11, 8], [16, -3], [3, -17], [-3, 17], [21, 6]];
+    const spots = SL_LAMPS;
     for (const [x, z] of spots) { posts.push({ geo: new T3.CylinderGeometry(0.09, 0.12, 4.2, 8), x, y: 2.1, z, color: '#3d4f86' }); heads.push({ geo: new T3.SphereGeometry(0.38, 12, 8), x, y: 4.35, z }); }
     L.add(slMerged(posts, 'slPosts'));
     const lm = makeToon({ color: '#fff4c4', gradientMap: gradMap, emissive: new T3.Color('#000') }); lampMats.push(lm);
     const hg = mergeGeos(heads); hg.deleteAttribute('color'); L.add(mesh(hg, lm, 0, 0, 0, false));
-  }
-  slBuildMonorail(G);
+  });
+  stage('monorail', () => slBuildMonorail(G));
   slBuildCars(L);
+  if (!cityOpen()) slBuildSite(G, L);
+  slShown = W.city?.progress ?? 1; slApplyParts();
   if (gfxOn() && typeof waterIsles === 'function') waterIsles();
 }
 function slBuildTower(L, at) {
@@ -385,9 +409,8 @@ function slBuildMarket(L, at) {
   const bg = mergeGeos(bulbs); bg.deleteAttribute('color'); L.add(mesh(bg, slGlowMat('#ffb86b'), 0, 0, 0, false));
 }
 function slBuildSkyline(L) {
-  const blocks = [[-10.5, -23, 4.5, 16, '#b8c4e8'], [10.5, -23, 4.5, 19, '#e8c4d8'], [21, -13, 4, 14, '#c4e0d8'], [21, 13, 4, 11, '#d8d0f0'], [-24, -10, 4, 13, '#f0dcc4']];
   const bits = [], wins = [];
-  for (const [x, z, w, h, c] of blocks) {
+  for (const [x, z, w, h, c] of SL_BLOCKS) {
     const roofC = ['#ff9f7a', '#7fb8e8', '#9fd49a', '#f2c46b', '#c9a3e8'][hashStr(`${x}${z}`) % 5];
     bits.push({ geo: new T3.BoxGeometry(w, h, w), x, y: h / 2, z, color: c }, { geo: new T3.BoxGeometry(w + 0.12, 2.3, w + 0.12), x, y: 1.15, z, color: '#fbf1e2' }, { geo: new T3.BoxGeometry(w + 0.9, 0.18, w + 0.9), x, y: 2.5, z, color: roofC }, { geo: new T3.BoxGeometry(w + 0.5, 0.5, w + 0.5), x, y: h + 0.25, z, color: roofC }, { geo: new T3.BoxGeometry(w * 0.4, 1.2, w * 0.4), x, y: h + 1, z, color: '#8a84a8' });
     for (let y = 4; y < h - 1; y += 2.2) for (let i = -1; i <= 1; i++) for (const [dx, dz, ry] of [[0, w / 2 + 0.02, 0], [w / 2 + 0.02, 0, Math.PI / 2], [0, -w / 2 - 0.02, 0], [-w / 2 - 0.02, 0, Math.PI / 2]]) {
@@ -436,7 +459,8 @@ function slLoopAt(s) {
   return [x0 + (x1 - x0) * k, z0 + (z1 - z0) * k, Math.atan2(x1 - x0, z1 - z0)];
 }
 function cityFrame(dt) {
-  if (!cityGroup || !cityOpen()) return;
+  if (!cityGroup || !cityOpen()) { slSiteFrame(dt); return; }
+  if (slSite) slSiteFrame(dt);
   const night = W.t >= 0.6 || W.t < 0.03, busy = W.t >= 0.02 && W.t < 0.64;
   // traffic around the plaza, lighter at night
   for (const g of slCars) { const u = g.userData; g.visible = busy || u.v < 3.1; if (!g.visible) continue; u.s += dt * u.v * (W.weather === 'storm' ? 0.6 : 1); const [x, z, h] = slLoopAt(u.s); g.position.set(x, 0, z); g.rotation.y = h; }

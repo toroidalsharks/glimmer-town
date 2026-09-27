@@ -353,6 +353,8 @@ sheet.addEventListener('click', (e) => {
   if (d.place) { placing = { type: d.place }; sheet.hidden = true; $('#placeText').textContent = `Tap the ground where the ${BUILDS[d.place].name} should go.`; $('#placeBar').hidden = false; return; }
   if (d.autoplace) { send({ t: 'place', type: d.autoplace }); return; }
   if (d.land) { send({ t: 'land', lobe: d.land }); return; }
+  if (d.cityfund) { send({ t: 'city', a: 'give', what: d.cityfund, n: d.n === 'all' ? 'all' : Number(d.n) }); return; }
+  if (d.cityhelp !== undefined) { send({ t: 'city', a: 'help' }); return; }
   if (d.unplace) { send({ t: 'unplace', id: d.unplace }); return; }
   if (d.mail) { if (!mailOpen) mailListScroll = $('#pane-mail').scrollTop; mailOpen = d.mail; refreshPanel(true); $('#pane-mail').scrollTop = 0; return; }
   if (d.mailnav) { mailStep(Number(d.mailnav)); return; }
