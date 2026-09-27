@@ -3,7 +3,7 @@
 // and the town looks (sky, light, water, menu colors), picked in Settings
 // ============================================================
 // each look: sky day/dusk/night, sun, hemisphere light, rim light on the
-// residents, water and fountain, grass/leaf/tuft/rock colors, light strength,
+// residents, water and fountain, grass/leaf/tuft/sand colors, light strength,
 // the final color grade, and menu accents. facets: false builds the town smooth,
 // as before. lowSun squashes the sun's height for long evening shadows, and fog
 // pulls the haze in closer.
@@ -14,22 +14,22 @@
 const MOODS = {
   meadow: {
     name: 'Meadow', blurb: 'The low-poly diorama: a soft meadow in warm afternoon light.', facets: true,
-    top: ['#7fbcec', '#b98ac4', '#141238'], hor: ['#fff1dc', '#ffb68c', '#2c2860'], duskK: [0.5, 0.9],
+    top: ['#7fbcec', '#b98ac4', '#141238'], hor: ['#fff1dc', '#ffb68c', '#2c2860'], duskK: [0.5, 0.9], lowSun: 0.72,
     sun: ['#fff2d8', '#ffbe8a', '#a8b0ff'], hemi: ['#fff1dc', '#d6c2e6', '#7078d8'], ground: ['#b0a860', '#3c3468'],
     rim: ['#fff0f6', '#ffc0a0', '#9fb8ff'], rimK: 0, light: [1, 1.15],
-    water: ['#9fdcc8', '#76bcbc', '#5b98ac'], waterBox: '#0c3c6e', fountain: '#8fd0c2',
-    grass: ['#d3d98c', 0.75], leaf: ['#a4ad2c', 0.72], tuft: '#ffffff',
+    water: ['#9ae6d0', '#5ec8c6', '#3fa6bc'], waterBox: '#0c3c6e', fountain: '#86d0cc',
+    grass: ['#d3d98c', 0.75], leaf: ['#bcc44c', 0.86], tuft: '#ffffff',
     sat: 1.12, lift: [0.97, 0.98, 1.04], gain: [1.03, 1.0, 0.96],
     ui: { accent: '#d8e48a', accent2: '#ffb48a', glow: '210, 170, 90', bg: '#15120f', panel: '30, 25, 21' },
   },
   golden: {
     name: 'Golden hour', blurb: 'Peach skies, lavender water and honey-colored trees.', facets: true,
-    top: ['#d98f6a', '#c27a88', '#1a1238'], hor: ['#f0bf96', '#ff9c78', '#2c2050'], duskK: [0.45, 0.9], fog: [80, 330], lowSun: 0.5,
-    sun: ['#ffc890', '#ff9058', '#a0a8ff'], hemi: ['#ffe0c4', '#ffb094', '#6a68d0'], ground: ['#c09a70', '#3a3060'],
+    top: ['#d98f6a', '#c27a88', '#1a1238'], hor: ['#f0bf96', '#ff9c78', '#2c2050'], duskK: [0.45, 0.9], fog: [140, 460], lowSun: 0.5,
+    sun: ['#ffdcb0', '#ff9058', '#a0a8ff'], hemi: ['#f0dcd0', '#ffb094', '#6a68d0'], ground: ['#b8a888', '#3a3060'],
     rim: ['#fff0f6', '#ffc0a0', '#9fb8ff'], rimK: 0, light: [1, 1.1],
-    water: ['#c4a0cc', '#9c78b0', '#86689e'], waterBox: '#2a1e5a', fountain: '#b39ad6',
-    grass: ['#dcd694', 0.75], leaf: ['#dc9a2c', 0.75], tuft: '#ffe2a0',
-    sat: 1.08, lift: [1.0, 0.97, 0.98], gain: [1.06, 1.0, 0.94],
+    water: ['#a88ab8', '#9a80b6', '#8a6cac'], waterBox: '#2a1e5a', fountain: '#d6bce0',
+    grass: ['#dcd694', 0.75], leaf: ['#d4bc48', 0.85], tuft: '#ffe2a0', sand: '#d6bc8a',
+    sat: 1.06, lift: [1.0, 0.98, 0.99], gain: [1.02, 0.99, 0.96],
     ui: { accent: '#ffcf8a', accent2: '#c9a8f0', glow: '230, 150, 110', bg: '#170f14', panel: '32, 22, 26' },
   },
   candy: {
@@ -70,11 +70,13 @@ function moodGrass() {
   if (M.grass) c.lerp(new T3.Color(M.grass[0]), M.grass[1]);
   return c;
 }
-// green leaves lean toward the look's leaf color (pink blossoms and autumn colors stay)
+// green leaves lean toward the look's leaf color (pink blossoms and autumn colors
+// stay), keeping how light or dark they were, so pines and light trees stand apart
 function moodLeaf(c) {
   const L = moodOf().leaf;
-  if (L && c.g > c.r * 1.05 && c.g > c.b) c.lerp(new T3.Color(L[0]), L[1]);
-  return c;
+  if (!L || !(c.g > c.r * 1.05 && c.g > c.b)) return c;
+  const l = c.r * 0.3 + c.g * 0.59 + c.b * 0.11;
+  return c.lerp(new T3.Color(L[0]), L[1]).multiplyScalar(Math.min(1.12, Math.max(0.7, Math.pow(l / 0.66, 1.3))));
 }
 // menus pick up the look's accents on every device (the remote uses its own pref)
 function moodMenus() {
@@ -121,14 +123,19 @@ makeFigure = smoothly(makeFigure); dressMesh = smoothly(dressMesh); hatMesh = sm
 restyleLook = smoothly(restyleLook); restyleHair = smoothly(restyleHair); healthLook = smoothly(healthLook); poseFigure = smoothly(poseFigure);
 catMesh = smoothly(catMesh); owlMesh = smoothly(owlMesh); buildGhosts = smoothly(buildGhosts);
 
-// the low-poly stand-in for one Blender part: tree crowns and bushes become stacked
-// faceted tiers, rocks and clouds are snapped to a coarse grid, palm fronds take the
-// season's leaf color, and grass tufts lose their dark roots
-const FACET_SHAPE = { treeA: { tiers: 3, seed: 11 }, treeB: { tiers: 3, seed: 29 }, bushA: { tiers: 1, seed: 5, sides: 9, shoulder: 0.82 } };
+// the low-poly stand-in for one Blender part: tree crowns become stacked rounded
+// clumps, blossom trees and bushes a cluster of faceted balls, rocks and clouds are
+// snapped to a coarse grid, palm fronds take the season's leaf color, and grass
+// tufts lose their dark roots. treeC is the blossom tree, built from treeA's parts.
+const FACET_SHAPE = {
+  treeA: { tiers: 3, seed: 11 }, treeB: { tiers: 2, seed: 29 },
+  treeC: { from: 'treeA', balls: 5, seed: 7 }, bushA: { balls: 3, seed: 5, low: true },
+};
 const FACET_CELL = { rockA: 0.65, rockB: 0.65, rockC: 0.65, cloudA: 0.9, cloudB: 0.9 };
+const BLOSSOM = new Set(['#f7b6c8', '#ffc9d6']);
 function facetPart(name, i, part) {
-  const g = part.geo, col = g.attributes.color.array;
-  if (FACET_SHAPE[name] && part.tint === 'leaf') part.geo = tierCanopy(g.boundingBox, FACET_SHAPE[name]);
+  const g = part.geo, col = g.attributes.color.array, S = FACET_SHAPE[name];
+  if (S && part.tint === 'leaf') part.geo = S.balls ? ballCanopy(g.boundingBox, S) : clumpCanopy(g.boundingBox, S);
   else if (FACET_CELL[name] && part.tint) part.geo = facetGeo(g, FACET_CELL[name]);
   else if (name === 'palm' && part.double) {
     let top = 0; for (let k = 0; k < col.length; k += 3) top = Math.max(top, col[k] * 0.3 + col[k + 1] * 0.59 + col[k + 2] * 0.11);
@@ -137,34 +144,66 @@ function facetPart(name, i, part) {
   } else if (name === 'tuft') { let top = 0; for (const v of col) top = Math.max(top, v); for (let k = 0; k < col.length; k++) col[k] = 0.74 + 0.26 * (col[k] / (top || 1)); }
   return part;
 }
-// a crown of stacked, slightly ragged tiers: each has a dark underside, a wide lip,
-// a narrower shoulder and a peak, like the trees in a paper diorama. One shade per facet.
-function tierCanopy(bb, S) {
-  const r = mulberry(S.seed), lo = bb.min, hi = bb.max, cx = (lo.x + hi.x) / 2, cz = (lo.z + hi.z) / 2;
-  const W = Math.min(hi.x - lo.x, hi.z - lo.z) / 2, T = S.tiers, th = (hi.y - lo.y) / (T * 0.72 + 0.28);
-  const pos = [], col = [], e1 = new T3.Vector3(), e2 = new T3.Vector3(), nrm = new T3.Vector3(), out = new T3.Vector3();
-  for (let t = 0; t < T; t++) {
-    const f = T > 1 ? t / (T - 1) : 0, R = W * (1 - 0.45 * f), y0 = lo.y + t * th * 0.72, n = S.sides || 7 + Math.floor(r() * 3), a0 = r() * 6.2832;
-    const ox = cx + (r() - 0.5) * W * 0.12, oz = cz + (r() - 0.5) * W * 0.12, mid = new T3.Vector3(ox, y0 + th * 0.45, oz), ao = 0.84 + 0.16 * f;
-    const ring = (rad, y, jr, jy) => Array.from({ length: n }, (_, i) => { const a = a0 + ((i + (r() - 0.5) * 0.4) / n) * 6.2832, k = rad * (1 + (r() - 0.5) * jr); return new T3.Vector3(ox + Math.cos(a) * k, y + (r() - 0.5) * jy * th, oz + Math.sin(a) * k); });
-    const lip = ring(R, y0 + th * 0.22, 0.26, 0.16), sh = ring(R * (S.shoulder || 0.7), y0 + th * 0.7, 0.28, 0.14);
-    const top = new T3.Vector3(ox + (r() - 0.5) * R * 0.25, y0 + th, oz + (r() - 0.5) * R * 0.25), bot = new T3.Vector3(ox, y0, oz);
-    const face = (a, b, d, k) => {
-      e1.subVectors(b, a); e2.subVectors(d, a); nrm.crossVectors(e1, e2); out.copy(a).add(b).add(d).divideScalar(3).sub(mid);
-      if (nrm.dot(out) < 0) [b, d] = [d, b];
-      const v = k * ao * (0.94 + r() * 0.12);
-      for (const q of [a, b, d]) { pos.push(q.x, q.y, q.z); col.push(v, v, v); }
-    };
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      face(bot, lip[j], lip[i], 0.5); face(lip[i], lip[j], sh[j], 0.86); face(lip[i], sh[j], sh[i], 0.86); face(sh[i], sh[j], top, 1);
-    }
-  }
+function flatGeo(pos, col) {
   const g = new T3.BufferGeometry();
   g.setAttribute('position', new T3.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T3.Float32BufferAttribute(col, 3));
   g.computeVertexNormals(); g.computeBoundingSphere(); g.computeBoundingBox();
   g.userData.keep = true;
   return g;
+}
+// a crown of stacked, rounded clumps with ragged overhanging edges, widest in the
+// middle, like the olive trees in a paper diorama. One shade per facet.
+function clumpCanopy(bb, S) {
+  const r = mulberry(S.seed), lo = bb.min, hi = bb.max, cx = (lo.x + hi.x) / 2, cz = (lo.z + hi.z) / 2;
+  const W = Math.min(hi.x - lo.x, hi.z - lo.z) / 2, T = S.tiers, th = (hi.y - lo.y) / (T * 0.66 + 0.34);
+  const widths = T === 3 ? [0.9, 1, 0.74] : [1, 0.8];
+  const pos = [], col = [], e1 = new T3.Vector3(), e2 = new T3.Vector3(), nrm = new T3.Vector3(), out = new T3.Vector3();
+  for (let t = 0; t < T; t++) {
+    const f = T > 1 ? t / (T - 1) : 0, R = W * widths[t] * (0.95 + r() * 0.1), y0 = lo.y + t * th * 0.66, n = 8 + Math.floor(r() * 3), a0 = r() * 6.2832;
+    const ox = cx + (r() - 0.5) * W * 0.14, oz = cz + (r() - 0.5) * W * 0.14, mid = new T3.Vector3(ox, y0 + th * 0.5, oz), ao = 0.9 + 0.1 * f;
+    // the lip scallops in and out, so each tier's edge looks torn rather than turned
+    const ring = (rad, y, jr, jy, sc = 0) => Array.from({ length: n }, (_, i) => { const a = a0 + ((i + (r() - 0.5) * 0.35) / n) * 6.2832, k = rad * (1 + (r() - 0.5) * jr + (i % 2 ? sc : -sc)); return new T3.Vector3(ox + Math.cos(a) * k, y + (r() - 0.5) * jy * th, oz + Math.sin(a) * k); });
+    const lip = ring(R * 0.98, y0 + th * 0.12, 0.16, 0.2, 0.07), belly = ring(R, y0 + th * 0.36, 0.12, 0.1), sh = ring(R * 0.8, y0 + th * 0.7, 0.14, 0.1), crown = ring(R * 0.42, y0 + th * 0.93, 0.2, 0.06);
+    const top = new T3.Vector3(ox + (r() - 0.5) * R * 0.15, y0 + th, oz + (r() - 0.5) * R * 0.15), bot = new T3.Vector3(ox, y0 + th * 0.2, oz);
+    const face = (a, b, d, k) => {
+      e1.subVectors(b, a); e2.subVectors(d, a); nrm.crossVectors(e1, e2); out.copy(a).add(b).add(d).divideScalar(3).sub(mid);
+      if (nrm.dot(out) < 0) [b, d] = [d, b];
+      const v = ao * (0.95 + r() * 0.1);
+      for (const q of [a, b, d]) { pos.push(q.x, q.y, q.z); col.push(k[0] * v, k[1] * v, k[2] * v); }
+    };
+    const band = (A, B, k) => { for (let i = 0; i < n; i++) { const j = (i + 1) % n; face(A[i], A[j], B[j], k); face(A[i], B[j], B[i], k); } };
+    // warm, dark undersides under every shelf, like the shade under a real crown
+    for (let i = 0; i < n; i++) face(bot, lip[(i + 1) % n], lip[i], [0.52, 0.48, 0.36]);
+    band(lip, belly, [0.95, 0.93, 0.86]); band(belly, sh, [1, 1, 1]); band(sh, crown, [1.04, 1.04, 1.02]);
+    for (let i = 0; i < n; i++) face(crown[i], crown[(i + 1) % n], top, [1.08, 1.08, 1.04]);
+  }
+  return flatGeo(pos, col);
+}
+// a cloud of faceted balls, for blossom trees and bushes
+function ballCanopy(bb, S) {
+  const r = mulberry(S.seed), lo = bb.min, hi = bb.max, cx = (lo.x + hi.x) / 2, cz = (lo.z + hi.z) / 2;
+  const W = Math.min(hi.x - lo.x, hi.z - lo.z) / 2, H = hi.y - lo.y, pos = [], col = [];
+  const balls = [[0, S.low ? 0.5 : 0.52, 0, S.low ? 0.62 : 0.5]];
+  for (let i = 1; i < S.balls; i++) {
+    const last = i === S.balls - 1 && !S.low, a = (i / (S.balls - (S.low ? 0 : 1))) * 6.2832 + r() * 0.8, d = last ? 0.12 : 0.52 + r() * 0.1;
+    balls.push([Math.cos(a) * d, last ? 0.78 : (S.low ? 0.42 : 0.4) + r() * 0.12, Math.sin(a) * d, last ? 0.34 : (S.low ? 0.46 : 0.4) + r() * 0.08]);
+  }
+  for (const [bx, by, bz, br] of balls) {
+    const g = new T3.IcosahedronGeometry(1, 1), P = g.attributes.position.array, rad = br * W, sy = S.low ? 0.8 : 0.92;
+    // nudge each corner in or out, the same amount wherever it is shared
+    const bump = new Map();
+    for (let k = 0; k < P.length; k += 3) {
+      const key = `${P[k].toFixed(3)},${P[k + 1].toFixed(3)},${P[k + 2].toFixed(3)}`; if (!bump.has(key)) bump.set(key, 0.9 + r() * 0.2);
+      const s = bump.get(key);
+      pos.push(cx + bx * W + P[k] * rad * s, lo.y + by * H + P[k + 1] * rad * s * sy, cz + bz * W + P[k + 2] * rad * s);
+    }
+    for (let k = 0; k < P.length; k += 9) {
+      const ny = (P[k + 1] + P[k + 4] + P[k + 7]) / 3, v = (ny < -0.35 ? 0.72 : ny < 0.2 ? 0.92 : 1.02) * (0.95 + r() * 0.1);
+      for (let j = 0; j < 3; j++) col.push(v, v, v);
+    }
+    g.dispose();
+  }
+  return flatGeo(pos, col);
 }
 // snap the corners of a smooth part to a coarse grid, average each cell, drop the
 // triangles that collapse, then give every facet one flat normal and one color.
@@ -211,9 +250,21 @@ function facetGeo(src, h) {
     const avg = (CC[tris[t] * 3 + k] + CC[tris[t + 1] * 3 + k] + CC[tris[t + 2] * 3 + k]) / 3, s = (hi[k] - lo[k]) / Math.max(1e-6, nhi[k] - nlo[k]);
     for (let j = 0; j < 3; j++) { const v = CP[tris[t + j] * 3 + k]; pos[(t + j) * 3 + k] = (lo[k] + hi[k]) / 2 + (v - (nlo[k] + nhi[k]) / 2) * s; col[(t + j) * 3 + k] = avg; }
   }
-  const g = new T3.BufferGeometry();
-  g.setAttribute('position', new T3.BufferAttribute(pos, 3)); g.setAttribute('color', new T3.BufferAttribute(col, 3));
-  g.computeVertexNormals(); g.computeBoundingSphere(); g.computeBoundingBox();
-  g.userData.keep = true;
-  return g;
+  return flatGeo(pos, col);
+}
+// a garden sprout: five folded leaf blades fanned out from the middle. Both sides
+// are built, so it takes the plain season-colored leaf material.
+let sproutG = null;
+function sproutGeo() {
+  if (sproutG) return sproutG;
+  const pos = [], tri = (a, b, c) => pos.push(...a, ...b, ...c, ...a, ...c, ...b);
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.2566 + 0.3, up = i === 4, reach = up ? 0.08 : 0.3, h = up ? 0.62 : 0.42, ca = Math.cos(a), sa = Math.sin(a);
+    const tip = [ca * reach, h, sa * reach], mid = [ca * reach * 0.5, h * 0.62, sa * reach * 0.5], w = 0.11;
+    const L = [mid[0] - sa * w, mid[1] - 0.03, mid[2] + ca * w], R = [mid[0] + sa * w, mid[1] - 0.03, mid[2] - ca * w], rib = [mid[0], mid[1] + 0.03, mid[2]];
+    tri([0, 0, 0], L, rib); tri(L, tip, rib); tri([0, 0, 0], rib, R); tri(rib, tip, R);
+  }
+  sproutG = new T3.BufferGeometry(); sproutG.setAttribute('position', new T3.Float32BufferAttribute(pos, 3));
+  sproutG.computeVertexNormals(); sproutG.computeBoundingSphere(); sproutG.userData.keep = true;
+  return sproutG;
 }

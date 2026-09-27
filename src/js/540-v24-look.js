@@ -10,7 +10,7 @@ const GFX = { level: 'pretty', post: false, dof: true, bloom: true, frames: [], 
 function makeToon(p) {
   if (!gfxOn()) return new T3.MeshToonMaterial(p);
   const q = { ...(p || {}) }; delete q.gradientMap;
-  if (facetsOn() && q.flatShading === undefined) q.flatShading = true;
+  if (facetsOn() && q.flatShading === undefined && !q.emissive) q.flatShading = true;
   if (GFX.cheap) { delete q.roughness; delete q.metalness; delete q.envMapIntensity; delete q.envMap; return new T3.MeshLambertMaterial(q); }
   if (q.color === '#bfe8ff') return new T3.MeshStandardMaterial({ roughness: 0.18, metalness: 0.15, envMap: GFX.env || null, envMapIntensity: 1.2, ...q });
   return new T3.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...q });
@@ -161,8 +161,8 @@ function gfxTextures() {
 // pieces share one continuous pattern. lo/hi set how strong the detail is.
 function worldMat(key, color, tex, scale = 0.25, lo = 0.8, hi = 1.12, patch = 0.14, extra = {}) {
   if (!gfxOn()) return toon(color);
-  // the low-poly town keeps only a hint of the painted pattern
-  if (FACET.on && !/grass/i.test(key)) { lo = 1 - (1 - lo) * 0.35; hi = 1 + (hi - 1) * 0.35; patch *= 0.5; }
+  // the low-poly town keeps the pattern, a little softer
+  if (FACET.on && !/grass/i.test(key)) { lo = 1 - (1 - lo) * 0.8; hi = 1 + (hi - 1) * 0.8; patch *= 0.7; }
   return cachedMat('world:' + key, () => {
     const m = makeToon({ color, map: tex, roughness: 0.92, ...extra });
     const U = { uS: { value: scale }, uLo: { value: lo }, uHi: { value: hi }, uP: { value: patch } };
@@ -187,7 +187,7 @@ function grassMat(lobe) {
   const [lo, hi, pa] = FACET.on ? [0.93, 1.05, 0.1] : [0.82, 1.1, 0.16];
   return worldMat(lobe ? 'grassLobe' : 'grass', ISL.grass, gfxTextures().grass, 0.3, lo, hi, pa);
 }
-function pathMat() { return gfxOn() ? worldMat('cobble', FACET.on ? '#e8dcc4' : '#f1e6d2', gfxTextures().cobble, 0.34, 0.72, 1.06, 0.06) : toon('#efe4d0'); }
+function pathMat() { return gfxOn() ? worldMat('cobble', FACET.on ? '#dccfb6' : '#f1e6d2', gfxTextures().cobble, 0.34, 0.72, 1.06, 0.06) : toon('#efe4d0'); }
 // a soft dark footprint under each building so it sits on the ground
 function gfxContact(g) {
   if (!gfxOn()) return;
@@ -199,8 +199,8 @@ function gfxContact(g) {
 // a material with its own UVs and a detail texture (roofs, walls, planks)
 function detailMat(key, color, tex, repeat = 1, extra = {}, rot = 0, lo = 0.72, hi = 1.12) {
   if (!gfxOn()) return toon(color);
-  // low-poly roofs, walls and floors are plain matte color
-  if (FACET.on) return cachedMat('detail:' + key + color, () => makeToon({ color, roughness: 0.85, ...extra }));
+  // low-poly roofs, walls and floors keep their shingles and planks, a little softer
+  if (FACET.on) { lo = 1 - (1 - lo) * 0.8; hi = 1 + (hi - 1) * 0.8; }
   const rr = Array.isArray(repeat) ? repeat : [repeat, repeat];
   return cachedMat('detail:' + key + color + rr.join('x') + rot, () => {
     const t = tex.clone(); t.needsUpdate = true; t.repeat.set(rr[0], rr[1]); t.rotation = rot; t.center.set(0.5, 0.5);
@@ -221,7 +221,7 @@ let assetBytes = null;
 function assetParts(name) {
   if (ASSET_GEO[name]) return ASSET_GEO[name];
   if (!assetBytes) { const s = atob(ASSET_BIN); assetBytes = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) assetBytes[i] = s.charCodeAt(i); }
-  const A = ASSET_META[name]; if (!A) return [];
+  const A = ASSET_META[name] || (FACET.on && FACET_SHAPE[name] && ASSET_META[FACET_SHAPE[name].from]); if (!A) return [];
   const buf = assetBytes.buffer;
   const parts = A.parts.map((P, idx) => {
     const n = P.vc, q = new Int16Array(buf, P.p, n * 3), nn = new Int8Array(buf, P.n, n * 3), cc = new Uint8Array(buf, P.c, n * 3);
@@ -410,7 +410,7 @@ function islandPiece(x, z, R, grass, opts = {}) {
 function sandPiece(x, z, R) {
   const g = new T3.Group(); g.position.set(x, 0, z);
   const pts = [[0.001, 0.05], [R - 1.2, 0.05], [R - 0.2, -0.05], [R + 0.8, -0.45], [R + 1.8, -0.85], [R + 3, -1.3], [R + 6, -2.8]].map(([r, y]) => new T3.Vector2(r, y));
-  const m = mesh(new T3.LatheGeometry(pts.reverse(), FACET.on ? 32 : 72), worldMat('sand', FACET.on ? '#eed9a8' : '#f6e4b8', gfxTextures().sand, 0.35, 0.86, 1.08, 0.08), 0, 0, 0, false);
+  const m = mesh(new T3.LatheGeometry(pts.reverse(), FACET.on ? 32 : 72), worldMat('sand', FACET.on ? '#e6d09e' : '#f6e4b8', gfxTextures().sand, 0.35, 0.86, 1.08, 0.08), 0, 0, 0, false);
   m.receiveShadow = true; g.add(m);
   return g;
 }

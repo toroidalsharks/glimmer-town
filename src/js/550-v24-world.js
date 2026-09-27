@@ -15,7 +15,9 @@ function gfxRenderer() {
 // trees: the Blender crowns, tinted per tree so seasons can recolor them
 function treeParts(g, s, col, kind) {
   const k = kind || (hashStr(`${Math.round(g.position.x * 10)}|${Math.round(g.position.z * 10)}|${col}`) % 2 ? 'treeA' : 'treeB');
-  const pg = prop(k, { leaf: col });
+  // in the low-poly town, blossom trees are a puff of faceted balls
+  const k2 = FACET.on && kind !== 'cedar' && BLOSSOM.has(col) ? 'treeC' : k;
+  const pg = prop(k2, { leaf: col });
   for (const c of [...pg.children]) { c.scale.setScalar(s * 0.92); g.add(c); }
   keepShared(g);
   return g;
@@ -93,7 +95,7 @@ function gfxMeadow() {
   // grass tufts
   const nl = (W?.lobes || []).length;
   // the low-poly lawn has fewer, shorter, yellow-green tufts
-  const tk = FACET.on ? 0.4 : 1, tufts = scatter(Math.round(950 * tk), 6000, onMain(12.8, 29)).concat(scatter(Math.round(260 * tk), 2500, onDT()), nl ? scatter(Math.round(110 * tk) * nl, 900 * nl, onLobes()) : []);
+  const tk = FACET.on ? 0.28 : 1, tufts = scatter(Math.round(950 * tk), 6000, onMain(12.8, 29)).concat(scatter(Math.round(260 * tk), 2500, onDT()), nl ? scatter(Math.round(110 * tk) * nl, 900 * nl, onLobes()) : []);
   const tuftP = assetParts('tuft')[0], greens = FACET.on ? ['#b4c23c', '#c2cc4a', '#a9b834', '#bcc846', '#b0c040'] : ['#6cc15a', '#7fcf66', '#5db552', '#8ad870', '#74c860'];
   G.add(instanced(tuftP.geo, bakedMat('tuftMat', { side: T3.DoubleSide }), tufts, ([x, z]) => ({ x, z, s: 1.1 + rand() * 0.9, sy: (0.8 + rand() * 0.6) * (FACET.on ? 0.7 : 1), c: pick(greens) })));
   // flower patches: a handful of one kind and color growing together
@@ -323,7 +325,7 @@ function gfxFrame(dt) {
     U.uFogC.value.copy(_skyHor); U.uFogN.value = M.fog ? M.fog[0] - 10 : 140; U.uFogF.value = M.fog ? M.fog[1] - 40 : 380;
     // by night every look's sea goes back to a deep clear blue, which glows in the box
     U.uShallow.value.set(clear ? M.water[0] : '#7cc9c4').lerp(_c1.set('#5ff0e2'), N); U.uMid.value.set(clear ? M.water[1] : '#5a9fbf').lerp(_c1.set('#34bfe9'), N); U.uDeep.value.set(box ? M.waterBox : clear ? M.water[2] : '#3d6a9a').lerp(_c1.set(box ? '#0c3c6e' : '#2c7ddb'), N);
-    const fw = matCache.get('fountainWater'); if (fw) { fw.color.set(M.fountain || '#8fd8ff'); if (M.fountain) fw.emissive.copy(fw.color).multiplyScalar(0.16); else fw.emissive.set('#1a4a66'); }
+    const fw = matCache.get('fountainWater'); if (fw) { fw.color.set(M.fountain || '#8fd8ff'); if (M.fountain) fw.emissive.copy(fw.color.lerp(_c1.set('#8fd8ff'), N)).multiplyScalar(0.16 + 0.26 * N); else fw.emissive.set('#1a4a66'); }
     if (seabed) seabed.visible = !box;
   }
   crittersFrame(dt); claudeCatFrame(); skyFxFrame(dt); gemsFrame();
@@ -351,6 +353,8 @@ function gfxSeason(S, T) {
   if (S.id === 'autumn') base.lerp(new T3.Color('#c9b36a'), T.grass);
   if (S.id === 'winter') base.lerp(new T3.Color('#f4f8ff'), T.grass);
   for (const key of ['world:grass', 'world:grassLobe']) { const g = matCache.get(key); if (g) g.color.copy(base); }
+  // some looks tone the sand down (the warm light would push it to glare)
+  const sd = matCache.get('world:sand'); if (sd) { sd.userData.base = sd.userData.base || '#' + sd.color.getHexString(); sd.color.set(moodOf().sand || sd.userData.base); }
   const tm = matCache.get('baked:tuftMat'); if (tm) tm.color.set(S.id === 'winter' ? '#e8eef8' : S.id === 'autumn' ? '#d8c890' : moodOf().tuft || '#ffffff');
   if (CRIT.ff) CRIT.ff.material.color.set(S.id === 'summer' ? '#e8ff9a' : '#fff0b0');
 }
