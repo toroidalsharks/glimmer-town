@@ -245,3 +245,21 @@ function laptopMigration() {
 }
 
 function outsideContext(me, them) { const base = outsideContext0(me), lap = laptopContext(me, them), heard = heardContext(me); if (!base && !lap && !heard) return ''; return (base || '\nTHE OUTSIDE:') + lap + heard + (base ? ' When you talk about Outside news, stick to what you actually read or heard and never invent details about real people. You can still have feelings and opinions about it, like anyone would.' : ''); }
+
+// a laptop is for keeping: residents always know they own one, and a one-time fix gives back the laptops
+// that fell out of full rooms (the 12-item room limit used to throw out the oldest thing, usually the laptop)
+function laptopFact(p) { return hasLaptop(p) ? ' You own a laptop, so you can read the Outside whenever you like.' : ''; }
+function laptopReturnBoot() {
+  W.added = W.added || {}; if (W.added.laptopsBack) return; W.added.laptopsBack = true;
+  const got = [];
+  if (W.day > 1) for (const p of W.people) {  // a brand-new town starts without laptops, like always
+    if (p.grow < 1 || p.visitor || hasLaptop(p)) continue;
+    p.decor = p.decor || []; p.decor.push(newItem('decor', 'laptop', topColors(p)[0] || 'silver', null, 1));
+    p.saving = null; if (p.cr?.wish?.id === 'laptop') p.cr.wish = null;
+    remember(p, 'I have my own laptop. It is mine to keep, and I can read the Outside any time.', 3, 'laptopGot');
+    got.push(p.name);
+  }
+  if (got.length) diary(`💻 Laptops for everyone: ${got.map((n) => `<b>${esc(n)}</b>`).join(', ')} ${got.length === 1 ? 'has' : 'have'} a laptop of their own now.`);
+  if (typeof logUpdate === 'function') logUpdate('build', `Laptops don't go missing anymore. A full room used to throw out its oldest thing to make space, and that was usually the laptop. Now a laptop always stays, residents know they own one, and every grown-up in town got a laptop back${got.length ? ` (${got.join(', ')})` : ''}.`, 'laptops stay');
+  markDirty();
+}

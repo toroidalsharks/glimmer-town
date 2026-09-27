@@ -42,7 +42,7 @@ function receive(p, it) {
     p.tastes[f.id] = p.tastes[f.id] === undefined ? joy : p.tastes[f.id] * 0.7 + joy * 0.3;
   } else if (it.kind === 'hat') { p.wardrobe.hats.push({ id: it.id, color: it.color, maker: it.makerName }); p.outfit.hat = p.wardrobe.hats[p.wardrobe.hats.length - 1]; p.likes['hat:' + it.id] = (p.likes['hat:' + it.id] || 0) + 0.3; dressMesh(p); }
   else if (it.kind === 'shirt') { if (!p.wardrobe.shirts.includes(it.color)) p.wardrobe.shirts.push(it.color); p.outfit.shirt = it.color; dressMesh(p); }
-  else { p.decor.push(it); if (p.decor.length > 12) p.decor.shift(); p.likes['decor:' + it.id] = (p.likes['decor:' + it.id] || 0) + 0.3; }
+  else { p.decor.push(it); if (p.decor.length > 12) { const old = p.decor.findIndex((d) => d.id !== 'laptop'); p.decor.splice(old < 0 ? 0 : old, 1); } p.likes['decor:' + it.id] = (p.likes['decor:' + it.id] || 0) + 0.3; }
   p.likes[it.color] = (p.likes[it.color] || 0) + 0.2;
   if (interior?.kind === 'room' && interior.id === p.id) interior.dirty = true;
 }

@@ -121,7 +121,7 @@ function talkPrompt(p, said, history) {
 
 WHO YOU ARE, IN YOUR OWN WORDS: ${p.selfNote}
 BODY: ${bodyFacts(p)}${p.grow < 1 ? ' You are still a small child, so talk like one.' : ''}${p.style ? `\nHOW YOU TALK: ${styleOf(p)}` : ''}${p.interests ? `\nYOU'RE INTO: ${p.interests}` : ''}${healthContext(p, null)}${goalContext(p)}${crimeContext(p, null)}
-LIFE: ${p.job ? `You work as a ${JOBS[p.job].title}.` : 'You are too young for a job.'} ${p.coins} coins. Wearing ${outfitText(p)}. Favorite food: ${favoriteFood(p) || 'not sure yet'}.
+LIFE: ${p.job ? `You work as a ${JOBS[p.job].title}.` : 'You are too young for a job.'} ${p.coins} coins.${laptopFact(p)} Wearing ${outfitText(p)}. Favorite food: ${favoriteFood(p) || 'not sure yet'}.
 HOW YOU FEEL ABOUT THE CREATOR: ${att} (${Math.round(p.cr.score)} on a scale from -10 to 10). The Creator has given you ${plural(Math.round(p.cr.gifts), 'gift')} and spoken to you ${plural(p.cr.talks, 'time')} before. ${beliefText(p)}${p.cr.wish ? ` You are secretly wishing for ${wishText(p.cr.wish)}.` : ''}
 YOUR NEIGHBORS: ${feels}
 MEMORIES:

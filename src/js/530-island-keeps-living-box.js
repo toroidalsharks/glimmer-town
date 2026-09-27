@@ -36,6 +36,23 @@ function offlineGoal(p) {
   for (let i = 0; i < 3 && p.goal === g; i++) goalPlan(p);
   if (p.task && ['write', 'visit'].includes(p.task.kind)) p.task = null;
 }
+// love doesn't wait for the box: the same wishes romanceTick has live (asking someone out, proposing,
+// breaking up), settled on the spot, and a wedding that was due today actually happens
+function offlineRomance() {
+  const ev = W.event;
+  if (ev?.id === 'wedding' && ev.day === W.day && !ev.done) { const t = W.t; W.t = Math.max(t, EVENTS.wedding.t0 + 0.02); weddingFrame(0); W.t = t; }
+  for (let i = 0; i < 20; i++) { lastRomance = -1e9; romanceTick(); }
+  for (const a of W.people) {
+    const intent = a.confessTo ? 'confess' : a.proposeTo ? 'propose' : a.breakWith ? 'breakup' : null; if (!intent) continue;
+    const b = person(a.confessTo || a.proposeTo || a.breakWith); a.confessTo = a.proposeTo = a.breakWith = a.breakWhy = null;
+    if (!b || b.away) continue;
+    if (intent === 'confess') { if (a.partner || b.partner || a === b) continue; if (confessAnswer(a, b)) startDating(a, b); else turnedDown(a, b); }
+    else if (a.partner !== b.id || b.partner !== a.id) continue;
+    else if (intent === 'propose') { if (W.wedding) continue; if (proposeAnswer(a, b)) getEngaged(a, b); else notReadyYet(a, b); }
+    else if (a.married) askDivorce(a, b);
+    else breakUp(a, b);
+  }
+}
 function offlineDay() {
   W.offDay = W.day;
   const ppl = W.people.filter((p) => !p.away && p.task?.kind !== 'away' && !jailed(p));
@@ -66,6 +83,7 @@ function offlineDay() {
     if (d > 0.5 && rand() < 0.35) { remember(a, `Hugged ${b.name}.`, 1, 'hug', b.name); remember(b, `${a.name} hugged me.`, 1, 'hug', a.name); }
     if (d < -0.45 && f < -3 && rand() < 0.3) { remember(a, `Got into a fight with ${b.name}.`, 3, 'fight', b.name); remember(b, `${a.name} started a fight with me.`, 3, 'fight', a.name); diary(`💢 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got into a fight.`); if (typeof fightInjury === 'function') fightInjury(a, b); }
   }
+  offlineRomance();
   const D = drama(); if (D.uproarAt) { D.uproarAt = null; offlineUproar(); }
   for (const c of W.clubs || []) if (W.day - c.last >= 2) { c.last = W.day; for (const id of c.members) { const p = person(id); if (p) remember(p, `The ${c.name} met today.`, 1, 'club'); } }
   if ((W.suggestions || []).some((s) => !s.done) && rand() < 0.6) fulfillSuggestion();
