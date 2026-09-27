@@ -175,17 +175,6 @@ function styleWhim(p) {
 
 // ---- one-time upgrade for towns that already exist ----
 const NEW_STYLES_2 = ['comfy', 'business', 'academia', 'coquette', 'boho', 'fairy', 'kidcore', 'neko', 'egirl', 'grunge', 'witchy', 'techwear'];
-const NEW_STYLES_3 = ['decora', 'ballet', 'angel', 'mermaid', 'skater', 'beach', 'western', 'tennis', 'idol', 'cyber'];
-// Glimmer 2: a few residents try the ten new styles; Mili, Red, Tim and invited residents keep theirs
-function looks3Boot() {
-  W.added = W.added || {};
-  if (W.added.looks3) return; W.added.looks3 = true;
-  for (const p of W.people) {
-    if (!p.body || !p.look || isRealish(p) || p.look.byCreator) continue;
-    const r = seededRand(hashStr('looks3:' + p.id));
-    if (r() < 0.3) { const k = pickFashion(p, r); if (k !== p.look.fashion && NEW_STYLES_3.includes(k)) setFashion(p, k, true); }
-  }
-}
 function looksBoot() {
   W.added = W.added || {};
   if (W.added.looks2) return; W.added.looks2 = true;

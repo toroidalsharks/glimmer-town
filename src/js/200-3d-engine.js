@@ -11,15 +11,17 @@ const gradMap = new T3.DataTexture(new Uint8Array([126, 126, 126, 255, 192, 192,
 gradMap.minFilter = gradMap.magFilter = T3.NearestFilter; gradMap.needsUpdate = true;
 const matCache = new Map();
 function toon(color, extra) {
-  if (!extra && matCache.has(color)) return matCache.get(color);
+  // residents keep their own smooth copy of each color in the low-poly town
+  const key = FACET.on && FACET.res ? 'res|' + color : color;
+  if (!extra && matCache.has(key)) return matCache.get(key);
   const m = makeToon({ color, gradientMap: gradMap, ...(extra || {}) });
-  if (!extra) matCache.set(color, m);
+  if (!extra) matCache.set(key, m);
   return m;
 }
 function mesh(geo, mat, x = 0, y = 0, z = 0, cast = true) { const m = new T3.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; return m; }
 const box = (w, h, d) => roundBox(w, h, d);
-const cyl = (rt, rb, h, s = 24) => new T3.CylinderGeometry(rt, rb, h, s);
-const sph = (r, w = 20, h = 14) => new T3.SphereGeometry(r, w, h);
+const cyl = (rt, rb, h, s = 24) => new T3.CylinderGeometry(rt, rb, h, lowSegs(s, Math.max(rt, rb) > 2 ? 14 : 10));
+const sph = (r, w = 20, h = 14) => new T3.SphereGeometry(r, lowSegs(w, 10), lowSegs(h, 7));
 const glow = (color, strength = 0.9) => makeToon({ color, gradientMap: gradMap, emissive: new T3.Color(color).multiplyScalar(strength) });
 
 function signTexture(text, bg, fg) {

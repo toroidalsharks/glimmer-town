@@ -228,6 +228,9 @@ try {
     for (const s of Object.keys(HAIR_STYLES)) setHair(p.id, s, null);
     p.look = JSON.parse(was); Object.assign(hairOf(p), hair); restyleLook(p); restyleHair(p); return FASHION_ORDER.length === 37 && Object.keys(HAIR_STYLES).length === 18; })()`), 'every style, piece and haircut in the Look studio builds');
   ok(await E(`(() => { const before = cfg.mood; for (const k of Object.keys(MOODS)) { if (k === 'storybook') continue; setMood(k); gfxFrame(0.016); if (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() !== MOODS[k].ui.accent) return false; } cfg.mood = before; moodMenus(); return !!document.querySelector('#moodBox [data-mood]'); })()`), 'town moods recolor the town and the menus');
+  ok(await E(`(() => { if (!FACET.on) return false; const res = new Set(); for (const m of meshes.values()) m.root.traverse((o) => res.add(o));
+    let flatRes = 0, flatTown = 0; scene.traverse((o) => { if (!o.isMesh) return; const flat = [].concat(o.material).some((x) => x.flatShading); if (res.has(o)) flatRes += flat; else flatTown += flat; });
+    return res.size > 50 && flatRes === 0 && flatTown > 100 && assetParts('treeA')[0].geo.attributes.position.count / 3 < 400; })()`), 'the town is low-poly and the residents stay smooth');
 
   // 4. a wedding scene
   await E(`(() => { const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p)).slice(2); weddingCut(a, b); })()`);

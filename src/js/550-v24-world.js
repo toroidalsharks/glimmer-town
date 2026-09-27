@@ -6,6 +6,7 @@ function gfxRenderer() {
   GFX.wasClassic = !gfxOn();
   if (!gfxOn()) return;
   { const want = cfg.gfx || 'auto'; let st = null; try { st = localStorage.getItem('glimmer-gfx-auto'); } catch (e) {} GFX.cheap = want === 'lite' || (want === 'auto' && (st === 'lite' || st === 'min')); }
+  FACET.on = moodOf().facets !== false;
   renderer.outputEncoding = T3.sRGBEncoding;
   renderer.toneMapping = T3.LinearToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -91,7 +92,7 @@ function gfxMeadow() {
   const G = meadowGroup = new T3.Group(); scene.add(G);
   // grass tufts
   const nl = (W?.lobes || []).length;
-  const tufts = scatter(950, 6000, onMain(12.8, 29)).concat(scatter(260, 2500, onDT()), nl ? scatter(110 * nl, 900 * nl, onLobes()) : []);
+  const tk = FACET.on ? 0.55 : 1, tufts = scatter(Math.round(950 * tk), 6000, onMain(12.8, 29)).concat(scatter(Math.round(260 * tk), 2500, onDT()), nl ? scatter(Math.round(110 * tk) * nl, 900 * nl, onLobes()) : []);
   const tuftP = assetParts('tuft')[0], greens = ['#6cc15a', '#7fcf66', '#5db552', '#8ad870', '#74c860'];
   G.add(instanced(tuftP.geo, bakedMat('tuftMat', { side: T3.DoubleSide }), tufts, ([x, z]) => ({ x, z, s: 1.1 + rand() * 0.9, sy: 0.8 + rand() * 0.6, c: pick(greens) })));
   // flower patches: a handful of one kind and color growing together
@@ -302,10 +303,10 @@ function gfxFrame(dt) {
   // lights for the new materials: warm sun by day, a cool moon at night
   const N = Math.max(0, Math.min(1, (0.62 - L) / 0.37)), wet = clear ? 1 : 0.6;
   const nb = box ? 1.7 : 1;
-  sun.intensity = (GFX.sunK ?? 0.8) * L * wet * (1 - N) + 0.16 * N * nb;
+  sun.intensity = (GFX.sunK ?? 0.8) * M.light[0] * L * wet * (1 - N) + 0.16 * N * nb;
   sun.color.set(M.sun[0]).lerp(_c1.set(M.sun[1]), dusk * 0.75).lerp(_c1.set(M.sun[2]), N);
   GFX.dusk = dusk * (1 - N);
-  hemi.intensity = ((GFX.hemiK ?? 0.3) + 0.12 * L) * (1 - N) + 0.16 * N * nb;
+  hemi.intensity = ((GFX.hemiK ?? 0.3) + 0.12 * L) * M.light[1] * (1 - N) + 0.16 * N * nb;
   hemi.color.set(M.hemi[0]).lerp(_c1.set(M.hemi[1]), dusk * 0.45).lerp(_c1.set(M.hemi[2]), N);
   hemi.groundColor.set(M.ground[0]).lerp(_c1.set(M.ground[1]), N);
   nightLight.intensity = 0.06 * N;
@@ -341,12 +342,12 @@ function lampPools(N) {
 // seasons recolor the Blender crowns and the lawn too
 function gfxSeason(S, T) {
   if (!gfxOn()) return;
-  for (const k of FOLIAGE) { const m = matCache.get('leaf:' + k); if (m) m.color.set(T[k] || k); }
+  for (const k of FOLIAGE) { const m = matCache.get('leaf:' + k); if (m) moodLeaf(m.color.set(T[k] || k)); }
   const base = moodGrass();
   if (S.id === 'autumn') base.lerp(new T3.Color('#c9b36a'), T.grass);
   if (S.id === 'winter') base.lerp(new T3.Color('#f4f8ff'), T.grass);
   for (const key of ['world:grass', 'world:grassLobe']) { const g = matCache.get(key); if (g) g.color.copy(base); }
-  const tm = matCache.get('baked:tuftMat'); if (tm) tm.color.set(S.id === 'winter' ? '#e8eef8' : S.id === 'autumn' ? '#d8c890' : '#ffffff');
+  const tm = matCache.get('baked:tuftMat'); if (tm) tm.color.set(S.id === 'winter' ? '#e8eef8' : S.id === 'autumn' ? '#d8c890' : moodOf().tuft || '#ffffff');
   if (CRIT.ff) CRIT.ff.material.color.set(S.id === 'summer' ? '#e8ff9a' : '#fff0b0');
 }
 
