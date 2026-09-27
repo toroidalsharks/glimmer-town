@@ -101,30 +101,64 @@ const pline = (pid, text, fx, extra = {}) => ({ who: pid, text, fx, ...extra });
 
 // ---------- civil cases from the docket ----------
 const CIVIL_BITS = {
-  fight: { open: ['Your honor, {D} shoved me. In public. At the fountain.', 'I want the court to know I did nothing. NOTHING.'], back: ['{P} is being dramatic. It was a bump.', 'They started it and everyone knows it.'], obj: 'Objection! {P} is making me sound like a monster!', rule: ['Overruled. Hoo. You did shove them.', 'Sustained. Let us all calm our feathers.'] },
-  bully: { open: ['I have every text {D} sent me. Every single one.', 'It keeps happening. I just want it to stop.'], back: ['They were jokes! Everyone talks like that.', 'I barely even know {P}.'], obj: 'Objection! Those texts are out of context!', rule: ['Overruled. There is not much context that makes that okay.', 'Sustained. Barely.'] },
-  complaint: { open: ['{D} {G}. And I am tired of pretending it is fine.', 'I am here because I have had ENOUGH.'], back: ['That is not even true.', 'Wow. Okay. Did not know we were doing this in front of everyone.'], obj: 'Objection! Hearsay!', rule: ['This is Glimmer Hall, not a TV show. But… sustained.', 'Overruled. Hoo.'] },
-  dispute: { open: ['{D} keeps getting close to my partner. I want the court to make it stop.'], back: ['We are FRIENDS. Friends talk.', 'I can talk to whoever I want.'], obj: 'Objection! Speculation!', rule: ['Sustained. Nobody here can read minds.', 'Overruled.'] },
-  divorce: { open: ['It is not working. It has not worked for a long time.', 'I do not feel the same anymore. I am sorry.'], back: ['Please. Give us one more chance.', 'Fine. If that is what they want.'], obj: 'Objection! That is not what happened on our anniversary!', rule: ['Sustained. This is hard enough already.', 'Overruled, gently.'] },
-  debate: { open: ['Your honor, the answer is obviously yes. I have prepared three points. Okay, two.', 'This is the most important question of our time.'], back: ['That is the worst take I have ever heard.', 'I respect it. I also think it is wrong.'], obj: 'OBJECTION! That argument is illegal!', rule: ['There is no such thing as an illegal argument. Overruled.', 'Sustained, because I agree.'] },
-  license: { open: ['We are ready. We have been ready for a while.', 'Please say yes!'], back: ['What they said. Hehe.', 'I have never been more sure.'], obj: '', rule: [] },
+  fight: {
+    open: ['Your honor, {D} shoved me. In public. At the fountain.', 'I want the court to know I did nothing. NOTHING.', 'I was just standing there, holding a lemonade, and {D} pushed me.', 'Everyone saw it. Ask anyone. Ask the pigeons.', 'I still have a bruise. It is small, but it is there.', 'I have never been so embarrassed in my whole life.', '{D} did not even say sorry. Not once.'],
+    back: ['{P} is being dramatic. It was a bump.', 'They started it and everyone knows it.', 'I tripped! On a cobblestone! It happens!', 'If I shoved anyone, it was because {P} got in my face first.', 'Honestly? I would do it again. Kidding. Mostly.', 'It was barely a nudge. A friendly nudge.', 'Why is nobody talking about what {P} SAID to me first?'],
+    obj: ['Objection! {P} is making me sound like a monster!', 'Objection! That is not how it happened!', 'Objection! Leading the witness!', 'Objection! My lawyer is a pigeon and even they disagree!'],
+    rule: ['Overruled. Hoo. You did shove them.', 'Sustained. Let us all calm our feathers.', 'Overruled. The court saw the video.', 'Sustained. Keep it to the facts, please.', 'Overruled. Sit down, and no more nudging.'],
+  },
+  bully: {
+    open: ['I have every text {D} sent me. Every single one.', 'It keeps happening. I just want it to stop.', 'I used to love going to the café. Now I take the long way around.', 'It is not one thing. It is a hundred little things.', 'They laugh when I walk by. Every time.', 'I tried talking to {D}. They laughed at that too.'],
+    back: ['They were jokes! Everyone talks like that.', 'I barely even know {P}.', 'I did not mean it like that. I swear.', 'Okay, maybe one text was mean. ONE.', 'Nobody told me it bothered them!', 'We used to joke all the time. When did that change?'],
+    obj: ['Objection! Those texts are out of context!', 'Objection! That was a meme, your honor!', 'Objection! Screenshots can lie!', 'Objection! Hearsay!'],
+    rule: ['Overruled. There is not much context that makes that okay.', 'Sustained. Barely.', 'Overruled. Hoo. Words matter.', 'Sustained, but the court is watching you.', 'Overruled. Read the room, please.'],
+  },
+  complaint: {
+    open: ['{D} {G}. And I am tired of pretending it is fine.', 'I am here because I have had ENOUGH.', 'I have asked nicely. Three times. Four, actually.', 'I did not want to come to court. {D} gave me no choice.', 'I wrote it all down. With dates.', 'This has been going on since spring.'],
+    back: ['That is not even true.', 'Wow. Okay. Did not know we were doing this in front of everyone.', 'I have literally no idea what {P} is talking about.', 'If it bothered you so much, you could have just said so.', 'This is about something else, and we both know it.', 'Fine. I will stop. Happy?'],
+    obj: ['Objection! Hearsay!', 'Objection! That was one time!', 'Objection! Irrelevant!', 'Objection! {P} is exaggerating!'],
+    rule: ['This is Glimmer Hall, not a TV show. But… sustained.', 'Overruled. Hoo.', 'Sustained. Stick to what you saw.', 'Overruled. The court would like to hear it.', 'Sustained. Deep breaths, everyone.'],
+  },
+  dispute: {
+    open: ['{D} keeps getting close to my partner. I want the court to make it stop.', 'They sit together at the café. Every day. Every. Day.', 'I am not jealous. I am observant.', 'I just want to know what is going on.', 'My partner says it is nothing. It does not feel like nothing.'],
+    back: ['We are FRIENDS. Friends talk.', 'I can talk to whoever I want.', 'We talk about books. BOOKS.', 'Maybe ask your partner, not me.', 'I have never once crossed a line. Not once.', 'This is really embarrassing for all of us.'],
+    obj: ['Objection! Speculation!', 'Objection! Nobody saw anything!', 'Objection! That is private!'],
+    rule: ['Sustained. Nobody here can read minds.', 'Overruled.', 'Sustained. Feelings are not evidence.', 'Overruled. Answer the question, please.'],
+  },
+  divorce: {
+    open: ['It is not working. It has not worked for a long time.', 'I do not feel the same anymore. I am sorry.', 'We stopped talking. We just pass each other on the stairs.', 'I still care about them. That is what makes this so hard.', 'I tried. I really did try.', 'I want us both to be happy. Just not together.'],
+    back: ['Please. Give us one more chance.', 'Fine. If that is what they want.', 'I thought we were okay. I really thought we were okay.', 'You never told me you felt this way.', 'Can we at least talk about it at home first?', 'I am not going to fight it.'],
+    obj: ['Objection! That is not what happened on our anniversary!', 'Objection! I DID remember the flowers!', 'Objection! That was a joke and they know it!'],
+    rule: ['Sustained. This is hard enough already.', 'Overruled, gently.', 'Sustained. Let us keep this kind.', 'Overruled. Hoo. Take your time.'],
+  },
+  debate: {
+    open: ['Your honor, the answer is obviously yes. I have prepared three points. Okay, two.', 'This is the most important question of our time.', 'I have thought about this every night for a week.', 'Let the record show that I am right.', 'Your honor, I brought a diagram. It is on a napkin.', 'Anyone who disagrees has simply not thought about it enough.', 'My grandma agrees with me, and she is very wise.'],
+    back: ['That is the worst take I have ever heard.', 'I respect it. I also think it is wrong.', 'Wow. Wow. Okay.', 'Your honor, I would like it noted that {P} is wrong.', 'I have a counterpoint, and it is: no.', 'That napkin proves nothing.', 'We have been friends for years and I have never been this disappointed.'],
+    obj: ['OBJECTION! That argument is illegal!', 'Objection! That is not a fact, that is a vibe!', 'Objection! Their grandma is biased!', 'Objection! Your honor, they are being too convincing!', 'Objection! I was not done being right!'],
+    rule: ['There is no such thing as an illegal argument. Overruled.', 'Sustained, because I agree.', 'Overruled. Vibes are admissible in this court.', 'Sustained. Hoo. Settle down.', 'Overruled. Continue, but quickly. I am hungry.', 'Sustained. That was a little much.'],
+  },
+  license: {
+    open: ['We are ready. We have been ready for a while.', 'Please say yes!', 'We already picked out the snacks.', 'I knew on the first day. I just knew.', 'We want the whole island to be there.'],
+    back: ['What they said. Hehe.', 'I have never been more sure.', 'Yes. A thousand times yes.', 'I cried twice this morning already.', 'I would marry them today if you let us.'],
+    obj: [], rule: [],
+  },
 };
 const cfill = (s, c) => String(s).replace(/\{P\}/g, c.pName).replace(/\{D\}/g, c.dName).replace(/\{G\}/g, c.grievance || 'keeps being impossible');
 function civilLines(c, T) {
   const B = CIVIL_BITS[c.kind] || CIVIL_BITS.complaint, Pp = c.p, Dp = c.d;
   const L = [jline(`Order! Court is now in session. Hoo. ${caseTitle(c).replace(/[.?!]$/, (m) => m === '.' ? '' : m)}${/[?!]$/.test(caseTitle(c)) ? '' : '.'}`, 'gavel')];
   L.push(jline(`${c.pName}, you brought this case. Speak.`));
-  L.push(pline(Pp, c.args.p || cfill(pick(B.open), c)));
-  L.push(pline(Dp, c.args.d || cfill(pick(B.back), c)));
+  L.push(pline(Pp, c.args.p || cfill(linePick(B.open), c)));
+  L.push(pline(Dp, c.args.d || cfill(linePick(B.back), c)));
   if (c.kind === 'license') {
-    L.push(pline(Pp, cfill(pick(B.open), c), 'hearts'), pline(Dp, cfill(pick(B.back), c)));
+    L.push(pline(Pp, cfill(linePick(B.open), c), 'hearts'), pline(Dp, cfill(linePick(B.back), c)));
     return L;
   }
-  L.push(pline(Pp, cfill(pick(B.open), c)));
-  if (B.obj) { L.push(pline(Dp, cfill(B.obj, c), 'objection')); L.push(jline(pick(B.rule))); }
+  L.push(pline(Pp, cfill(linePick(B.open), c)));
+  if (B.obj.length) { L.push(pline(Dp, cfill(linePick(B.obj), c), 'objection')); L.push(jline(linePick(B.rule))); }
   const friend = (T.gallery || []).map(person).filter(Boolean).sort((a, b) => Math.abs(fscore(b, person(Pp) || b) - fscore(b, person(Dp) || b)) - Math.abs(fscore(a, person(Pp) || a) - fscore(a, person(Dp) || a)))[0];
-  if (friend) { const side = fscore(friend, person(Pp) || friend) >= fscore(friend, person(Dp) || friend) ? c.pName : c.dName; L.push(pline(friend.id, pick([`For the record, I am with ${side} on this.`, `I saw the whole thing. ${side} is telling the truth.`, `Can I say something? …${side} is right. Sorry.`]), null)); L.push(({ who: 'crowd', text: pick(['Ooooh.', '*whispering*', 'Oh no she DIDN\'T.', 'Scandalous.']), fx: 'gasp' })); L.push(jline('Order! Order in the gallery!', 'order')); }
-  L.push(pline(Dp, pick(['I have nothing more to say.', 'This whole thing is ridiculous.', 'I just want this to be over.'])));
+  if (friend) { const side = fscore(friend, person(Pp) || friend) >= fscore(friend, person(Dp) || friend) ? c.pName : c.dName; L.push(pline(friend.id, linePick([`For the record, I am with ${side} on this.`, `I saw the whole thing. ${side} is telling the truth.`, `Can I say something? …${side} is right. Sorry.`]), null)); L.push(({ who: 'crowd', text: linePick(['Ooooh.', '*whispering*', 'Oh no she DIDN\'T.', 'Scandalous.']), fx: 'gasp' })); L.push(jline('Order! Order in the gallery!', 'order')); }
+  L.push(pline(Dp, linePick(['I have nothing more to say.', 'This whole thing is ridiculous.', 'I just want this to be over.'])));
   return L;
 }
 async function aiCivilLines(c, T) {
@@ -165,7 +199,7 @@ async function startCivilTrial(c) {
   let body = null;
   try { body = await Promise.race([aiCivilLines(c, T), sleep(22000).then(() => null)]); } catch (e) {}
   if (c.status !== 'open') return;
-  const lines = [nline(pick(['Glimmer Hall was packed. Nobody wanted to miss this.', 'The gallery went quiet as the doors opened.', 'Somebody brought snacks. It was going to be one of those days.']))].concat(body || civilLines(c, T));
+  const lines = [nline(linePick(['Glimmer Hall was packed. Nobody wanted to miss this.', 'The gallery went quiet as the doors opened.', 'Somebody brought snacks. It was going to be one of those days.']))].concat(body || civilLines(c, T));
   // debates list their own "town vote" for the old court panel; the scene adds its own jury/vote button below
   const opts = (RULINGS[c.kind] || []).filter(([k]) => k !== 'vote').map(([k, l]) => [k, l.replace('#P', c.pName).replace('#D', c.dName)]);
   if (c.kind !== 'license') opts.push(['jury', c.kind === 'debate' ? 'Let the town vote' : 'Let the jury decide']);
@@ -184,10 +218,10 @@ function civilVerdict(c, k, T) {
   const win = ['innocent', 'dismiss'].includes(c.choice) ? c.d : ['apologize', 'fine', 'service', 'apart', 'p'].includes(c.choice) ? c.p : c.choice === 'd' ? c.d : null;
   if (['innocent', 'dismiss'].includes(c.choice) && c.kind !== 'debate') L.push({ who: 'narrator', text: '', fx: 'innocent', hold: 1.8 });
   else if (['apologize', 'fine', 'service', 'apart'].includes(c.choice)) L.push({ who: 'narrator', text: '', fx: 'guilty', hold: 1.8 });
-  if (c.choice === 'grant') { L.push(pline(c.p, pick(['…Thank you.', 'It is for the best.', 'I will always care about you.']), null, { emote: '💔' }), pline(c.d, pick(['I hope you find what you are looking for.', '…Okay.', 'I need some air.']), null, { emote: '💧' })); }
+  if (c.choice === 'grant') { L.push(pline(c.p, linePick(['…Thank you.', 'It is for the best.', 'I will always care about you.']), null, { emote: '💔' }), pline(c.d, linePick(['I hope you find what you are looking for.', '…Okay.', 'I need some air.']), null, { emote: '💧' })); }
   else if (c.choice === 'counsel') L.push(pline(c.p, 'Counseling. Fine. For us.'), pline(c.d, 'Thank you, Creator.', null, { emote: '♥' }));
   else if (c.choice === 'now') L.push(jline('By the power of Glimmer Hall, I pronounce you married! Hoo!', 'confetti'), pline(c.p, 'I love you!', 'hearts'), pline(c.d, 'I love you too!'));
-  else if (win && person(win)) { const lose = win === c.p ? c.d : c.p; L.push(pline(win, pick(['YES. Thank you!', 'Justice!', 'I knew it.', 'Told you so.']), null, { emote: '✨' })); if (person(lose)) L.push(pline(lose, pick(['This is so unfair.', 'Whatever.', 'I want an appeal!', '…Fine.']), null, { emote: '💢' })); }
+  else if (win && person(win)) { const lose = win === c.p ? c.d : c.p; L.push(pline(win, linePick(['YES. Thank you!', 'Justice!', 'I knew it.', 'Told you so.']), null, { emote: '✨' })); if (person(lose)) L.push(pline(lose, linePick(['This is so unfair.', 'Whatever.', 'I want an appeal!', '…Fine.']), null, { emote: '💢' })); }
   L.push(jline('Court is adjourned!', 'gavel'));
   return L;
 }

@@ -49,7 +49,7 @@ async function questionSuspect(C, p) {
   const guilty = C.culprit === p.id;
   const q = { day: W.day, alibi: C.alibis[p.id] || 'I was home.', said: '' };
   C.questioned[p.id] = q;
-  q.said = guilty ? pick(['Why are you looking at me like that?', `Ask ${nameOf(pick(C.suspects.filter((id) => id !== p.id)))} where THEY were.`, 'I have nothing else to say.', 'Is this going to take long?']) : pick(['I didn\'t do it. I swear on the fountain.', 'You really think I could do something like that?', `Honestly? Talk to ${nameOf(pick(C.suspects.filter((id) => id !== p.id)))}.`, 'I want this solved more than anyone.']);
+  q.said = guilty ? linePick(['Why are you looking at me like that?', `Ask ${nameOf(pick(C.suspects.filter((id) => id !== p.id)))} where THEY were.`, 'I have nothing else to say.', 'Is this going to take long?']) : linePick(['I didn\'t do it. I swear on the fountain.', 'You really think I could do something like that?', `Honestly? Talk to ${nameOf(pick(C.suspects.filter((id) => id !== p.id)))}.`, 'I want this solved more than anyone.']);
   remember(p, `The Creator questioned me about the ${CRIME_TYPES[C.type].label.toLowerCase()}.`, 2, 'questioned');
   if (aiReady() && aiBusy < 3) {
     try {

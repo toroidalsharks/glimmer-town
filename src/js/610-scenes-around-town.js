@@ -34,17 +34,17 @@ function discoverCut(C) {
     L.push(nline(`Dawn, day ${W.day}. ${C.where.label.charAt(0).toUpperCase() + C.where.label.slice(1)} was quiet. Too quiet.`, 'dark'));
     if (finder) { L.push(pline(finder.id, `${C.victimName}? Hey… are you okay? …${C.victimName}?`)); L.push(pline(finder.id, 'SOMEBODY! SOMEBODY HELP!', 'scream', { emote: '😱' })); }
     L.push({ who: 'crowd', text: '*gasp*', fx: 'gasp' });
-    for (const p of close) L.push(pline(p.id, p.id === dec?.partner ? pick([`No. No no no. ${C.victimName}, wake up. Please wake up.`, `${C.victimName}! We were supposed to have breakfast today…`]) : pick([`Not ${C.victimName}. Not them.`, `This can't be real.`, `Who would do this?!`]), null, { emote: '💧' }));
-    if (cul && rand() < 0.6) L.push(pline(cul.id, pick(['How awful.', '…That is terrible. Poor thing.', 'Who could have done this?']), null));
+    for (const p of close) L.push(pline(p.id, p.id === dec?.partner ? linePick([`No. No no no. ${C.victimName}, wake up. Please wake up.`, `${C.victimName}! We were supposed to have breakfast today…`]) : linePick([`Not ${C.victimName}. Not them.`, `This can't be real.`, `Who would do this?!`]), null, { emote: '💧' }));
+    if (cul && rand() < 0.6) L.push(pline(cul.id, linePick(['How awful.', '…That is terrible. Poor thing.', 'Who could have done this?']), null));
     if (det) { L.push(pline(det.id, 'Everyone, step back. Nobody touch anything.')); L.push(pline(det.id, `It ${C.way.staged}. But look. ${clue ? clue.text : 'Something is off.'} This was no accident.`, 'shock')); }
     L.push(nline(`${C.victimName} was gone. And someone on the island had done it.`));
     if (det) L.push(pline(det.id, 'Whoever did this is standing on this island right now. And I am going to find them.'));
   } else {
-    L.push(nline(pick([`Morning, day ${W.day}. Something was wrong.`, 'The island woke up to bad news.'])));
-    if (V) L.push(pline(V.id, pick([`My… my things. Someone was in here.`, `Who would DO this to me?`, `I can't believe this. On OUR island?`]), 'shock', { emote: '😱' }));
-    else if (finder) L.push(pline(finder.id, pick(['Uh, everyone? You need to see this.', 'Oh no. Oh no no no.', 'Is this for real?']), 'shock'));
-    L.push({ who: 'crowd', text: pick(['*murmuring*', 'No way…', 'Who did this?!']), fx: 'gasp' });
-    if (det) { L.push(pline(det.id, `Nobody move. ${clue ? `Look. ${clue.text}` : 'There will be clues.'}`)); L.push(pline(det.id, pick(['I will get to the bottom of this.', 'Someone here is lying. I can feel it.', 'Case open. Nobody leaves the island.']))); }
+    L.push(nline(linePick([`Morning, day ${W.day}. Something was wrong.`, 'The island woke up to bad news.'])));
+    if (V) L.push(pline(V.id, linePick([`My… my things. Someone was in here.`, `Who would DO this to me?`, `I can't believe this. On OUR island?`]), 'shock', { emote: '😱' }));
+    else if (finder) L.push(pline(finder.id, linePick(['Uh, everyone? You need to see this.', 'Oh no. Oh no no no.', 'Is this for real?']), 'shock'));
+    L.push({ who: 'crowd', text: linePick(['*murmuring*', 'No way…', 'Who did this?!']), fx: 'gasp' });
+    if (det) { L.push(pline(det.id, `Nobody move. ${clue ? `Look. ${clue.text}` : 'There will be clues.'}`)); L.push(pline(det.id, linePick(['I will get to the bottom of this.', 'Someone here is lying. I can feel it.', 'Case open. Nobody leaves the island.']))); }
   }
   queueCut({ kind: 'crime', crimeId: C.id, icon: K.icon, title: C.type === 'murder' ? `A Murder in ${ISL.name}` : `${K.label}!`, sub: C.type === 'murder' ? `${C.victimName}, found ${C.way.how}` : C.headline, music: 'mystery', dark: C.type === 'murder', lines: L,
     stage: (S) => townStage(S, [C.where.x, C.where.z], cast, C.where.key === 'pier' ? { r: 2.2, arc: 1.2 } : { r: 2.8 }) });
@@ -58,9 +58,9 @@ function arrestCut(C, by) {
   const top = C.clues.filter((c) => c.found && fitsClue(C, c).includes(A.id) && !c.clears)[0];
   const L = [];
   if (det) L.push(pline(det.id, `${A.name}. You need to come with me to Glimmer Hall.`));
-  L.push(pline(A.id, A.id === C.culprit ? pick(['What? Why? What did I do?', 'You have no proof.', '…I don\'t know what you are talking about.']) : pick(['What?! Me?! I didn\'t do anything!', 'This is insane. I was home!', 'You have the wrong person!']), 'shock', { emote: A.id === C.culprit ? '💧' : '💢' }));
+  L.push(pline(A.id, A.id === C.culprit ? linePick(['What? Why? What did I do?', 'You have no proof.', '…I don\'t know what you are talking about.']) : linePick(['What?! Me?! I didn\'t do anything!', 'This is insane. I was home!', 'You have the wrong person!']), 'shock', { emote: A.id === C.culprit ? '💧' : '💢' }));
   if (det && top) L.push(pline(det.id, `${top.text} Explain that.`, 'takethat'));
-  L.push({ who: 'crowd', text: pick(['No way…', `${A.name}?!`, 'I KNEW it.', '*whispering*']), fx: 'gasp' });
+  L.push({ who: 'crowd', text: linePick(['No way…', `${A.name}?!`, 'I KNEW it.', '*whispering*']), fx: 'gasp' });
   L.push(nline(`${A.name} was charged with ${K.label.toLowerCase()}. The trial started right away.`));
   queueCut({ kind: 'arrest', crimeId: C.id, icon: '🚨', title: `${A.name} is Arrested`, sub: `Charge: ${K.label}`, music: 'mystery', lines: L,
     stage: (S) => townStage(S, [cx, cz], cast, { r: 2.2 }), onEnd: () => crimeTrialNow(C) });
@@ -79,9 +79,9 @@ function funeralCut(d) {
   const cast = castFrom([...close.map((p) => p.id), ...onlookers(close.map((p) => p.id), 6)], 9);
   placeMemorial(d);
   const L = [nline(`The whole island came to say goodbye to ${d.name}.`, 'dark')];
-  for (const p of close.slice(0, 3)) L.push(pline(p.id, pick([`${d.name} always saved me the good seat by the fountain. I don't know who will now.`, `I keep turning around to tell ${d.name} something.`, `${d.name} made this island better just by being on it.`, `I never told ${d.name} how much they meant to me. I'm telling you now.`]), null, { emote: '💧' }));
+  for (const p of close.slice(0, 3)) L.push(pline(p.id, linePick([`${d.name} always saved me the good seat by the fountain. I don't know who will now.`, `I keep turning around to tell ${d.name} something.`, `${d.name} made this island better just by being on it.`, `I never told ${d.name} how much they meant to me. I'm telling you now.`]), null, { emote: '💧' }));
   if (C && C.status !== 'closed' && det) L.push(pline(det.id, `I promise you, ${d.name}. Whoever did this will answer for it.`));
-  if (C && C.culprit && person(C.culprit) && !jailed(person(C.culprit))) L.push(pline(C.culprit, pick(['…Rest well.', 'Goodbye.', '…']), null));
+  if (C && C.culprit && person(C.culprit) && !jailed(person(C.culprit))) L.push(pline(C.culprit, linePick(['…Rest well.', 'Goodbye.', '…']), null));
   L.push(nline(`They left flowers at the new stone by the big tree. It says "${d.name}. Loved here."`, 'light'));
   queueCut({ kind: 'funeral', icon: '🕯', title: `Goodbye, ${d.name}`, sub: `Day ${d.born > 0 ? d.born : 1} to day ${d.died}`, music: 'funeral', lines: L,
     stage: (S) => townStage(S, memorialSpot(d), cast, { r: 3, arc: 2.6 }) });
@@ -92,9 +92,9 @@ function releaseCut(p, why, C) {
   const cast = castFrom([p.id, ...W.people.filter((q) => fscore(q, p) >= 3).map((q) => q.id), ...onlookers([p.id], 2)], 6);
   const [hx, hz] = TOWN.hall.spot;
   const L = why === 'exonerated'
-    ? [nline(`The doors of Glimmer Hall opened. ${p.name} walked out, blinking in the light.`), pline(p.id, 'I told everyone. I TOLD everyone it wasn\'t me.', null, { emote: '💧' }), { who: 'crowd', text: pick(['We\'re so sorry.', 'Welcome back.', '…Sorry.']) }, pline(p.id, 'Sorry doesn\'t give me those days back.')]
-    : why === 'pardon' ? [nline(`By order of the Creator, ${p.name} was pardoned.`), pline(p.id, pick(['Thank you, Creator. I won\'t waste this.', 'I… I don\'t know what to say.']), 'flash', { emote: '✨' }), { who: 'crowd', text: '*murmuring*' }]
-    : [nline(`${p.name} served their time and walked out of Glimmer Hall.`), pline(p.id, C && C.culprit !== p.id ? 'I didn\'t do it. I will say it until someone listens.' : pick(['I\'m going to do better.', 'Don\'t look at me like that. I paid for it.', 'Fresh air. Finally.'])), { who: 'crowd', text: '*whispering*' }];
+    ? [nline(`The doors of Glimmer Hall opened. ${p.name} walked out, blinking in the light.`), pline(p.id, 'I told everyone. I TOLD everyone it wasn\'t me.', null, { emote: '💧' }), { who: 'crowd', text: linePick(['We\'re so sorry.', 'Welcome back.', '…Sorry.']) }, pline(p.id, 'Sorry doesn\'t give me those days back.')]
+    : why === 'pardon' ? [nline(`By order of the Creator, ${p.name} was pardoned.`), pline(p.id, linePick(['Thank you, Creator. I won\'t waste this.', 'I… I don\'t know what to say.']), 'flash', { emote: '✨' }), { who: 'crowd', text: '*murmuring*' }]
+    : [nline(`${p.name} served their time and walked out of Glimmer Hall.`), pline(p.id, C && C.culprit !== p.id ? 'I didn\'t do it. I will say it until someone listens.' : linePick(['I\'m going to do better.', 'Don\'t look at me like that. I paid for it.', 'Fresh air. Finally.'])), { who: 'crowd', text: '*whispering*' }];
   queueCut({ kind: 'release', icon: '🔓', title: why === 'exonerated' ? `${p.name} is Innocent` : why === 'pardon' ? 'A Pardon' : `${p.name} is Free`, sub: C ? CRIME_TYPES[C.type].label : '', music: 'trial', lines: L,
     stage: (S) => townStage(S, [hx, hz + 2], cast, { r: 2.4 }) });
 }
@@ -110,19 +110,19 @@ function weddingCut(a, b) {
   L.push(pline(a.id, va ? `${b.name}, I still think about ${va.text.replace(/^I |\.$/g, '').slice(0, 70).toLowerCase()}. I want a whole life of days like that.` : `${b.name}, you make every day on this island brighter. I promise to love you on the rainy ones too.`, null, { emote: '💕' }));
   L.push(pline(b.id, vb ? `${a.name}… you had me at ${vb.text.replace(/^I |\.$/g, '').slice(0, 60).toLowerCase()}. I do. Obviously I do.` : `${a.name}, I promise to share my snacks. Even the good ones. I do.`, null, { emote: '💕' }));
   if (off) L.push(pline(off.id, 'Then by the power of the fountain… you may kiss!', 'hearts'));
-  L.push({ who: 'crowd', text: pick(['WOOOO!', '*happy crying*', 'Kiss! Kiss! Kiss!']), fx: 'confetti' });
+  L.push({ who: 'crowd', text: linePick(['WOOOO!', '*happy crying*', 'Kiss! Kiss! Kiss!']), fx: 'confetti' });
   queueCut({ kind: 'wedding', icon: '💒', title: `The Wedding of ${a.name} & ${b.name}`, sub: `Day ${W.day}, at the fountain`, music: 'wedding', lines: L,
     stage: (S) => { const z0 = FOUNTAIN_R + 3.2; townStage(S, [0, z0], cast, { r: 3.4, arc: 2.4, dir: Math.PI, marks: [[a.id, -0.75, z0, Math.PI / 2], [b.id, 0.75, z0, -Math.PI / 2], ...(off ? [[off.id, 0, z0 + 1.3, Math.PI]] : [])] }); CUT.focus = { x: 0, z: z0 }; } });
 }
 function engageCut(a, b, l1, l2) {
   const cast = castFrom(onlookers([a.id, b.id], 4), 4), [cx, cz] = [(a.x + b.x) / 2, (a.z + b.z) / 2];
-  const L = [pline(a.id, l1 || `${b.name}… will you marry me?`, null, { emote: '💍' }), pline(b.id, l2 || 'YES!', 'hearts', { emote: '💕' }), { who: 'crowd', text: pick(['AWWW!', '*clapping*', 'Finally!']), fx: 'confetti' }, nline('The wedding is tomorrow, at the fountain.')];
+  const L = [pline(a.id, l1 || `${b.name}… will you marry me?`, null, { emote: '💍' }), pline(b.id, l2 || 'YES!', 'hearts', { emote: '💕' }), { who: 'crowd', text: linePick(['AWWW!', '*clapping*', 'Finally!']), fx: 'confetti' }, nline('The wedding is tomorrow, at the fountain.')];
   queueCut({ kind: 'engaged', icon: '💍', title: `${a.name} & ${b.name} are Engaged!`, sub: 'She said yes. Or he did. Or they did. Someone said yes!', music: 'wedding', lines: L,
     stage: (S) => { townStage(S, [cx, cz], cast, { r: 3.2, marks: [[a.id, cx - 0.6, cz, Math.PI / 2], [b.id, cx + 0.6, cz, -Math.PI / 2]] }); CUT.focus = { x: cx, z: cz }; } });
 }
 function birthCut(k, a, b) {
   const [hx, hz] = TOWN[homeKey(k)].spot, cast = castFrom(onlookers([a.id, b.id, k.id], 4), 4);
-  const L = [nline(`A new little face on ${ISL.name}.`), pline(a.id, `Everyone… meet ${k.name}.`, null, { emote: '💕' }), pline(b.id, pick(['Look at their tiny hands!', 'They have your eyes.', 'I am going to cry. I am crying.']), 'hearts', { emote: '💧' }), pline(k.id, pick(['Bwah!', '…Hi?', '*tiny sneeze*'])), { who: 'crowd', text: pick(['Awww!', 'So small!', 'Welcome!']), fx: 'confetti' }];
+  const L = [nline(`A new little face on ${ISL.name}.`), pline(a.id, `Everyone… meet ${k.name}.`, null, { emote: '💕' }), pline(b.id, linePick(['Look at their tiny hands!', 'They have your eyes.', 'I am going to cry. I am crying.']), 'hearts', { emote: '💧' }), pline(k.id, linePick(['Bwah!', '…Hi?', '*tiny sneeze*'])), { who: 'crowd', text: linePick(['Awww!', 'So small!', 'Welcome!']), fx: 'confetti' }];
   queueCut({ kind: 'birth', icon: '🍼', title: `Welcome, ${k.name}!`, sub: `Born to ${a.name} and ${b.name}`, music: 'wedding', lines: L,
     stage: (S) => { townStage(S, [hx, hz + 2], cast, { r: 3, marks: [[a.id, hx - 0.9, hz + 2.2, 0], [b.id, hx + 0.9, hz + 2.2, 0], [k.id, hx, hz + 2.6, 0]] }); CUT.focus = { x: hx, z: hz + 2.5 }; } });
 }
@@ -245,8 +245,8 @@ function crimeGossipTick() {
   const b = free.find((q) => q !== a && Math.hypot(q.x - a.x, q.z - a.z) < 6); if (!b) return;
   const s = pick(C.suspects.filter((id) => id !== a.id && id !== b.id)), K = CRIME_TYPES[C.type];
   const guilty = a.id === C.culprit;
-  bubble(a, guilty ? pick([`Terrible about the ${K.label.toLowerCase()}. I bet it was ${nameOf(s)}.`, 'Can we talk about something else?', 'Why is everyone so obsessed with it?']) : pick([`Did you hear about the ${K.label.toLowerCase()}?`, `I think ${nameOf(s)} did it.`, 'I locked my door twice last night.', `Something about ${nameOf(s)} is off.`]), 3);
-  setTimeout(() => bubble(b, pick(['No way. Really?', 'Keep your voice down!', `Honestly? I thought the same.`, 'I heard the detective found something.', 'This island used to be so peaceful.']), 3), 2600);
+  bubble(a, guilty ? linePick([`Terrible about the ${K.label.toLowerCase()}. I bet it was ${nameOf(s)}.`, 'Can we talk about something else?', 'Why is everyone so obsessed with it?']) : linePick([`Did you hear about the ${K.label.toLowerCase()}?`, `I think ${nameOf(s)} did it.`, 'I locked my door twice last night.', `Something about ${nameOf(s)} is off.`]), 3);
+  setTimeout(() => bubble(b, linePick(['No way. Really?', 'Keep your voice down!', `Honestly? I thought the same.`, 'I heard the detective found something.', 'This island used to be so peaceful.']), 3), 2600);
   emote(b, '👀', 2.5);
 }
 
@@ -254,21 +254,21 @@ function crimeGossipTick() {
 function admirerFoundCut(C) {
   const V = person(C.victim); if (!V) return;
   const [hx, hz] = TOWN[homeKey(V)].spot, cast = castFrom(onlookers([V.id, C.culprit], 3), 3);
-  const L = [nline(`Morning, day ${W.day}. There was something on ${V.name}'s doorstep.`), pline(V.id, 'Flowers? For… me?', null, { emote: '😮' }), pline(V.id, `There's a note. ${C.headline.split('The latest one says: ')[1] || '"Have a nice day."'}`, 'hearts'), pline(V.id, 'No name. WHO?!', null, { emote: '💕' }), { who: 'crowd', text: pick(['Ooooh!', 'A secret admirer!', '*giggling*']), fx: 'gasp' }];
+  const L = [nline(`Morning, day ${W.day}. There was something on ${V.name}'s doorstep.`), pline(V.id, 'Flowers? For… me?', null, { emote: '😮' }), pline(V.id, `There's a note. ${C.headline.split('The latest one says: ')[1] || '"Have a nice day."'}`, 'hearts'), pline(V.id, 'No name. WHO?!', null, { emote: '💕' }), { who: 'crowd', text: linePick(['Ooooh!', 'A secret admirer!', '*giggling*']), fx: 'gasp' }];
   queueCut({ kind: 'mystery', crimeId: C.id, icon: '💌', title: 'A Secret Admirer', sub: `Someone likes ${V.name}`, music: 'wedding', lines: L,
     stage: (S) => { townStage(S, [hx, hz + 2], cast, { r: 3, marks: [[V.id, hx, hz + 2.2, 0]] }); CUT.focus = { x: hx, z: hz + 2.2 }; } });
 }
 function admirerReveal(C, pid, self) {
   const V = person(C.victim), A = person(pid), real = person(C.culprit); if (!V || !A || !real) return '';
   if (!self && pid !== C.culprit) {
-    queueCut({ kind: 'mystery', icon: '💌', title: `Is it ${A.name}?`, sub: 'A guess about the secret admirer', music: 'wedding', lines: [pline(V.id, `${A.name}… is it you? Are you the one leaving the flowers?`), pline(A.id, pick(['What? No! …I mean. No.', 'Ha! No. But now I kind of wish it was.', "Not me. Sorry! But I'll help you find out."]), null, { emote: '😳' }), { who: 'crowd', text: '*awkward silence*' }],
+    queueCut({ kind: 'mystery', icon: '💌', title: `Is it ${A.name}?`, sub: 'A guess about the secret admirer', music: 'wedding', lines: [pline(V.id, `${A.name}… is it you? Are you the one leaving the flowers?`), pline(A.id, linePick(['What? No! …I mean. No.', 'Ha! No. But now I kind of wish it was.', "Not me. Sorry! But I'll help you find out."]), null, { emote: '😳' }), { who: 'crowd', text: '*awkward silence*' }],
       stage: (S) => townStage(S, [V.x, V.z], [], { marks: [[V.id, V.x - 0.7, V.z, Math.PI / 2], [A.id, V.x + 0.7, V.z, -Math.PI / 2]] }) });
     C.acquitted = [...(C.acquitted || []), pid]; markDirty();
     return `${A.name} says it isn't them.`;
   }
   C.status = 'closed'; C.verdict = 'revealed'; C.verdictDay = W.day;
   const likes = fscore(V, real) >= 2;
-  const L = [nline(self ? `${real.name} couldn't hide it anymore.` : `The Creator figured it out.`), pline(real.id, `${V.name}. The flowers… were me. I ${C.why.replace(/^has a crush on \S+ and /, '')}.`, null, { emote: '💕' }), pline(V.id, likes ? pick(['…Really? You? I was hoping it was you.', 'Oh my gosh. OH MY GOSH.', 'You could have just said something! …I like you too.']) : pick(['Oh! That is… really sweet. Thank you.', 'I… need a minute. But thank you.']), likes ? 'hearts' : null), { who: 'crowd', text: likes ? 'AWWWW!' : '*supportive clapping*', fx: likes ? 'confetti' : null }];
+  const L = [nline(self ? `${real.name} couldn't hide it anymore.` : `The Creator figured it out.`), pline(real.id, `${V.name}. The flowers… were me. I ${C.why.replace(/^has a crush on \S+ and /, '')}.`, null, { emote: '💕' }), pline(V.id, likes ? linePick(['…Really? You? I was hoping it was you.', 'Oh my gosh. OH MY GOSH.', 'You could have just said something! …I like you too.']) : linePick(['Oh! That is… really sweet. Thank you.', 'I… need a minute. But thank you.']), likes ? 'hearts' : null), { who: 'crowd', text: likes ? 'AWWWW!' : '*supportive clapping*', fx: likes ? 'confetti' : null }];
   queueCut({ kind: 'mystery', icon: '💌', title: 'The Admirer Revealed', sub: `${real.name} → ${V.name}`, music: 'wedding', lines: L,
     stage: (S) => { townStage(S, [0, 7], castFrom(onlookers([real.id, V.id], 4), 4), { r: 3.2, marks: [[real.id, -0.7, 7, Math.PI / 2], [V.id, 0.7, 7, -Math.PI / 2]] }); CUT.focus = { x: 0, z: 7 }; },
     onEnd: () => { feel(V, real, likes ? 2 : 0.8, true); feel(real, V, 1, true); remember(V, `${real.name} was my secret admirer!`, 3, 'admirerRevealed', real.name); remember(real, `I told ${V.name} I was the one leaving the flowers.`, 3, 'admirerRevealed', V.name); if (likes && !real.partner && !V.partner) real.confessTo = V.id; } });

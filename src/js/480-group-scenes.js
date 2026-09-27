@@ -207,9 +207,9 @@ function scriptedScene(S, n, allowShove) {
     if (i === 5 && M.length) { say(pick(M), MID_LINES, 'calm'); continue; }
     const side = i % 2 ? B : A, other = i % 2 ? A : B; if (!side.length) continue;
     const m = side[Math.floor(i / 2) % side.length];
-    if (i === n - 2 && allowShove && rand() < 0.5) { L.push({ id: m.id, name: m.name, say: pick(['That\'s IT.', 'Say that again!']), to: other[0]?.name, action: 'shove' }); continue; }
-    if (i === n - 1 && rand() < 0.4) { L.push({ id: m.id, name: m.name, say: pick(["I'm done. I'm leaving.", "Forget it. Forget ALL of you."]), action: 'storm_off' }); continue; }
-    say(m, (i % 2 ? P.B : P.A), pick(['shout', 'talk', 'shout', 'mock', 'defend']));
+    if (i === n - 2 && allowShove && rand() < 0.5) { L.push({ id: m.id, name: m.name, say: linePick(['That\'s IT.', 'Say that again!']), to: other[0]?.name, action: 'shove' }); continue; }
+    if (i === n - 1 && rand() < 0.4) { L.push({ id: m.id, name: m.name, say: linePick(["I'm done. I'm leaving.", "Forget it. Forget ALL of you."]), action: 'storm_off' }); continue; }
+    say(m, (i % 2 ? P.B : P.A), linePick(['shout', 'talk', 'shout', 'mock', 'defend']));
   }
   const winner = A.length > B.length + 1 ? 'A' : B.length > A.length + 1 ? 'B' : 'none';
   return { lines: L, winner, ending: winner === 'none' ? 'Nobody won. Everyone went home angry.' : `${winner === 'A' ? S.issue.A.name : S.issue.B.name} walked away feeling like they won. The others didn't forget.`, grudges: [], bonds: [] };
@@ -226,10 +226,10 @@ async function runScene(S) {
     if (up) {
       addRing(S);
       const first = person(S.members.find((m) => m.side === 'A')?.id);
-      if (first) { bubble(first, pick(['Are you SERIOUS right now?', 'No. We are talking about this. Right now.', 'Everyone needs to hear this.']), 3); emote(first, '💢', 3); }
+      if (first) { bubble(first, linePick(['Are you SERIOUS right now?', 'No. We are talking about this. Right now.', 'Everyone needs to hear this.']), 3); emote(first, '💢', 3); }
       diary(`🔥 <b>An uproar broke out at the fountain</b> about <b>${esc(S.issue.label)}</b>. ${esc(S.issue.A.name)}: ${S.members.filter((m) => m.side === 'A').map((m) => esc(m.name)).join(', ')}. ${esc(S.issue.B.name)}: ${S.members.filter((m) => m.side === 'B').map((m) => esc(m.name)).join(', ')}.`);
       toast(`🔥 Uproar at the fountain: ${S.issue.label}!`);
-      for (const q of W.people) if (!S.members.some((m) => m.id === q.id) && !q.inside && rand() < 0.5) { emote(q, '👀', 3); if (rand() < 0.4) bubble(q, pick(["What's going on over there?", 'Uh oh.', 'Is that a fight?', 'Popcorn time.']), 2.2); }
+      for (const q of W.people) if (!S.members.some((m) => m.id === q.id) && !q.inside && rand() < 0.5) { emote(q, '👀', 3); if (rand() < 0.4) bubble(q, linePick(["What's going on over there?", 'Uh oh.', 'Is that a fight?', 'Popcorn time.']), 2.2); }
       if (MODE === 'host' && !interior && now - lastTouch > 8) camGoal = { x: S.center[0], z: S.center[1], r: 30 };
       try { Sound.bell && Sound.bell(); } catch (e) {}
     }
@@ -237,7 +237,7 @@ async function runScene(S) {
     const scriptP = sceneScript(S);
     while (performance.now() - t0 < 13000 && members().some((p) => p.task?.kind === 'crowd' && p.task.phase === 'go')) {
       await sleep(400);
-      if (up && rand() < 0.25) { const p = pick(members().filter((q) => q.task?.phase === 'do')); if (p) { emote(p, pick(['💢', '😤', '❗']), 2); } }
+      if (up && rand() < 0.25) { const p = pick(members().filter((q) => q.task?.phase === 'do')); if (p) { emote(p, linePick(['💢', '😤', '❗']), 2); } }
     }
     for (const p of members()) { if (p.task?.kind === 'crowd' && p.task.phase === 'do') { p.state = 'talk'; faceCenter(p, S); } }
     const sc = await scriptP;
@@ -252,7 +252,7 @@ async function runScene(S) {
       bubble(p, l.say, 2.4 + l.say.length / 14);
       sceneAction(S, p, l);
       diary(`${up ? '🔥 ' : '💬 '}<b>${esc(p.name)}</b>${up && mem.side !== 'mid' ? ` <span class="th">(${esc(mem.side === 'A' ? S.issue.A.name : S.issue.B.name)})</span>` : ''}: "${esc(l.say)}"`);
-      if (up && rand() < 0.35) { const q = pick(members().filter((x) => x !== p && x.state === 'talk')); if (q) emote(q, pick(['😮', '😤', '💢', '🙄', '😱']), 2); }
+      if (up && rand() < 0.35) { const q = pick(members().filter((x) => x !== p && x.state === 'talk')); if (q) emote(q, linePick(['😮', '😤', '💢', '🙄', '😱']), 2); }
       await sleep((up ? 1.9 : 2.2) * 1000 + l.say.length * (up ? 45 : 55));
       if (l.action === 'storm_off') { S.members = S.members.filter((m) => m.id !== p.id); p.state = 'free'; p.task = null; p.busyUntil = 0; setTask(p, 'stroll', homeKey(p)); remember(p, `Stormed off in the middle of the uproar about ${S.issue.label}.`, 2, 'uproar'); }
     }
@@ -297,7 +297,7 @@ function sceneAction(S, p, l) {
       if (rand() < 0.5 && typeof fileCase === 'function') setTimeout(() => fileCase('fight', opp, p), 8000);
       break;
     }
-    default: if (up && rand() < 0.4) emote(p, pick(['😤', '❗']), 2);
+    default: if (up && rand() < 0.4) emote(p, linePick(['😤', '❗']), 2);
   }
 }
 async function creatorStepIn(S, sc) {
@@ -309,8 +309,8 @@ async function creatorStepIn(S, sc) {
     for (const m of ppl) {
       const p = m.p, s = p.cr.score;
       await sleep(700);
-      if (s <= -3) { bubble(p, pick(['Stay out of this, Creator!', 'Oh, NOW you show up?', "This isn't your island. …Okay, it is. Still."]), 3); creatorShift(p, -0.2); emote(p, '💢', 2); }
-      else { bubble(p, pick(['…Okay. Okay.', 'Fine. Sorry.', "You're right.", '*deep breath*']), 2.6); if (s >= 1) creatorShift(p, 0.2); emote(p, '…', 2); }
+      if (s <= -3) { bubble(p, linePick(['Stay out of this, Creator!', 'Oh, NOW you show up?', "This isn't your island. …Okay, it is. Still."]), 3); creatorShift(p, -0.2); emote(p, '💢', 2); }
+      else { bubble(p, linePick(['…Okay. Okay.', 'Fine. Sorry.', "You're right.", '*deep breath*']), 2.6); if (s >= 1) creatorShift(p, 0.2); emote(p, '…', 2); }
     }
     S.ending = 'The Creator stepped in, and the crowd slowly broke up.'; S.winner = 'none';
     applySides(S, 0.4, sc);
@@ -320,8 +320,8 @@ async function creatorStepIn(S, sc) {
     diary(`✧ The <span class="cr">Creator</span> took a side in the uproar: <b>${esc(side)}</b>.`);
     for (const m of ppl) {
       const p = m.p; await sleep(600);
-      if (m.side === win) { bubble(p, pick(['SEE?! Even the Creator agrees!', 'Thank you, Creator!', 'Told you.']), 2.6); creatorShift(p, 0.5); addJoy(p, 10); emote(p, '✨', 2); }
-      else if (m.side !== 'mid') { bubble(p, pick(['Of course the Creator takes their side.', 'Unbelievable.', "So that's how it is."]), 2.6); creatorShift(p, -0.6); emote(p, '☁', 2); remember(p, `The Creator sided against us in the argument about ${S.issue.label}.`, 3, 'creatorFight'); }
+      if (m.side === win) { bubble(p, linePick(['SEE?! Even the Creator agrees!', 'Thank you, Creator!', 'Told you.']), 2.6); creatorShift(p, 0.5); addJoy(p, 10); emote(p, '✨', 2); }
+      else if (m.side !== 'mid') { bubble(p, linePick(['Of course the Creator takes their side.', 'Unbelievable.', "So that's how it is."]), 2.6); creatorShift(p, -0.6); emote(p, '☁', 2); remember(p, `The Creator sided against us in the argument about ${S.issue.label}.`, 3, 'creatorFight'); }
     }
     S.ending = `The Creator sided with ${side}, and that settled it. For now.`; S.winner = win;
     applySides(S, 1, sc);
@@ -365,7 +365,7 @@ function sceneOutcome(S, sc) {
   if (iss.kind === 'laptop') for (const m of ppl) if (m.side === 'A' && !m.p.saving && !hasLaptop(m.p) && rand() < 0.4) laptopEnvy(m.p, null);
   if (iss.kind === 'creator') for (const m of ppl) creatorShift(m.p, m.side === 'A' ? 0.2 : m.side === 'B' ? -0.2 : 0);
   const A = ppl.filter((m) => m.side === 'A'), B = ppl.filter((m) => m.side === 'B');
-  const loserSide = S.winner === 'A' ? B : S.winner === 'B' ? A : pick([A, B]);
+  const loserSide = S.winner === 'A' ? B : S.winner === 'B' ? A : linePick([A, B]);
   if (typeof fileCase === 'function' && rand() < 0.3 && A.length && B.length) {
     const pA = person(S.principals?.[0]) || A[0].p, pB = person(S.principals?.[1]) || B[0].p;
     const [pl, df] = loserSide === A ? [pA, pB] : [pB, pA];
@@ -373,8 +373,8 @@ function sceneOutcome(S, sc) {
   }
   if (typeof postChirp === 'function') {
     const w = S.winner !== 'none' ? pick(S.winner === 'A' ? A : B) : null, l = loserSide.length ? pick(loserSide) : null;
-    if (w) setTimeout(() => postChirp(w.p, pick([`${S.winner === 'A' ? iss.A.name : iss.B.name} won today. just saying`, 'glad SOME people saw reason today', 'what a day. we were right though'])), 20000);
-    if (l) setTimeout(() => postChirp(l.p, pick(['some people on this island are unbelievable', 'not over what happened at the fountain', 'i said what i said', 'that was so embarrassing for them. not me. them'])), 35000);
+    if (w) setTimeout(() => postChirp(w.p, linePick([`${S.winner === 'A' ? iss.A.name : iss.B.name} won today. just saying`, 'glad SOME people saw reason today', 'what a day. we were right though'])), 20000);
+    if (l) setTimeout(() => postChirp(l.p, linePick(['some people on this island are unbelievable', 'not over what happened at the fountain', 'i said what i said', 'that was so embarrassing for them. not me. them'])), 35000);
   }
 }
 function uproarBoxHtml() {
