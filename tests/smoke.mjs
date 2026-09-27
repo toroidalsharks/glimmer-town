@@ -239,7 +239,7 @@ try {
   await page.reload();
   await page.waitForFunction(() => window.__g && window.__g.ev('typeof W !== "undefined" && W.people.length > 0'), null, { timeout: 60000 });
   const after = await E(`JSON.stringify([W.day, W.people.length, jailedPeople().map((p) => p.id)])`);
-  ok(before === after, 'the town survives a reload');
+  ok(before === after, 'the town survives a reload' + (before === after ? '' : ' ' + before + ' vs ' + after));
   ok(await E(`(W.records || []).some((r) => r.kind === 'verdict')`), 'the town record survives a reload');
   // a save that won't open is put aside before the new town's first save can write over it
   ok(await E(`(async () => { const good = localStorage.getItem(ISL.save), bad = good.slice(0, 4000); localStorage.removeItem(RESCUE_KEY); localStorage.setItem(ISL.save, bad); const w = await loadWorld(); const kept = localStorage.getItem(RESCUE_KEY); localStorage.setItem(ISL.save, good); localStorage.removeItem(RESCUE_KEY); const flagged = rescuedSave; rescuedSave = false; return w === null && kept === bad && flagged; })()`) === true, 'a save that will not open is kept, not written over');

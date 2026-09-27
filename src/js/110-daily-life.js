@@ -28,7 +28,9 @@ function goTo(p, dest, spot) {
   const cur = TOWN[p.at] || TOWN.plaza, d = TOWN[dest];
   const E = (x) => (!x || !x.length ? [] : Array.isArray(x[0]) ? x : [x]);
   if (dest !== p.at) {
-    if (cur.zone === 'dt' && d.zone === 'dt') pts.push(...E(cur.local).slice().reverse(), ...E(d.local));
+    if (cur.zone && cur.zone === d.zone) pts.push(...E(cur.local).slice().reverse(), ...E(d.local));
+    else if (cur.zone === 'dt' && d.fromDT) pts.push(...E(cur.local).slice().reverse(), ...d.fromDT);
+    else if (cur.fromDT && d.zone === 'dt') pts.push(...cur.fromDT.slice().reverse(), ...E(d.local));
     else pts.push(...E(cur.entry).slice().reverse(), ...E(d.entry));
   }
   if (toIsle0 && toIsle0 !== fromIsle) pts.push(...bridgeVia(toIsle0, false));
@@ -52,6 +54,7 @@ function workSpot(job) {
 }
 function setTask(p, kind, dest, spot, extra = {}) { p.task = { kind, phase: 'go', ...extra }; goTo(p, dest, spot); }
 function strollSpot() {
+  { const c = cityStroll(); if (c) return c; }
   if ((W.placed || []).length && rand() < 0.35) { const ps = placeStrollSpot(); if (ps) return ['plaza', ps.spot]; }
   const r = rand();
   if (r < 0.18) { const a = rand() * Math.PI * 2, rr = 4.5 + rand() * 5; return ['downtown', [DT.x + Math.cos(a) * rr, DT.z + Math.sin(a) * rr]]; }
@@ -62,6 +65,7 @@ function strollSpot() {
   return ['garden', jitter(TOWN.garden.spot, 5)];
 }
 function planEat(p) {
+  if (cityEatPlan(p)) return true;
   if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || p.saving || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return true; }
   const i = W.bushes.findIndex((n) => n > 0);
   if (i >= 0) { setTask(p, 'forage', 'plaza', [BUSHES[i][0] * 0.86, BUSHES[i][1] * 0.86], { bush: i }); return true; }
@@ -89,6 +93,7 @@ function plan(p) {
   if (planBrowse(p)) return;
   if (planSurf(p)) return;
   if (p.hunger > 0.45 && planEat(p)) return;
+  if (cityPlan(p)) return;
   if (!p.saving && purse(p) >= (sharing() && !p.visitor ? 15 : 7) && rand() < 0.3) { setTask(p, 'shop', pick(['clothes', 'nook', 'nook', 'books'])); return; }
   if (!p.saving && purse(p) >= 2 && rand() < (/game|League/i.test(p.interests || '') ? 0.3 : 0.08)) { setTask(p, 'arcade', 'arcade'); return; }
   if (W.project && p.coins >= 9 && (!p.saving || W.project.id === 'computer') && rand() < 0.2) { setTask(p, 'donate', 'plaza', jitter([0, 4.6], 1)); return; }
@@ -137,12 +142,14 @@ function startDo(p) {
   if (k === 'browse') { browseStart(p); return; }
   if (k === 'write') { writeStart(p); return; }
   if (k === 'crowd') { p.busyUntil = Infinity; if (W.scene) faceCenter(p, W.scene); return; }
+  if (cityStart(p, k)) return;
   p.busyUntil = now + (2 + rand() * 4) * ts();
 }
 function finishDo(p) {
   const k = p.task.kind;
   if (['rest', 'doctor', 'therapy', 'ritual'].includes(k)) return healthFinish(p, k);
   if (k === 'buylaptop') { buyLaptopDone(p); return true; }
+  if (SL_TASKS.includes(k)) { cityFinish(p, k); return true; }
   if (k === 'browse') { browseDone(p); return true; }
   if (k === 'write') { writeDone(p); return true; }
   if (k === 'work') { if (W.t < workUntil(p.job)) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
@@ -177,7 +184,7 @@ function endWork(p) {
   remember(p, `Worked as a ${J.short} and earned ${pay} coins.`, 1, 'work', null, { joy });
   bubble(p, sharing() ? pick([`${pay} coins for the pantry!`, 'Done! That goes to everyone.']) : joy > 0.3 ? pick(['Good day at work!', 'I love this job.', `+${pay} coins!`]) : joy < -0.3 ? pick(['Finally done…', 'Work was so long.']) : `+${pay} coins.`, 2.4);
   if (p.jobMood < -1.4 && p.jobDays > 2 && rand() < 0.5) {
-    const next = Object.keys(JOBS).filter((j) => j !== p.job && qualifies(p, j)).sort((x, y) => p.body.jobAff[y] - p.body.jobAff[x] + (rand() - 0.5))[0];
+    const next = Object.keys(JOBS).filter((j) => j !== p.job && jobOpen(j) && qualifies(p, j)).sort((x, y) => p.body.jobAff[y] - p.body.jobAff[x] + (rand() - 0.5))[0];
     diary(`<b>${esc(p.name)}</b> quit being a ${JOBS[p.job].short} and became a ${JOBS[next].short}.`);
     remember(p, `I quit my job as a ${J.short}. Tomorrow I start as a ${JOBS[next].short}.`, 3, 'quit');
     p.job = next; p.jobDays = 0; p.jobMood = 0; dressMesh(p);

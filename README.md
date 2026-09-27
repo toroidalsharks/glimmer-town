@@ -22,6 +22,7 @@ src/
     750-boot.js         starts everything
 tests/
   smoke.mjs             boots the game in a headless browser and runs a crime, a trial, a wedding
+  city.mjs              opens Starline, fills the town to its 25-resident cap, and runs a busy evening there
   update.mjs            checks that the game updates itself exactly once when a new build appears
   music.mjs             checks that music starts on its own and the playlists rotate
   look.mjs              takes screenshots of the town into tests/out/

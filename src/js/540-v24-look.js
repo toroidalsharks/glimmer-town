@@ -319,6 +319,7 @@ const WATER_ISLES = [];
 function waterIsles() {
   WATER_ISLES.length = 0;
   WATER_ISLES.push([0, 0, 32.2], [DT.x, DT.z, DT.R + 2.3], [BEACH[0], BEACH[1], BEACH_R + 1.6]);
+  if (cityOpen()) WATER_ISLES.push([SL.x, SL.z, SL.R + 2.3]);
   for (const k of W?.lobes || []) { const [x, z] = lobeCenter(k); WATER_ISLES.push([x, z, lobeR(k) + 2.1]); }
   if (waterMesh) { const U = waterMesh.material.uniforms; U.uN.value = Math.min(12, WATER_ISLES.length); WATER_ISLES.slice(0, 12).forEach((w, i) => U.uIsles.value[i].set(w[0], w[1], w[2], 0)); }
 }

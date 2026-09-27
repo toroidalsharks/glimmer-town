@@ -71,7 +71,7 @@ function nightfall() {
     if (W.day - a.lastBaby < 3 || W.day - b.lastBaby < 3) continue;
     if (a.parents.includes(b.name) || b.parents.includes(a.name) || (a.parents.length && a.parents.some((n) => b.parents.includes(n)))) continue;
     if (a.partner !== b.id || !a.married) continue;
-    if (ppl.length + W.babies.length >= MAX_POP) continue;
+    if (residentCount() + W.babies.length >= roomCount()) continue;
     if (rand() < 0.5) { W.babies.push([a.id, b.id]); a.lastBaby = b.lastBaby = W.day; }
   }
   W.reflectedDay = W.day;
@@ -98,6 +98,7 @@ function newDay() {
   }
   importStock();
   dailyWishes();
+  cityDaily();
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }

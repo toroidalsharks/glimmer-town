@@ -9,7 +9,7 @@ const LAB_WINGS = {
 const LAB_JOBS = Object.values(LAB_WINGS).flatMap((w) => w.jobs);
 const wingOf = (job) => Object.keys(LAB_WINGS).find((k) => LAB_WINGS[k].jobs.includes(job)) || 'comp';
 const labStaff = (wing) => W.people.filter((p) => LAB_JOBS.includes(p.job) && (!wing || wingOf(p.job) === wing));
-const workUntil = (job) => (LAB_JOBS.includes(job) ? 0.42 : job === 'doctor' || job === 'therapist' ? 0.5 : 0.24);
+const workUntil = (job) => (JOBS[job]?.until ? JOBS[job].until : LAB_JOBS.includes(job) ? 0.42 : job === 'doctor' || job === 'therapist' ? 0.5 : 0.24);
 const RESEARCH = {
   dev: { titles: ['a ferry-times app for the whole island', 'GlimmerNet search that actually works', 'Pigeon Quest, a tiny video game', 'a translator for cat meows', 'an app that finds the shortest walk to the bakery', 'a weather app that knows when it will snow'],
     problems: ['the app crashes whenever someone opens it near the fountain', 'the ferry times are all off by exactly one hour', 'search only ever returns pigeon facts', 'nobody can figure out the login screen', 'it works on their laptop and nowhere else', 'there is a bug that only happens on Tuesdays'],

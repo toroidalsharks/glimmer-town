@@ -5,7 +5,7 @@ let camGoal = null, unfollowId = null, wantPhoto = false, albumVer = 0;
 const keysDown = new Set();
 function shiftView(dx, dz) { controls.target.x += dx; controls.target.z += dz; camera.position.x += dx; camera.position.z += dz; }
 function clampView() {
-  const t = controls.target, cx = clamp(t.x, -90, 90), cz = clamp(t.z, -100, 78);
+  const t = controls.target, cx = clamp(t.x, -90, cityOpen() ? 116 : 90), cz = clamp(t.z, -100, 78);
   if (cx !== t.x || cz !== t.z) shiftView(cx - t.x, cz - t.z);
 }
 function slideTo(x, z, k) { const t = controls.target; shiftView((x - t.x) * k, (z - t.z) * k); }
@@ -13,6 +13,7 @@ function userPanned() { camGoal = null; camHome = false; unfollowId = openDetail
 function camSpots() {
   const L = [['town', 'Whole town', 0, -16, null], ['fountain', 'Fountain', 0, 0, 40], ['downtown', 'Downtown', DT.x, DT.z + 4, 52], ['pier', 'Pier', 0, 35, 34], ['park', 'Park', ...TOWN.park.spot, 36], ['beach', 'Seashell Beach', ...BEACH, 36], ['garden', 'Garden', ...TOWN.garden.spot, 36]];
   for (const k of W.lobes || []) L.push([k, LOBES[k].name, ...lobeCenter(k), 44]);
+  if (cityOpen()) L.splice(3, 0, ['starline', 'Starline', SL.x, SL.z + 4, 58]);
   return L;
 }
 function camGo(key) {
