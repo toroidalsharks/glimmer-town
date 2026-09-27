@@ -28,8 +28,15 @@ export async function openGame({ gfx = 'lite', width = 900, height = 600, prefs 
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message + ' ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
   // GAME=path/to/other.html tests another build, e.g. an older version
+  const gameReady = () => page.waitForFunction(() => window.__g && window.__g.ev('!!W && W.people.length > 0 && typeof camera !== "undefined"'), null, { timeout: 60000 });
   await page.goto(pathToFileURL(process.env.GAME || join(ROOT, 'index.html')).href);
-  await page.waitForFunction(() => window.__g && window.__g.ev('typeof W !== "undefined" && W.people.length > 0 && typeof camera !== "undefined"'), null, { timeout: 60000 });
+  await gameReady();
+  // Load the page a second time before testing. In a freshly started headless Chromium, the first page
+  // sometimes never gets its localStorage writes to the browser: a new tab or a reload sees none of
+  // them. That made "the town survives a reload" come back to a fresh town about 1 run in 8 under load.
+  // Pages after the first keep their storage (0 lost in 69 tries), so the tests run on the second one.
+  await page.reload();
+  await gameReady();
   await page.waitForTimeout(1500);
 
   const E = (code) => page.evaluate((c) => window.__g.ev(c), code);

@@ -91,7 +91,7 @@ async function saveNow() {
   saving = false;
 }
 function fixLoaded(s) {
-  s.pairCool = {}; s.babies = s.babies || []; s.meeting = null; s.mail = s.mail || []; s.stock.books = s.stock.books || []; s.placed = s.placed || []; s.lobes = s.lobes || []; s.pantry = s.pantry || 0; for (const q of s.people) { q.body.openness = q.body.openness ?? rand() * 2 - 1; }
+  s.pairCool = {}; s.babies = s.babies || []; s.meeting = null; s.mail = s.mail || []; s.stock = s.stock || { clothes: [], nook: [] }; s.stock.books = s.stock.books || []; s.placed = s.placed || []; s.lobes = s.lobes || []; s.pantry = s.pantry || 0; for (const q of s.people) { if (q.body) q.body.openness = q.body.openness ?? rand() * 2 - 1; }
   for (const p of s.people) {
     p.state = 'free'; p.path = p.path || []; p.heldByDlg = false; p.joy = p.joy || 0; p.level = p.level || 1;
     if (p.inside && p.task?.kind === 'home') p.busyUntil = Infinity;
@@ -99,11 +99,29 @@ function fixLoaded(s) {
   }
   return s;
 }
+// A save that exists but can't be opened is copied here before a new town starts, because the new
+// town's first save would otherwise write over it. An older copy is never replaced by a newer one.
+const RESCUE_KEY = ISL.save + '-rescue';
+let rescuedSave = false;
+function readSave(v) {
+  try { const s = typeof v === 'string' ? JSON.parse(v) : JSON.parse(JSON.stringify(v)); if (s && s.v === 3 && s.people?.length) return s; } catch (e) {}
+  return null;
+}
+function keepRescue(raw) {
+  try { if (!localStorage.getItem(RESCUE_KEY)) localStorage.setItem(RESCUE_KEY, raw); rescuedSave = true; } catch (e) { console.error('could not keep the old save', e); }
+}
 async function loadWorld() {
+  // the online copy and this phone's copy can each be the newer one: a reload can land before the
+  // online save finishes, and the other device may have run the town since. Take the newest that opens.
+  let cloud = null, raw = null;
   if (RT.db) {
-    try { const d = await RT.db.doc(STATE_DOC).get(); const v = d.exists && d.data(); if (v && v.v === 3 && v.world?.people?.length) return fixLoaded(JSON.parse(JSON.stringify(v.world))); } catch (e) {}
+    try { const d = await Promise.race([RT.db.doc(STATE_DOC).get(), sleep(15000)]); const v = d && d.exists && d.data(); if (v && v.v === 3) cloud = readSave(v.world); } catch (e) {}
   }
-  try { const s = JSON.parse(localStorage.getItem(ISL.save) || 'null'); if (s && s.v === 3 && s.people?.length) return fixLoaded(s); } catch (e) {}
+  try { raw = localStorage.getItem(ISL.save); } catch (e) {}
+  const local = readSave(raw);
+  const saves = [cloud, local].filter(Boolean).sort((a, b) => (b.lastReal || 0) - (a.lastReal || 0));
+  for (const s of saves) { try { return fixLoaded(s); } catch (e) { console.error('a saved town would not open', e); } }
+  if (raw) keepRescue(raw);
   return null;
 }
 function newWorld() {
