@@ -92,9 +92,10 @@ function gfxMeadow() {
   const G = meadowGroup = new T3.Group(); scene.add(G);
   // grass tufts
   const nl = (W?.lobes || []).length;
-  const tk = FACET.on ? 0.55 : 1, tufts = scatter(Math.round(950 * tk), 6000, onMain(12.8, 29)).concat(scatter(Math.round(260 * tk), 2500, onDT()), nl ? scatter(Math.round(110 * tk) * nl, 900 * nl, onLobes()) : []);
-  const tuftP = assetParts('tuft')[0], greens = ['#6cc15a', '#7fcf66', '#5db552', '#8ad870', '#74c860'];
-  G.add(instanced(tuftP.geo, bakedMat('tuftMat', { side: T3.DoubleSide }), tufts, ([x, z]) => ({ x, z, s: 1.1 + rand() * 0.9, sy: 0.8 + rand() * 0.6, c: pick(greens) })));
+  // the low-poly lawn has fewer, shorter, yellow-green tufts
+  const tk = FACET.on ? 0.4 : 1, tufts = scatter(Math.round(950 * tk), 6000, onMain(12.8, 29)).concat(scatter(Math.round(260 * tk), 2500, onDT()), nl ? scatter(Math.round(110 * tk) * nl, 900 * nl, onLobes()) : []);
+  const tuftP = assetParts('tuft')[0], greens = FACET.on ? ['#b4c23c', '#c2cc4a', '#a9b834', '#bcc846', '#b0c040'] : ['#6cc15a', '#7fcf66', '#5db552', '#8ad870', '#74c860'];
+  G.add(instanced(tuftP.geo, bakedMat('tuftMat', { side: T3.DoubleSide }), tufts, ([x, z]) => ({ x, z, s: 1.1 + rand() * 0.9, sy: (0.8 + rand() * 0.6) * (FACET.on ? 0.7 : 1), c: pick(greens) })));
   // flower patches: a handful of one kind and color growing together
   flowerSpots = [];
   const centers = scatter(34, 2000, onMain(13.5, 28)).concat(scatter(9, 900, onDT()), nl ? scatter(4 * nl, 300 * nl, onLobes()) : []);
@@ -115,11 +116,11 @@ function gfxMeadow() {
   const shrooms = scatter(16, 900, () => { const a = rand() * 6.28, r = 25.5 + rand() * 3, x = Math.sin(a) * r, z = -Math.cos(a) * r; return freeMain(x, z) ? [x, z] : null; });
   for (const P of assetParts('mushroom')) G.add(instanced(P.geo, bakedMat('mushroom'), shrooms, ([x, z], i) => ({ x, z, s: 0.9 + ((i * 37) % 10) / 10, ry: i })));
   const rocks = scatter(14, 900, () => { const a = rand() * 6.28, r = 27 + rand() * 2.2, x = Math.sin(a) * r, z = -Math.cos(a) * r; return freeMain(x, z) ? [x, z] : null; }).concat(scatter(6, 600, onDT()));
-  ['rockA', 'rockB', 'rockC'].forEach((k, j) => { const L = rocks.filter((_, i) => i % 3 === j); if (L.length) G.add(instanced(assetParts(k)[0].geo, bakedMat('rock', { flatShading: true, roughness: 0.95 }), L, ([x, z]) => ({ x, y: -0.12, z, s: 0.45 + rand() * 0.55, c: pick(['#c9c2d6', '#b8b0c8', '#d6cfc0', '#bfc6cf']) }))); });
+  ['rockA', 'rockB', 'rockC'].forEach((k, j) => { const L = rocks.filter((_, i) => i % 3 === j); if (L.length) G.add(instanced(assetParts(k)[0].geo, bakedMat('rock', { flatShading: true, roughness: 0.95 }), L, ([x, z]) => ({ x, y: -0.12, z, s: FACET.on ? 0.55 + rand() * 0.75 : 0.45 + rand() * 0.55, c: pick(FACET.on ? ['#c8b58a', '#bfae84', '#d2c29a', '#c9b48c', '#d98c5e'] : ['#c9c2d6', '#b8b0c8', '#d6cfc0', '#bfc6cf']) }))); });
   for (const [x, z] of scatter(3, 400, onMain(22, 28.5))) G.add(propAt('stump', {}, x, z, 1.1));
   // the beach: palm trees, starfish and shells
   const [bx, bz] = BEACH;
-  for (const [a, r, s] of [[0.5, 6.2, 1.1], [2.2, 7.4, 0.95], [4.6, 6.8, 1.2]]) { const px = bx + Math.cos(a) * r, pz = bz + Math.sin(a) * r; const pm = propAt('palm', {}, px, pz, s, a + Math.PI); pm.traverse((o) => { if (o.isMesh) o.castShadow = true; }); G.add(pm); }
+  for (const [a, r, s] of [[0.5, 6.2, 1.1], [2.2, 7.4, 0.95], [4.6, 6.8, 1.2]]) { const px = bx + Math.cos(a) * r, pz = bz + Math.sin(a) * r; const pm = propAt('palm', { leaf: '#8fd48a' }, px, pz, s, a + Math.PI); pm.traverse((o) => { if (o.isMesh) o.castShadow = true; }); G.add(pm); }
   for (let i = 0; i < 9; i++) { const a = rand() * 6.28, r = 2 + rand() * 6, k = i % 3 ? 'shell' : 'starfish'; G.add(propAt(k, {}, bx + Math.cos(a) * r, bz + Math.sin(a) * r, 0.9 + rand() * 0.6, rand() * 6.28, 0.06)); }
   G.traverse((o) => { if (o.isMesh && !o.isInstancedMesh) o.raycast = () => {}; });
 }
@@ -285,6 +286,7 @@ function gfxFrame(dt) {
   gfxWatch(dt);
   const L = daylight(), t = W.t, dusk = t > 0.5 && t < 0.66 ? Math.sin(((t - 0.5) / 0.16) * Math.PI) : t < 0.04 ? Math.sin((t / 0.04) * Math.PI) * 0.6 : 0;
   const clear = W.weather === 'clear', box = cfg.boxMode, M = moodOf();
+  if (M.lowSun) sun.position.y *= M.lowSun;
   // sky: the old background color becomes the top of a gradient dome
   if (skyDome) {
     skyDome.visible = !box;
@@ -299,7 +301,7 @@ function gfxFrame(dt) {
     skyDome.position.copy(camera.position);
   }
   // fog: a soft haze toward the horizon
-  if (!box) { if (!scene.fog) scene.fog = new T3.Fog(_skyHor.getHex(), 150, 420); scene.fog.color.copy(_skyHor); } else scene.fog = null;
+  if (!box) { if (!scene.fog) scene.fog = new T3.Fog(_skyHor.getHex(), 150, 420); scene.fog.color.copy(_skyHor); scene.fog.near = M.fog ? M.fog[0] : 150; scene.fog.far = M.fog ? M.fog[1] : 420; } else scene.fog = null;
   // lights for the new materials: warm sun by day, a cool moon at night
   const N = Math.max(0, Math.min(1, (0.62 - L) / 0.37)), wet = clear ? 1 : 0.6;
   const nb = box ? 1.7 : 1;
@@ -318,8 +320,10 @@ function gfxFrame(dt) {
     const U = waterMesh.material.uniforms;
     U.uT.value = now % 3000; U.uL.value = Math.max(0.12, L * (1 - N * 0.7)); U.uBox.value = box ? 1 : 0;
     U.uSunDir.value.copy(sun.position).normalize(); U.uSunC.value.set('#fff4dc').lerp(_c1.set('#ffb07a'), dusk);
-    U.uFogC.value.copy(_skyHor);
-    U.uShallow.value.set(clear ? M.water[0] : '#7cc9c4'); U.uMid.value.set(clear ? M.water[1] : '#5a9fbf'); U.uDeep.value.set(box ? M.waterBox : clear ? M.water[2] : '#3d6a9a');
+    U.uFogC.value.copy(_skyHor); U.uFogN.value = M.fog ? M.fog[0] - 10 : 140; U.uFogF.value = M.fog ? M.fog[1] - 40 : 380;
+    // by night every look's sea goes back to a deep clear blue, which glows in the box
+    U.uShallow.value.set(clear ? M.water[0] : '#7cc9c4').lerp(_c1.set('#5ff0e2'), N); U.uMid.value.set(clear ? M.water[1] : '#5a9fbf').lerp(_c1.set('#34bfe9'), N); U.uDeep.value.set(box ? M.waterBox : clear ? M.water[2] : '#3d6a9a').lerp(_c1.set(box ? '#0c3c6e' : '#2c7ddb'), N);
+    const fw = matCache.get('fountainWater'); if (fw) { fw.color.set(M.fountain || '#8fd8ff'); if (M.fountain) fw.emissive.copy(fw.color).multiplyScalar(0.16); else fw.emissive.set('#1a4a66'); }
     if (seabed) seabed.visible = !box;
   }
   crittersFrame(dt); claudeCatFrame(); skyFxFrame(dt); gemsFrame();
@@ -342,7 +346,7 @@ function lampPools(N) {
 // seasons recolor the Blender crowns and the lawn too
 function gfxSeason(S, T) {
   if (!gfxOn()) return;
-  for (const k of FOLIAGE) { const m = matCache.get('leaf:' + k); if (m) moodLeaf(m.color.set(T[k] || k)); }
+  for (const k of FOLIAGE) for (const pre of ['leaf:', 'leaf2:']) { const m = matCache.get(pre + k); if (m) moodLeaf(m.color.set(T[k] || k)); }
   const base = moodGrass();
   if (S.id === 'autumn') base.lerp(new T3.Color('#c9b36a'), T.grass);
   if (S.id === 'winter') base.lerp(new T3.Color('#f4f8ff'), T.grass);

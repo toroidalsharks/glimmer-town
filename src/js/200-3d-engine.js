@@ -95,7 +95,7 @@ function buildTown() {
   pathTo([0, 29]);
 
   // fountain
-  const stone = toon('#d4cbe0'), water = toon('#8fd8ff', { emissive: new T3.Color('#1a4a66') });
+  const stone = toon('#d4cbe0'), water = toon('#8fd8ff', { emissive: new T3.Color('#1a4a66') }); matCache.set('fountainWater', water);
   scene.add(mesh(cyl(3.2, 3.4, 0.7), stone, 0, 0.35, 0));
   scene.add(mesh(cyl(2.85, 2.85, 0.1), water, 0, 0.68, 0, false));
   scene.add(mesh(cyl(0.4, 0.5, 2.2), stone, 0, 1.6, 0));
