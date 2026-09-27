@@ -55,6 +55,7 @@ function freeDT(x, z, pad = 0) {
   if (Math.hypot(x, z) < 31) return false;
   for (const b of Object.values(DT_BLD)) { const [bx, bz] = polarDT(b.a, b.r); if (Math.hypot(x - bx, z - bz) < b.d * 0.75 + 1.4 + pad) return false; if (segDist(x, z, polarDT(b.a, 10), polarDT(b.a, b.r)) < 2 + pad) return false; }
   const gate = [polar(20, 11.4), ...DT_GATE, DT_HUB]; for (let i = 0; i < gate.length - 1; i++) if (segDist(x, z, gate[i], gate[i + 1]) < 2.2 + pad) return false;
+  if (segDist(x, z, SL_WALK[0], SL_WALK[1]) < 2.6 + pad) return false;
   return true;
 }
 function freeLobe(x, z, pad = 0) {

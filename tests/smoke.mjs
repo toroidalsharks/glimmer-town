@@ -239,7 +239,7 @@ try {
   await page.reload();
   await page.waitForFunction(() => window.__g && window.__g.ev('typeof W !== "undefined" && W.people.length > 0'), null, { timeout: 60000 });
   const after = await E(`JSON.stringify([W.day, W.people.length, jailedPeople().map((p) => p.id)])`);
-  ok(before === after, 'the town survives a reload');
+  ok(before === after, 'the town survives a reload' + (before === after ? '' : ' ' + before + ' vs ' + after));
   ok(await E(`(W.records || []).some((r) => r.kind === 'verdict')`), 'the town record survives a reload');
 } catch (e) {
   console.log(' FAIL  the test itself crashed: ' + e.message); failed++;

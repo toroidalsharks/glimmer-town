@@ -8,10 +8,10 @@ function uniqueName() {
   return 'Kin' + W.nextId;
 }
 function mixHue(a, b) { const d = ((b - a + 540) % 360) - 180; return (a + d / 2 + 360) % 360; }
-function freeRoom() { for (let i = 0; i < MAX_POP; i++) if (!W.people.some((p) => p.room === i)) return i; return -1; }
+function freeRoom() { const n = roomCount(); if (residentCount() >= n) return -1; for (let i = 0; i < n; i++) if (!W.people.some((p) => p.room === i)) return i; return -1; }
 for (const [k, c] of Object.entries({ nook: 'blue', garden: 'blue', pier: 'blue' })) JOBS[k].collar = c;
 for (const J of Object.values(JOBS)) J.collar = J.collar || 'service';
-const randomJob = () => pick(Object.keys(JOBS).filter((k) => JOBS[k].collar !== 'white'));
+const randomJob = () => pick(Object.keys(JOBS).filter((k) => JOBS[k].collar !== 'white' && jobOpen(k)));
 const randAff = (keys) => Object.fromEntries(keys.map((k) => [k, rand() * 2 - 1]));
 
 function birth(a, b) {

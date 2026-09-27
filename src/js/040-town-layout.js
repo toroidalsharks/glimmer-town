@@ -28,5 +28,5 @@ TOWN.beach = { name: 'Seashell Beach', spot: polar(222, 36), entry: [polar(229, 
 TOWN.downtown = { name: 'downtown', spot: [DT.x, DT.z + 6], entry: [...DT_GATE, DT_HUB], local: [], zone: 'dt' };
 const BEACH = polar(222, 39), BEACH_R = 9.5;
 const OBSTACLES = [[0, 0, FOUNTAIN_R], [DT.x, DT.z, 3.6]];
-const homeKey = (p) => (p.room >= 15 ? 'home3' : p.room >= 9 ? 'home2' : 'home');
+const homeKey = (p) => (p.room >= MAX_POP ? 'tower' : p.room >= 15 ? 'home3' : p.room >= 9 ? 'home2' : 'home');
 

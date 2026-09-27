@@ -43,6 +43,7 @@ function sendVisit(p) {
 }
 function arriveVisitor(d) {
   const q = d.person; if (!q) return true;
+  if (cityTurnBack(d)) return true;
   q.visitor = { home: d.from, homeId: d.homeId, leaveDay: W.day + 1 };
   q.id = 'v' + (W.nextId++);
   while (W.people.some((x) => x.name === q.name)) q.name += 'a';
