@@ -227,7 +227,7 @@ try {
     for (const [part, list] of [['layer', LOOK_LAYERS], ['bottom', LOOK_BOTTOMS], ['head', LOOK_HEADS], ['neck', LOOK_NECKS], ['extra', LOOK_EXTRAS], ['glasses', LOOK_GLASSES.map(([k]) => k)]]) for (const v of list) lookEdit(p.id, part, v);
     for (const s of Object.keys(HAIR_STYLES)) setHair(p.id, s, null);
     p.look = JSON.parse(was); Object.assign(hairOf(p), hair); restyleLook(p); restyleHair(p); return FASHION_ORDER.length === 37 && Object.keys(HAIR_STYLES).length === 18; })()`), 'every style, piece and haircut in the Look studio builds');
-  ok(await E(`(() => { const before = cfg.mood; for (const k of Object.keys(MOODS)) { if (k === 'storybook') continue; setMood(k); gfxFrame(0.016); if (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() !== MOODS[k].ui.accent) return false; } cfg.mood = before; moodMenus(); return !!document.querySelector('#moodBox [data-mood]') && typeof artPaint('#ff0000') === 'string'; })()`), 'town moods recolor the town and the menus');
+  ok(await E(`(() => { const before = cfg.mood; for (const k of Object.keys(MOODS)) { if (k === 'storybook') continue; setMood(k); gfxFrame(0.016); if (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() !== MOODS[k].ui.accent) return false; } cfg.mood = before; moodMenus(); return !!document.querySelector('#moodBox [data-mood]'); })()`), 'town moods recolor the town and the menus');
 
   // 4. a wedding scene
   await E(`(() => { const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p)).slice(2); weddingCut(a, b); })()`);

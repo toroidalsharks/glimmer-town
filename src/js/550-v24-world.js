@@ -341,11 +341,10 @@ function lampPools(N) {
 // seasons recolor the Blender crowns and the lawn too
 function gfxSeason(S, T) {
   if (!gfxOn()) return;
-  for (const k of FOLIAGE) { const m = matCache.get('leaf:' + k); if (m) m.color.set(artPaint(T[k] || k)); }
+  for (const k of FOLIAGE) { const m = matCache.get('leaf:' + k); if (m) m.color.set(T[k] || k); }
   const base = moodGrass();
   if (S.id === 'autumn') base.lerp(new T3.Color('#c9b36a'), T.grass);
   if (S.id === 'winter') base.lerp(new T3.Color('#f4f8ff'), T.grass);
-  base.set(artPaint(base));
   for (const key of ['world:grass', 'world:grassLobe']) { const g = matCache.get(key); if (g) g.color.copy(base); }
   const tm = matCache.get('baked:tuftMat'); if (tm) tm.color.set(S.id === 'winter' ? '#e8eef8' : S.id === 'autumn' ? '#d8c890' : '#ffffff');
   if (CRIT.ff) CRIT.ff.material.color.set(S.id === 'summer' ? '#e8ff9a' : '#fff0b0');

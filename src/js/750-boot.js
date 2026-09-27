@@ -11,7 +11,7 @@ function hud() {
 async function boot() {
   loadPrefs();
   if (![...$('#dayLen').options].some((o) => o.value === String(cfg.daySec))) cfg.daySec = 300;
-  syncSettingsUI(); artStart(); moodMenus(); wireMoodSettings();
+  syncSettingsUI(); moodMenus(); wireMoodSettings();
   Sound.boot();
   await initRuntime();
   // decide whether this device runs the town or acts as its remote
