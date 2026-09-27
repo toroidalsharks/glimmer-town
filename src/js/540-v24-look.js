@@ -187,7 +187,7 @@ function grassMat(lobe) {
   const [lo, hi, pa] = FACET.on ? [0.93, 1.05, 0.1] : [0.82, 1.1, 0.16];
   return worldMat(lobe ? 'grassLobe' : 'grass', ISL.grass, gfxTextures().grass, 0.3, lo, hi, pa);
 }
-function pathMat() { return gfxOn() ? worldMat('cobble', FACET.on ? '#dccfb6' : '#f1e6d2', gfxTextures().cobble, 0.34, 0.72, 1.06, 0.06) : toon('#efe4d0'); }
+function pathMat() { return gfxOn() ? worldMat('cobble', FACET.on ? '#d4c4a6' : '#f1e6d2', gfxTextures().cobble, 0.34, 0.72, 1.06, 0.06) : toon('#efe4d0'); }
 // a soft dark footprint under each building so it sits on the ground
 function gfxContact(g) {
   if (!gfxOn()) return;
@@ -410,7 +410,7 @@ function islandPiece(x, z, R, grass, opts = {}) {
 function sandPiece(x, z, R) {
   const g = new T3.Group(); g.position.set(x, 0, z);
   const pts = [[0.001, 0.05], [R - 1.2, 0.05], [R - 0.2, -0.05], [R + 0.8, -0.45], [R + 1.8, -0.85], [R + 3, -1.3], [R + 6, -2.8]].map(([r, y]) => new T3.Vector2(r, y));
-  const m = mesh(new T3.LatheGeometry(pts.reverse(), FACET.on ? 32 : 72), worldMat('sand', FACET.on ? '#e6d09e' : '#f6e4b8', gfxTextures().sand, 0.35, 0.86, 1.08, 0.08), 0, 0, 0, false);
+  const m = mesh(new T3.LatheGeometry(pts.reverse(), FACET.on ? 32 : 72), worldMat('sand', FACET.on ? '#dec899' : '#f6e4b8', gfxTextures().sand, 0.35, 0.86, 1.08, 0.08), 0, 0, 0, false);
   m.receiveShadow = true; g.add(m);
   return g;
 }

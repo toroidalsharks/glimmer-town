@@ -325,6 +325,8 @@ function gfxFrame(dt) {
     U.uFogC.value.copy(_skyHor); U.uFogN.value = M.fog ? M.fog[0] - 10 : 140; U.uFogF.value = M.fog ? M.fog[1] - 40 : 380;
     // by night every look's sea goes back to a deep clear blue, which glows in the box
     U.uShallow.value.set(clear ? M.water[0] : '#7cc9c4').lerp(_c1.set('#5ff0e2'), N); U.uMid.value.set(clear ? M.water[1] : '#5a9fbf').lerp(_c1.set('#34bfe9'), N); U.uDeep.value.set(box ? M.waterBox : clear ? M.water[2] : '#3d6a9a').lerp(_c1.set(box ? '#0c3c6e' : '#2c7ddb'), N);
+    // by day a little glow of their own keeps the low-poly crowns' shaded sides from going khaki
+    if (FACET.on) for (const k of FOLIAGE) for (const pre of ['leaf:', 'leaf2:']) { const m = matCache.get(pre + k); if (m) m.emissive.copy(m.color).multiplyScalar(0.1 * (1 - N)); }
     const fw = matCache.get('fountainWater'); if (fw) { fw.color.set(M.fountain || '#8fd8ff'); if (M.fountain) fw.emissive.copy(fw.color.lerp(_c1.set('#8fd8ff'), N)).multiplyScalar(0.16 + 0.26 * N); else fw.emissive.set('#1a4a66'); }
     if (seabed) seabed.visible = !box;
   }

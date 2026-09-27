@@ -17,7 +17,7 @@ const MOODS = {
     top: ['#7fbcec', '#b98ac4', '#141238'], hor: ['#fff1dc', '#ffb68c', '#2c2860'], duskK: [0.5, 0.9], lowSun: 0.72,
     sun: ['#fff2d8', '#ffbe8a', '#a8b0ff'], hemi: ['#fff1dc', '#d6c2e6', '#7078d8'], ground: ['#b0a860', '#3c3468'],
     rim: ['#fff0f6', '#ffc0a0', '#9fb8ff'], rimK: 0, light: [1, 1.15],
-    water: ['#9ae6d0', '#5ec8c6', '#3fa6bc'], waterBox: '#0c3c6e', fountain: '#86d0cc',
+    water: ['#9ae6d0', '#5ec8c6', '#3fa6bc'], waterBox: '#0c3c6e', fountain: '#7fd6ea',
     grass: ['#d3d98c', 0.75], leaf: ['#bcc44c', 0.86], tuft: '#ffffff',
     sat: 1.12, lift: [0.97, 0.98, 1.04], gain: [1.03, 1.0, 0.96],
     ui: { accent: '#d8e48a', accent2: '#ffb48a', glow: '210, 170, 90', bg: '#15120f', panel: '30, 25, 21' },
@@ -27,8 +27,8 @@ const MOODS = {
     top: ['#d98f6a', '#c27a88', '#1a1238'], hor: ['#f0bf96', '#ff9c78', '#2c2050'], duskK: [0.45, 0.9], fog: [140, 460], lowSun: 0.5,
     sun: ['#ffdcb0', '#ff9058', '#a0a8ff'], hemi: ['#f0dcd0', '#ffb094', '#6a68d0'], ground: ['#b8a888', '#3a3060'],
     rim: ['#fff0f6', '#ffc0a0', '#9fb8ff'], rimK: 0, light: [1, 1.1],
-    water: ['#a88ab8', '#9a80b6', '#8a6cac'], waterBox: '#2a1e5a', fountain: '#d6bce0',
-    grass: ['#dcd694', 0.75], leaf: ['#d4bc48', 0.85], tuft: '#ffe2a0', sand: '#d6bc8a',
+    water: ['#a88ab8', '#9a80b6', '#8a6cac'], waterBox: '#2a1e5a', fountain: '#a48ac2',
+    grass: ['#dcd694', 0.75], leaf: ['#d8c850', 0.85], tuft: '#ffe2a0', sand: '#d6bc8a',
     sat: 1.06, lift: [1.0, 0.98, 0.99], gain: [1.02, 0.99, 0.96],
     ui: { accent: '#ffcf8a', accent2: '#c9a8f0', glow: '230, 150, 110', bg: '#170f14', panel: '32, 22, 26' },
   },
@@ -75,8 +75,9 @@ function moodGrass() {
 function moodLeaf(c) {
   const L = moodOf().leaf;
   if (!L || !(c.g > c.r * 1.05 && c.g > c.b)) return c;
+  // deep greens (the pines) only lean a little, so they stay a cooler green
   const l = c.r * 0.3 + c.g * 0.59 + c.b * 0.11;
-  return c.lerp(new T3.Color(L[0]), L[1]).multiplyScalar(Math.min(1.12, Math.max(0.7, Math.pow(l / 0.66, 1.3))));
+  return c.lerp(new T3.Color(L[0]), L[1] * (l < 0.58 ? 0.4 : 1)).multiplyScalar(Math.min(1.12, Math.max(0.7, Math.pow(l / 0.62, 2))));
 }
 // menus pick up the look's accents on every device (the remote uses its own pref)
 function moodMenus() {
@@ -183,13 +184,13 @@ function clumpCanopy(bb, S) {
 function ballCanopy(bb, S) {
   const r = mulberry(S.seed), lo = bb.min, hi = bb.max, cx = (lo.x + hi.x) / 2, cz = (lo.z + hi.z) / 2;
   const W = Math.min(hi.x - lo.x, hi.z - lo.z) / 2, H = hi.y - lo.y, pos = [], col = [];
-  const balls = [[0, S.low ? 0.5 : 0.52, 0, S.low ? 0.62 : 0.5]];
+  const balls = [[0, S.low ? 0.5 : 0.52, 0, S.low ? 0.62 : 0.52]];
   for (let i = 1; i < S.balls; i++) {
-    const last = i === S.balls - 1 && !S.low, a = (i / (S.balls - (S.low ? 0 : 1))) * 6.2832 + r() * 0.8, d = last ? 0.12 : 0.52 + r() * 0.1;
-    balls.push([Math.cos(a) * d, last ? 0.78 : (S.low ? 0.42 : 0.4) + r() * 0.12, Math.sin(a) * d, last ? 0.34 : (S.low ? 0.46 : 0.4) + r() * 0.08]);
+    const last = i === S.balls - 1 && !S.low, a = (i / (S.balls - (S.low ? 0 : 1))) * 6.2832 + r() * 0.8, d = last ? 0.18 : 0.5 + r() * 0.14;
+    balls.push([Math.cos(a) * d, last ? 0.76 : (S.low ? 0.42 : 0.36) + r() * 0.16, Math.sin(a) * d, last ? 0.36 : (S.low ? 0.46 : 0.3) + r() * 0.16]);
   }
   for (const [bx, by, bz, br] of balls) {
-    const g = new T3.IcosahedronGeometry(1, 1), P = g.attributes.position.array, rad = br * W, sy = S.low ? 0.8 : 0.92;
+    const g = new T3.IcosahedronGeometry(1, 1), P = g.attributes.position.array, rad = br * W, sy = S.low ? 0.8 : 0.82;
     // nudge each corner in or out, the same amount wherever it is shared
     const bump = new Map();
     for (let k = 0; k < P.length; k += 3) {
@@ -198,8 +199,8 @@ function ballCanopy(bb, S) {
       pos.push(cx + bx * W + P[k] * rad * s, lo.y + by * H + P[k + 1] * rad * s * sy, cz + bz * W + P[k + 2] * rad * s);
     }
     for (let k = 0; k < P.length; k += 9) {
-      const ny = (P[k + 1] + P[k + 4] + P[k + 7]) / 3, v = (ny < -0.35 ? 0.72 : ny < 0.2 ? 0.92 : 1.02) * (0.95 + r() * 0.1);
-      for (let j = 0; j < 3; j++) col.push(v, v, v);
+      const ny = (P[k + 1] + P[k + 4] + P[k + 7]) / 3, v = 0.95 + r() * 0.1, sh = ny < -0.35 ? [0.7, 0.62, 0.6] : ny < 0.2 ? [0.93, 0.9, 0.88] : [1.04, 1.04, 1.02];
+      for (let j = 0; j < 3; j++) col.push(sh[0] * v, sh[1] * v, sh[2] * v);
     }
     g.dispose();
   }

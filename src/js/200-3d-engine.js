@@ -252,7 +252,7 @@ function buildTown() {
   }
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2 + 0.2, x = Math.cos(a) * 12.8, z = Math.sin(a) * 12.8;
-    scene.add(mesh(cyl(0.09, 0.12, 3.8, 8), toon('#5a5470'), x, 1.9, z));
+    scene.add(mesh(cyl(0.09, 0.12, 3.8, 8), toon(FACET.on ? '#6a5440' : '#5a5470'), x, 1.9, z));
     const lm = makeToon({ color: '#fff4c4', gradientMap: gradMap, emissive: new T3.Color('#000') }); lampMats.push(lm);
     scene.add(mesh(sph(0.36, 12, 8), lm, x, 3.95, z, false));
   }
