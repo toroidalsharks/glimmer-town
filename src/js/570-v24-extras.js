@@ -155,7 +155,7 @@ function mergeGeos(list, withUv = false) {
   for (const it of list) {
     const g = (it.geo.index ? it.geo.toNonIndexed() : it.geo.clone());
     e.set(it.rx || 0, it.ry || 0, it.rz || 0); q.setFromEuler(e); M.compose(new T3.Vector3(it.x || 0, it.y || 0, it.z || 0), q, new T3.Vector3(1, 1, 1)); g.applyMatrix4(M);
-    const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv; c.set(it.color || '#ffffff');
+    const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv; c.set(artPaint(it.color || '#ffffff'));
     for (let i = 0; i < P.count; i++) { pos.push(P.getX(i), P.getY(i), P.getZ(i)); nor.push(N.getX(i), N.getY(i), N.getZ(i)); col.push(c.r, c.g, c.b); if (withUv) uv.push(U ? U.getX(i) : 0, U ? U.getY(i) : 0); }
     g.dispose();
   }

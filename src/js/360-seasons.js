@@ -25,9 +25,9 @@ function applySeason(force) {
   if (!force && seasonShown === S.id) return;
   seasonShown = S.id;
   const T = SEASON_TINT[S.id];
-  for (const k of FOLIAGE) { const m = matCache.get(k); if (m) m.color.set(T[k] || k); }
+  for (const k of FOLIAGE) { const m = matCache.get(k); if (m) m.color.set(artPaint(T[k] || k)); }
   const g = matCache.get(ISL.grass);
-  if (g) { g.color.set(ISL.grass); if (S.id === 'autumn') g.color.lerp(new T3.Color('#c9b36a'), T.grass); if (S.id === 'winter') g.color.lerp(new T3.Color('#fbfdff'), T.grass); }
+  if (g) { g.color.set(ISL.grass); if (S.id === 'autumn') g.color.lerp(new T3.Color('#c9b36a'), T.grass); if (S.id === 'winter') g.color.lerp(new T3.Color('#fbfdff'), T.grass); g.color.set(artPaint(g.color)); }
   gfxSeason(S, T);
   buildSnowmen();
 }

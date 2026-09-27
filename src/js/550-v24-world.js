@@ -283,12 +283,12 @@ function gfxFrame(dt) {
   if (!gfxOn()) { renderer.setRenderTarget(null); return; }
   gfxWatch(dt);
   const L = daylight(), t = W.t, dusk = t > 0.5 && t < 0.66 ? Math.sin(((t - 0.5) / 0.16) * Math.PI) : t < 0.04 ? Math.sin((t / 0.04) * Math.PI) * 0.6 : 0;
-  const clear = W.weather === 'clear', box = cfg.boxMode;
+  const clear = W.weather === 'clear', box = cfg.boxMode, M = moodOf();
   // sky: the old background color becomes the top of a gradient dome
   if (skyDome) {
     skyDome.visible = !box;
-    _skyTop.set('#0b1233').lerp(_c1.set('#4aa8ff'), L).lerp(_c1.set('#7a6ab8'), dusk * 0.45);
-    _skyHor.set('#1d2a5a').lerp(_c1.set('#dff3ff'), L).lerp(_c1.set('#ffb99a'), dusk * 0.85);
+    _skyTop.set(M.top[2]).lerp(_c1.set(M.top[0]), L).lerp(_c1.set(M.top[1]), dusk * M.duskK[0]);
+    _skyHor.set(M.hor[2]).lerp(_c1.set(M.hor[0]), L).lerp(_c1.set(M.hor[1]), dusk * M.duskK[1]);
     if (!clear) { _skyTop.lerp(_c1.set('#8f9bb5'), 0.55 * L); _skyHor.lerp(_c1.set('#c9d0dc'), 0.5 * L); }
     if (flash > 0) { _skyTop.lerp(_c1.set('#ffffff'), flash * 0.5); _skyHor.lerp(_c1.set('#ffffff'), flash * 0.5); }
     SKY.top.copy(_skyTop); SKY.hor.copy(_skyHor);
@@ -303,14 +303,14 @@ function gfxFrame(dt) {
   const N = Math.max(0, Math.min(1, (0.62 - L) / 0.37)), wet = clear ? 1 : 0.6;
   const nb = box ? 1.7 : 1;
   sun.intensity = (GFX.sunK ?? 0.8) * L * wet * (1 - N) + 0.16 * N * nb;
-  sun.color.set('#fff3dc').lerp(_c1.set('#ffa468'), dusk * 0.75).lerp(_c1.set('#9fb4ff'), N);
+  sun.color.set(M.sun[0]).lerp(_c1.set(M.sun[1]), dusk * 0.75).lerp(_c1.set(M.sun[2]), N);
   GFX.dusk = dusk * (1 - N);
   hemi.intensity = ((GFX.hemiK ?? 0.3) + 0.12 * L) * (1 - N) + 0.16 * N * nb;
-  hemi.color.set('#cfe8ff').lerp(_c1.set('#ffb0c8'), dusk * 0.45).lerp(_c1.set('#6a78d8'), N);
-  hemi.groundColor.set('#b9cf95').lerp(_c1.set('#3a3668'), N);
+  hemi.color.set(M.hemi[0]).lerp(_c1.set(M.hemi[1]), dusk * 0.45).lerp(_c1.set(M.hemi[2]), N);
+  hemi.groundColor.set(M.ground[0]).lerp(_c1.set(M.ground[1]), N);
   nightLight.intensity = 0.06 * N;
   if (fillLight) { fillLight.intensity = (0.06 + 0.08 * L) * (1 - N); fillLight.color.set('#d8e4ff'); }
-  RIM.color.value.set('#fff0f6').lerp(_c1.set('#ffc0a0'), dusk * 0.6).lerp(_c1.set('#9fb8ff'), N); RIM.k.value = box ? 0.6 : 0.28 + N * 0.3;
+  RIM.color.value.set(M.rim[0]).lerp(_c1.set(M.rim[1]), dusk * 0.6).lerp(_c1.set(M.rim[2]), N); RIM.k.value = (box ? 0.6 : 0.28 + N * 0.3) + M.rimK;
   lampPools(N);
   // water
   if (waterMesh) {
@@ -318,7 +318,7 @@ function gfxFrame(dt) {
     U.uT.value = now % 3000; U.uL.value = Math.max(0.12, L * (1 - N * 0.7)); U.uBox.value = box ? 1 : 0;
     U.uSunDir.value.copy(sun.position).normalize(); U.uSunC.value.set('#fff4dc').lerp(_c1.set('#ffb07a'), dusk);
     U.uFogC.value.copy(_skyHor);
-    U.uShallow.value.set(clear ? '#5ff0e2' : '#7cc9c4'); U.uMid.value.set(clear ? '#34bfe9' : '#5a9fbf'); U.uDeep.value.set(box ? '#0c3c6e' : clear ? '#2c7ddb' : '#3d6a9a');
+    U.uShallow.value.set(clear ? M.water[0] : '#7cc9c4'); U.uMid.value.set(clear ? M.water[1] : '#5a9fbf'); U.uDeep.value.set(box ? M.waterBox : clear ? M.water[2] : '#3d6a9a');
     if (seabed) seabed.visible = !box;
   }
   crittersFrame(dt); claudeCatFrame(); skyFxFrame(dt); gemsFrame();
@@ -341,10 +341,11 @@ function lampPools(N) {
 // seasons recolor the Blender crowns and the lawn too
 function gfxSeason(S, T) {
   if (!gfxOn()) return;
-  for (const k of FOLIAGE) { const m = matCache.get('leaf:' + k); if (m) m.color.set(T[k] || k); }
-  const base = new T3.Color(ISL.grass);
+  for (const k of FOLIAGE) { const m = matCache.get('leaf:' + k); if (m) m.color.set(artPaint(T[k] || k)); }
+  const base = moodGrass();
   if (S.id === 'autumn') base.lerp(new T3.Color('#c9b36a'), T.grass);
   if (S.id === 'winter') base.lerp(new T3.Color('#f4f8ff'), T.grass);
+  base.set(artPaint(base));
   for (const key of ['world:grass', 'world:grassLobe']) { const g = matCache.get(key); if (g) g.color.copy(base); }
   const tm = matCache.get('baked:tuftMat'); if (tm) tm.color.set(S.id === 'winter' ? '#e8eef8' : S.id === 'autumn' ? '#d8c890' : '#ffffff');
   if (CRIT.ff) CRIT.ff.material.color.set(S.id === 'summer' ? '#e8ff9a' : '#fff0b0');

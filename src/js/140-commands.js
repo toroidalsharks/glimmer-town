@@ -120,7 +120,7 @@ function applyCmd(c) {
     case 'follow': openDetail = c.id || null; if (MODE === 'host' && c.id) lastTouch = now; return '';
     case 'room': if (c.id) openInterior({ kind: 'room', id: c.id }); else closeInterior(); return '';
     case 'shopview': if (SHOPS[c.shop]) openInterior({ kind: 'shop', shop: c.shop }); return '';
-    case 'set': if (c.key === 'gfx' && GFX_LEVELS[c.value]) { if (MODE === 'host') { gfxSetting(c.value); wireGfxSettings(); } return ''; } if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec', 'cute', 'cutscenes'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); if (c.key === 'cute' && MODE === 'host') setTimeout(() => location.reload(), 800); } return '';
+    case 'set': if (c.key === 'gfx' && GFX_LEVELS[c.value]) { if (MODE === 'host') { gfxSetting(c.value); wireGfxSettings(); } return ''; } if (c.key === 'mood' && MOODS[c.value]) { if (MODE === 'host') { setMood(c.value); wireMoodSettings(); } return ''; } if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec', 'cute', 'cutscenes'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); if (c.key === 'cute' && MODE === 'host') setTimeout(() => location.reload(), 800); } return '';
     case 'plot': return plotCmd(c);
     case 'lab': if (MODE === 'host' && person(c.pid)) { labAct(c.pid, c.act, c.text).then((r) => { if (r) toast(r); if (labOpen) renderLab(); refreshPanel(false); }); setTimeout(() => { if (labOpen) renderLab(); }, 30); } return '';
     case 'labsview': if (MODE === 'host') openInterior({ kind: 'labs', wing: LAB_WINGS[c.wing] ? c.wing : labWingLast }); return '';

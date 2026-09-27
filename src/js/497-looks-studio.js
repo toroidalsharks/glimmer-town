@@ -2,24 +2,25 @@
 // LOOK STUDIO: change anyone's style, clothes, hair and face from their
 // card, piece by piece; residents sometimes change a piece themselves
 // ============================================================
-const LOOK_LAYERS = ['cardigan', 'vest', 'hoodie', 'track', 'blazer', 'flannel', 'puffer', 'shell', 'corset', 'cape', 'overalls'];
-const LOOK_BOTTOMS = ['pants', 'cargo', 'ripped', 'shorts', 'skirt', 'pleated', 'plaid', 'tutu', 'long', 'bell'];
-const LOOK_HEADS = ['cap', 'beanie', 'beret', 'flatcap', 'straw', 'bucket', 'witch', 'catears', 'flowers', 'headbow', 'hairbow', 'sidebow', 'clips', 'starclips', 'headphones'];
-const HEAD_COLORED = ['cap', 'beanie', 'beret', 'flatcap', 'bucket', 'witch', 'catears', 'hairbow', 'headbow', 'sidebow', 'headphones'];
-const LOOK_EXTRAS = ['backpack', 'tote', 'satchel', 'heartbag', 'briefcase', 'belt', 'chain', 'pendant', 'bangles', 'wristbands', 'hoops', 'harness', 'tail', 'legwarmers', 'neckphones'];
-const LOOK_NECKS = ['collar', 'bow', 'tie', 'choker', 'bell'];
-const LOOK_PALETTE = ['#2e2a36', '#4a4652', '#a3a3ad', '#fbf8f4', '#fff4dc', '#cdb88f', '#6b4a3a', '#7a2e3a', '#b8323f', '#ff6f5e', '#ffb347', '#ffe98a', '#8fae6a', '#2f5d4a', '#9fe3c4', '#9fd3ff', '#5b7fb5', '#3d4f86', '#c9b3ff', '#5e3a6e', '#ff9fbf', '#ff5fa8'];
+const LOOK_LAYERS = ['cardigan', 'vest', 'hoodie', 'track', 'blazer', 'bomber', 'flannel', 'puffer', 'shell', 'shiny', 'sailor', 'wrap', 'corset', 'cape', 'overalls'];
+const LOOK_BOTTOMS = ['pants', 'cargo', 'ripped', 'flare', 'shorts', 'skirt', 'pleated', 'plaid', 'layered', 'tutu', 'long', 'bell'];
+const LOOK_HEADS = ['cap', 'visor', 'beanie', 'beret', 'flatcap', 'straw', 'sunhat', 'bucket', 'cowboy', 'witch', 'bandana', 'catears', 'bunnyears', 'flowers', 'headbow', 'hairbow', 'sidebow', 'clips', 'starclips', 'shellclips', 'tiara', 'halo', 'headphones', 'headset'];
+const HEAD_COLORED = ['cap', 'visor', 'beanie', 'beret', 'flatcap', 'sunhat', 'bucket', 'cowboy', 'witch', 'bandana', 'catears', 'bunnyears', 'hairbow', 'headbow', 'sidebow', 'headphones', 'headset'];
+const LOOK_EXTRAS = ['backpack', 'tote', 'satchel', 'heartbag', 'briefcase', 'belt', 'chain', 'pendant', 'bangles', 'wristbands', 'hoops', 'harness', 'tail', 'wings', 'legwarmers', 'neckphones', 'skateboard', 'plush', 'lightstick'];
+const LOOK_NECKS = ['collar', 'bow', 'tie', 'choker', 'bell', 'pearls', 'scarf', 'kerchief'];
+const LOOK_PALETTE = ['#2e2a36', '#4a4652', '#a3a3ad', '#c8ccd8', '#fbf8f4', '#fff4dc', '#cdb88f', '#a8784e', '#6b4a3a', '#7a2e3a', '#b8323f', '#ff6f5e', '#ffb347', '#ffe98a', '#8fae6a', '#2f5d4a', '#9fe3c4', '#9fd3ff', '#5b7fb5', '#3d4f86', '#c9b3ff', '#5e3a6e', '#ffd6e0', '#ff9fbf', '#ff5fa8'];
+const LOOK_GLASSES = [['none', 'None'], ['round', 'Glasses'], ['shades', 'Sunglasses'], ['hearts', 'Heart shades'], ['visor', 'Shiny visor']];
 const LOOK_TIGHTS = { skin: 'Bare legs', '#2e2a36': 'Black tights', '#fbf8f4': 'White tights', '#ff9fbf': 'Pink tights', '#c9b3ff': 'Lilac tights' };
 const LIP_COLORS = ['#ff7fa0', '#ff5f8f', '#b8323f', '#5e3a6e', '#c98a6a', '#2e2a36'];
 const SKIN_TONES = [[28, 45, 82], [27, 50, 70], [24, 45, 56], [22, 40, 42], [20, 35, 30], [0, 70, 78], [35, 75, 76], [55, 70, 78], [100, 55, 76], [160, 55, 76], [200, 70, 78], [240, 60, 80], [280, 60, 80], [320, 65, 80]];
 const EAR_CHOICES = ['none', 'round', 'pointy', 'cat', 'antenna', 'sprout'];
 const KID_BLOCKED = ['corset', 'harness', 'briefcase', 'lipring', 'nosestud', 'liner', 'lips', 'underEye'];
 const LOOK_LABELS = {
-  cardigan: 'Cardigan', vest: 'Sweater vest', hoodie: 'Hoodie', track: 'Track jacket', blazer: 'Blazer', flannel: 'Flannel', puffer: 'Puffer', shell: 'Tech jacket', corset: 'Corset', cape: 'Cape', overalls: 'Overalls',
-  pants: 'Pants', cargo: 'Cargo pants', ripped: 'Ripped jeans', shorts: 'Shorts', skirt: 'Mini skirt', pleated: 'Pleated skirt', plaid: 'Plaid skirt', tutu: 'Tutu', long: 'Long skirt', bell: 'Frilly skirt',
-  cap: 'Cap', beanie: 'Beanie', beret: 'Beret', flatcap: 'Flat cap', straw: 'Straw hat', bucket: 'Bucket hat', witch: 'Witch hat', catears: 'Cat ears', flowers: 'Flower crown', headbow: 'Lace bow', hairbow: 'Ribbon', sidebow: 'Bow clip', clips: 'Hair clips', starclips: 'Star clips', headphones: 'Headphones',
-  backpack: 'Backpack', tote: 'Tote', satchel: 'Satchel', heartbag: 'Heart purse', briefcase: 'Briefcase', belt: 'Studded belt', chain: 'Wallet chain', pendant: 'Pendant', bangles: 'Bangles', wristbands: 'Wristbands', hoops: 'Hoop earrings', harness: 'Harness', tail: 'Cat tail', legwarmers: 'Leg warmers', neckphones: 'Neck headphones',
-  collar: 'Collar', bow: 'Bow', tie: 'Tie', choker: 'Choker', bell: 'Bell collar',
+  cardigan: 'Cardigan', vest: 'Sweater vest', hoodie: 'Hoodie', track: 'Track jacket', blazer: 'Blazer', bomber: 'Bomber', flannel: 'Flannel', puffer: 'Puffer', shell: 'Tech jacket', shiny: 'Metallic jacket', sailor: 'Sailor collar', wrap: 'Ballet wrap', corset: 'Corset', cape: 'Cape', overalls: 'Overalls',
+  pants: 'Pants', cargo: 'Cargo pants', ripped: 'Ripped jeans', flare: 'Flares', shorts: 'Shorts', skirt: 'Mini skirt', pleated: 'Pleated skirt', plaid: 'Plaid skirt', layered: 'Ruffle skirt', tutu: 'Tutu', long: 'Long skirt', bell: 'Frilly skirt',
+  cap: 'Cap', visor: 'Visor', beanie: 'Beanie', beret: 'Beret', flatcap: 'Flat cap', straw: 'Straw hat', sunhat: 'Sun hat', bucket: 'Bucket hat', cowboy: 'Cowboy hat', witch: 'Witch hat', bandana: 'Bandana', catears: 'Cat ears', bunnyears: 'Bunny ears', flowers: 'Flower crown', headbow: 'Lace bow', hairbow: 'Ribbon', sidebow: 'Bow clip', clips: 'Hair clips', starclips: 'Star clips', shellclips: 'Shell clips', tiara: 'Tiara', halo: 'Halo', headphones: 'Headphones', headset: 'Stage headset',
+  backpack: 'Backpack', tote: 'Tote', satchel: 'Satchel', heartbag: 'Heart purse', briefcase: 'Briefcase', belt: 'Studded belt', chain: 'Wallet chain', pendant: 'Pendant', bangles: 'Bangles', wristbands: 'Wristbands', hoops: 'Hoop earrings', harness: 'Harness', tail: 'Cat tail', wings: 'Wings', legwarmers: 'Leg warmers', neckphones: 'Neck headphones', skateboard: 'Skateboard', plush: 'Plush bear', lightstick: 'Light stick',
+  collar: 'Collar', bow: 'Bow', tie: 'Tie', choker: 'Choker', bell: 'Bell collar', pearls: 'Pearls', scarf: 'Scarf', kerchief: 'Kerchief',
 };
 let lookOpen = null, lookTab = 'style';
 
@@ -62,15 +63,16 @@ function lookOutfitHtml(p) {
   if (L.layer) h += `<div class="chips">${sws('layerColor', L.layerColor)}</div>`;
   h += lookRow(F.dress ? 'Skirt shape' : 'Bottoms', LOOK_BOTTOMS.map((k) => lookBtn(pid, 'bottom', k, LOOK_LABELS[k], L.bottom === k)).join(''));
   if (!F.dress) h += `<div class="chips">${sws('bottomColor', L.bottomColor)}</div>`;
-  if (!['pants', 'cargo', 'ripped'].includes(L.bottom)) h += lookRow('Legs', Object.entries(LOOK_TIGHTS).map(([k, n]) => lookBtn(pid, 'tights', k, n, (L.tights || 'skin') === k)).join(''));
+  if (!['pants', 'cargo', 'ripped', 'flare'].includes(L.bottom)) h += lookRow('Legs', Object.entries(LOOK_TIGHTS).map(([k, n]) => lookBtn(pid, 'tights', k, n, (L.tights || 'skin') === k)).join(''));
   h += lookRow('Shoes', sws('shoe', L.shoe) + lookBtn(pid, 'platform', 1, 'Platforms', !!L.platform));
   h += lookRow('On their head', lookBtn(pid, 'head', 'none', 'Nothing', !L.head) + LOOK_HEADS.map((k) => lookBtn(pid, 'head', k, LOOK_LABELS[k], L.head === k)).join(''));
   if (HEAD_COLORED.includes(L.head)) h += `<div class="chips">${sws('headColor', L.headColor)}</div>`;
   if (p.outfit.hat) h += `<p class="hint">They're wearing ${esc(a_an(hatText(p.outfit.hat)))} you gave them, which sits where a hat would. Clips, bows and cat ears still show.</p>`;
-  h += lookRow('Glasses', [['none', 'None'], ['round', 'Glasses'], ['shades', 'Sunglasses']].map(([k, n]) => lookBtn(pid, 'glasses', k, n, k === 'none' ? !L.glasses : k === 'shades' ? L.glasses === 'shades' : L.glasses === true)).join(''));
+  h += lookRow('Glasses', LOOK_GLASSES.map(([k, n]) => lookBtn(pid, 'glasses', k, n, k === 'none' ? !L.glasses : k === 'round' ? L.glasses === true : L.glasses === k)).join(''));
   h += lookRow('Neck', LOOK_NECKS.map((k) => lookBtn(pid, 'neck', k, LOOK_LABELS[k], (L.neck || []).includes(k))).join(''));
+  if ((L.neck || []).some((n) => ['bow', 'scarf', 'kerchief'].includes(n))) h += `<div class="chips">${sws('bowColor', L.bowColor)}</div>`;
   h += lookRow('Extras', LOOK_EXTRAS.filter((k) => kidOk(p, k)).map((k) => lookBtn(pid, 'extra', k, LOOK_LABELS[k], (L.extras || []).includes(k))).join(''));
-  if ((L.extras || []).some((e) => e === 'backpack' || e === 'legwarmers')) h += lookRow('Backpack and leg warmer color', sws('pack', L.pack));
+  if ((L.extras || []).some((e) => ['backpack', 'legwarmers', 'wings', 'skateboard', 'plush', 'lightstick'].includes(e))) h += lookRow('Color for bags, wings and the things they carry', sws('pack', L.pack));
   return h;
 }
 function lookHairHtml(p) {
@@ -120,7 +122,8 @@ function lookEdit(pid, part, val) {
     case 'platform': L.platform = !L.platform; break;
     case 'head': if (val !== 'none' && !LOOK_HEADS.includes(val)) return ''; L.head = val === 'none' ? null : val; break;
     case 'headColor': if (!pal) return ''; L.headColor = val; break;
-    case 'glasses': if (!['none', 'round', 'shades'].includes(val)) return ''; L.glasses = val === 'none' ? false : val === 'round' ? true : 'shades'; break;
+    case 'glasses': if (!LOOK_GLASSES.some(([k]) => k === val)) return ''; L.glasses = val === 'none' ? false : val === 'round' ? true : val; break;
+    case 'bowColor': if (!pal) return ''; L.bowColor = val; break;
     case 'neck': if (!LOOK_NECKS.includes(val)) return ''; L.neck = toggle(L.neck || [], val); break;
     case 'extra': if (!LOOK_EXTRAS.includes(val)) return ''; L.extras = toggle(L.extras || [], val); if (val === 'backpack' && !L.pack) L.pack = '#9fd3ff'; break;
     case 'pack': if (!pal) return ''; L.pack = val; break;
@@ -172,6 +175,17 @@ function styleWhim(p) {
 
 // ---- one-time upgrade for towns that already exist ----
 const NEW_STYLES_2 = ['comfy', 'business', 'academia', 'coquette', 'boho', 'fairy', 'kidcore', 'neko', 'egirl', 'grunge', 'witchy', 'techwear'];
+const NEW_STYLES_3 = ['decora', 'ballet', 'angel', 'mermaid', 'skater', 'beach', 'western', 'tennis', 'idol', 'cyber'];
+// Glimmer 2: a few residents try the ten new styles; Mili, Red, Tim and invited residents keep theirs
+function looks3Boot() {
+  W.added = W.added || {};
+  if (W.added.looks3) return; W.added.looks3 = true;
+  for (const p of W.people) {
+    if (!p.body || !p.look || isRealish(p) || p.look.byCreator) continue;
+    const r = seededRand(hashStr('looks3:' + p.id));
+    if (r() < 0.3) { const k = pickFashion(p, r); if (k !== p.look.fashion && NEW_STYLES_3.includes(k)) setFashion(p, k, true); }
+  }
+}
 function looksBoot() {
   W.added = W.added || {};
   if (W.added.looks2) return; W.added.looks2 = true;

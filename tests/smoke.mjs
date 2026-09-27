@@ -222,6 +222,12 @@ try {
   await page.waitForFunction(() => window.__g.ev('!!W.mail[0].reply'), null, { timeout: 30000 });
   ok(await E(`(() => { const ok = W.mail[0].reply.length === 2513 && !mailDrafts[W.mail[0].id]; mailOpen = null; sheet.hidden = true; return ok; })()`), 'a long reply is sent in full and its draft is cleared');
   ok(await E(`(() => { const p = W.people[0]; activeTab = 'people'; openDetail = p.id; lookOpen = p.id; openSheet(); CUT.sheetTouch = performance.now() - 120000; const busy = sheetBusy(); lookOpen = null; const idle = sheetBusy(); sheet.hidden = true; openDetail = null; return busy && !idle; })()`), 'scenes wait while you are dressing someone');
+  ok(await E(`(() => { const p = W.people.find((q) => q.grow >= 1 && !isRealish(q)); const was = JSON.stringify(p.look), hair = { ...hairOf(p) };
+    for (const k of FASHION_ORDER) { lookEdit(p.id, 'style', k); if (p.look.fashion !== k || !lookText(p)) return false; }
+    for (const [part, list] of [['layer', LOOK_LAYERS], ['bottom', LOOK_BOTTOMS], ['head', LOOK_HEADS], ['neck', LOOK_NECKS], ['extra', LOOK_EXTRAS], ['glasses', LOOK_GLASSES.map(([k]) => k)]]) for (const v of list) lookEdit(p.id, part, v);
+    for (const s of Object.keys(HAIR_STYLES)) setHair(p.id, s, null);
+    p.look = JSON.parse(was); Object.assign(hairOf(p), hair); restyleLook(p); restyleHair(p); return FASHION_ORDER.length === 37 && Object.keys(HAIR_STYLES).length === 18; })()`), 'every style, piece and haircut in the Look studio builds');
+  ok(await E(`(() => { const before = cfg.mood; for (const k of Object.keys(MOODS)) { if (k === 'storybook') continue; setMood(k); gfxFrame(0.016); if (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() !== MOODS[k].ui.accent) return false; } cfg.mood = before; moodMenus(); return !!document.querySelector('#moodBox [data-mood]') && typeof artPaint('#ff0000') === 'string'; })()`), 'town moods recolor the town and the menus');
 
   // 4. a wedding scene
   await E(`(() => { const [a, b] = W.people.filter((p) => !jailed(p) && p.grow >= 1 && !isRealish(p)).slice(2); weddingCut(a, b); })()`);

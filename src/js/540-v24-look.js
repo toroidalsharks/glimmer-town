@@ -10,6 +10,11 @@ const GFX = { level: 'pretty', post: false, dof: true, bloom: true, frames: [], 
 function makeToon(p) {
   if (!gfxOn()) return new T3.MeshToonMaterial(p);
   const q = { ...(p || {}) }; delete q.gradientMap;
+  // Glimmer 2 paints the town in flat cel bands from one palette (and toon is lighter on old phones than the glossy shader); glass stays glossy
+  if (ART.on && q.color !== '#bfe8ff') {
+    if (q.color != null && q.color !== '#ffffff' && q.color !== 0xffffff) q.color = artPaint(q.color);
+    delete q.roughness; delete q.metalness; delete q.envMapIntensity; delete q.envMap; return new T3.MeshToonMaterial({ gradientMap: artGrad(), ...q });
+  }
   if (GFX.cheap) { delete q.roughness; delete q.metalness; delete q.envMapIntensity; delete q.envMap; return new T3.MeshLambertMaterial(q); }
   if (q.color === '#bfe8ff') return new T3.MeshStandardMaterial({ roughness: 0.18, metalness: 0.15, envMap: GFX.env || null, envMapIntensity: 1.2, ...q });
   return new T3.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...q });
@@ -221,6 +226,7 @@ function assetParts(name) {
     const n = P.vc, q = new Int16Array(buf, P.p, n * 3), nn = new Int8Array(buf, P.n, n * 3), cc = new Uint8Array(buf, P.c, n * 3);
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);
     for (let i = 0; i < n * 3; i++) { const k = i % 3; pos[i] = P.min[k] + ((q[i] + 32768) / 65535) * (P.max[k] - P.min[k]); nor[i] = nn[i] / 127; col[i] = cc[i] / 255; }
+    artPaintArray(col);
     const g = new T3.BufferGeometry();
     g.setAttribute('position', new T3.BufferAttribute(pos, 3)); g.setAttribute('normal', new T3.BufferAttribute(nor, 3)); g.setAttribute('color', new T3.BufferAttribute(col, 3));
     if (P.i !== undefined) g.setIndex(new T3.BufferAttribute(new Uint16Array(buf, P.i, P.ic).slice(), 1));
@@ -455,11 +461,20 @@ function postInit() {
         c += (texture2D(tIn, vUv + uDir * 1.3846153846).rgb + texture2D(tIn, vUv - uDir * 1.3846153846).rgb) * 0.3162162162;
         c += (texture2D(tIn, vUv + uDir * 3.2307692308).rgb + texture2D(tIn, vUv - uDir * 3.2307692308).rgb) * 0.0702702703;
         gl_FragColor = vec4(c, 1.0); }`, { tIn: { value: null }, uDir: texel() });
-    POST.comp = fsPass(`uniform sampler2D tScene, tDof1, tDof2, tB1, tB2; uniform float uBloom, uDof, uFocus, uBand, uSat, uVig, uAspect, uT, uBox;
-      uniform vec3 uLift, uGain; varying vec2 vUv;
+    POST.comp = fsPass(`uniform sampler2D tScene, tDof1, tDof2, tB1, tB2; uniform float uBloom, uDof, uFocus, uBand, uSat, uVig, uAspect, uT, uBox, uInk, uPaper;
+      uniform vec3 uLift, uGain, uShade; uniform vec2 uPx; varying vec2 vUv;
+      float g2(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
       float h(vec2 p) { return fract(52.9829189 * fract(dot(gl_FragCoord.xy + uT * 7.0, vec2(0.06711056, 0.00583715)))); }
       void main() {
         vec3 col = texture2D(tScene, vUv).rgb;
+        // Glimmer 2: colored ink where the picture is darker than its soft blur (a difference of blurs)
+        if (uInk > 0.0) {
+          float ls = dot(col, vec3(0.2126, 0.7152, 0.0722)), lb = dot(texture2D(tDof1, vUv).rgb, vec3(0.2126, 0.7152, 0.0722));
+          vec2 px = uPx; float la = dot(texture2D(tScene, vUv + vec2(px.x, 0.0)).rgb, vec3(0.2126, 0.7152, 0.0722)), lc = dot(texture2D(tScene, vUv + vec2(0.0, px.y)).rgb, vec3(0.2126, 0.7152, 0.0722));
+          float crisp = smoothstep(0.05, 0.13, max(abs(la - ls), abs(lc - ls)) / (max(ls, max(la, lc)) + 0.1)) * step(ls, max(la, lc) - 0.01);
+          float ink = max(smoothstep(0.03, 0.11, (lb - ls) / (lb + 0.08)), crisp) * uInk;
+          col = mix(col, col * vec3(0.3, 0.24, 0.45), ink * 0.85);
+        }
         if (uDof > 0.0) {
           float dy = vUv.y - uFocus; float f = smoothstep(uBand, uBand + 0.4, abs(dy)) * (dy > 0.0 ? 0.9 : 0.6) * uDof;
           vec3 b1 = texture2D(tDof1, vUv).rgb, b2 = texture2D(tDof2, vUv).rgb;
@@ -468,12 +483,14 @@ function postInit() {
         col += (texture2D(tB1, vUv).rgb * 0.9 + texture2D(tB2, vUv).rgb * 1.3) * uBloom;
         float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
         col = mix(vec3(l), col, uSat);
+        col = mix(col, col * uShade, (1.0 - smoothstep(0.03, 0.4, l)) * 0.7);
+        col *= 1.0 + (g2(floor(gl_FragCoord.xy / 2.0)) - 0.5) * 0.045 * uPaper;
         col = col * mix(uLift, uGain, smoothstep(0.0, 0.7, l));
         vec2 q = (vUv - 0.5) * vec2(uAspect, 1.0); col *= 1.0 - uVig * smoothstep(0.35, 1.05, length(q));
         vec4 o = LinearTosRGB(vec4(max(col, 0.0), 1.0));
         o.rgb += (h(vUv) - 0.5) / 255.0 * (1.0 - uBox * step(l, 0.002));
         gl_FragColor = o; }`,
-      { tScene: { value: null }, tDof1: { value: null }, tDof2: { value: null }, tB1: { value: null }, tB2: { value: null }, uBloom: { value: 0.7 }, uDof: { value: 1 }, uFocus: { value: 0.45 }, uBand: { value: 0.16 }, uSat: { value: 1.12 }, uVig: { value: 0.22 }, uAspect: { value: 1 }, uT: { value: 0 }, uBox: { value: 0 }, uLift: { value: new T3.Vector3(0.97, 0.98, 1.04) }, uGain: { value: new T3.Vector3(1.03, 1.0, 0.96) } });
+      { tScene: { value: null }, tDof1: { value: null }, tDof2: { value: null }, tB1: { value: null }, tB2: { value: null }, uBloom: { value: 0.7 }, uDof: { value: 1 }, uFocus: { value: 0.45 }, uBand: { value: 0.16 }, uSat: { value: 1.12 }, uVig: { value: 0.22 }, uAspect: { value: 1 }, uT: { value: 0 }, uBox: { value: 0 }, uLift: { value: new T3.Vector3(0.97, 0.98, 1.04) }, uGain: { value: new T3.Vector3(1.03, 1.0, 0.96) }, uShade: { value: new T3.Vector3(1, 1, 1) }, uInk: { value: 0 }, uPaper: { value: 0 }, uPx: { value: new T3.Vector2(1, 1) } });
     POST.ready = true; POST.w = 0; POST.h = 0;
     return true;
   } catch (e) { console.warn('post off', e); POST.failed = true; return false; }
@@ -507,10 +524,12 @@ function renderView(scn, cam) {
     blurInto(POST.e1, POST.e2, ew, eh);
   }
   // depth blur: the whole picture, softened
-  const dof = GFX.dof && !interior;
-  if (dof) {
+  const dof = GFX.dof && !interior, MG = moodOf(), ink = ART.on && MG.ink ? 1 : 0;
+  if (dof || ink) {
     D.tIn.value = POST.scene.texture; D.uTx.value.set(1 / W0, 1 / H0); D.uThr.value = 0; fsDraw(POST.down, POST.d1);
     blurInto(POST.d1, POST.d2, qw, qh);
+  }
+  if (dof) {
     D.tIn.value = POST.d1.texture; D.uTx.value.set(0.5 / qw, 0.5 / qh); fsDraw(POST.down, POST.f1);
     blurInto(POST.f1, POST.f2, ew, eh); blurInto(POST.f1, POST.f2, ew, eh);
   }
@@ -521,7 +540,9 @@ function renderView(scn, cam) {
   if (dof) { _proj.copy(controls.target).project(cam); C.uFocus.value = Math.min(0.8, Math.max(0.2, _proj.y * 0.5 + 0.5)); const dist = cam.position.distanceTo(controls.target); C.uBand.value = 0.12 + Math.min(0.2, Math.max(0, (dist - 20) / 400)); }
   C.uAspect.value = W0 / H0; C.uT.value = (now * 7.13) % 100; C.uBox.value = cfg.boxMode ? 1 : 0;
   C.uVig.value = cfg.boxMode ? 0.05 : interior ? 0.3 : 0.22;
-  const dk = interior ? 0 : (GFX.dusk || 0) * 0.7; C.uGain.value.set(1.03 + dk * 0.1, 1.0 - dk * 0.03, 0.96 - dk * 0.12); C.uLift.value.set(0.97 + dk * 0.02, 0.98 - dk * 0.02, 1.04 + dk * 0.04);
+  const dk = interior ? 0 : (GFX.dusk || 0) * 0.7; C.uSat.value = MG.sat;
+  C.uInk.value = ink * (cfg.boxMode ? 0.8 : 1); C.uPx.value.set(1.5 / W0, 1.5 / H0); C.uPaper.value = ART.on ? (cfg.boxMode ? 0.4 : 1) : 0; C.uShade.value.set(...(ART.on ? MG.shade : [1, 1, 1]));
+  C.uGain.value.set(MG.gain[0] + dk * 0.1, MG.gain[1] - dk * 0.03, MG.gain[2] - dk * 0.12); C.uLift.value.set(MG.lift[0] + dk * 0.02, MG.lift[1] - dk * 0.02, MG.lift[2] + dk * 0.04);
   fsDraw(POST.comp, null);
 }
 
