@@ -11,7 +11,7 @@ function hud() {
 async function boot() {
   loadPrefs();
   if (![...$('#dayLen').options].some((o) => o.value === String(cfg.daySec))) cfg.daySec = 300;
-  syncSettingsUI();
+  syncSettingsUI(); moodMenus(); wireMoodSettings();
   Sound.boot();
   await initRuntime();
   // decide whether this device runs the town or acts as its remote
@@ -37,6 +37,7 @@ async function boot() {
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
+  moodBoot();
   resize(); addEventListener('resize', resize);
   const portrait = innerHeight > innerWidth;
   camera.position.set(portrait ? 50 : 42, portrait ? 70 : 50, portrait ? 80 : 58); controls.target.set(0, 2, -16);

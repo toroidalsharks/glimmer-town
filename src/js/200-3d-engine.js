@@ -11,15 +11,17 @@ const gradMap = new T3.DataTexture(new Uint8Array([126, 126, 126, 255, 192, 192,
 gradMap.minFilter = gradMap.magFilter = T3.NearestFilter; gradMap.needsUpdate = true;
 const matCache = new Map();
 function toon(color, extra) {
-  if (!extra && matCache.has(color)) return matCache.get(color);
+  // residents keep their own smooth copy of each color in the low-poly town
+  const key = FACET.on && FACET.res ? 'res|' + color : color;
+  if (!extra && matCache.has(key)) return matCache.get(key);
   const m = makeToon({ color, gradientMap: gradMap, ...(extra || {}) });
-  if (!extra) matCache.set(color, m);
+  if (!extra) matCache.set(key, m);
   return m;
 }
 function mesh(geo, mat, x = 0, y = 0, z = 0, cast = true) { const m = new T3.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; return m; }
 const box = (w, h, d) => roundBox(w, h, d);
-const cyl = (rt, rb, h, s = 24) => new T3.CylinderGeometry(rt, rb, h, s);
-const sph = (r, w = 20, h = 14) => new T3.SphereGeometry(r, w, h);
+const cyl = (rt, rb, h, s = 24) => new T3.CylinderGeometry(rt, rb, h, lowSegs(s, Math.max(rt, rb) > 2 ? 14 : 10));
+const sph = (r, w = 20, h = 14) => new T3.SphereGeometry(r, lowSegs(w, 10), lowSegs(h, 7));
 const glow = (color, strength = 0.9) => makeToon({ color, gradientMap: gradMap, emissive: new T3.Color(color).multiplyScalar(strength) });
 
 function signTexture(text, bg, fg) {
@@ -93,12 +95,14 @@ function buildTown() {
   pathTo([0, 29]);
 
   // fountain
-  const stone = toon('#d4cbe0'), water = toon('#8fd8ff', { emissive: new T3.Color('#1a4a66') });
+  const stone = toon('#d4cbe0'), water = toon('#8fd8ff', { emissive: new T3.Color('#1a4a66') }); matCache.set('fountainWater', water);
   scene.add(mesh(cyl(3.2, 3.4, 0.7), stone, 0, 0.35, 0));
   scene.add(mesh(cyl(2.85, 2.85, 0.1), water, 0, 0.68, 0, false));
   scene.add(mesh(cyl(0.4, 0.5, 2.2), stone, 0, 1.6, 0));
   scene.add(mesh(cyl(1.3, 0.7, 0.4), stone, 0, 2.8, 0));
-  for (let i = 0; i < 12; i++) { const d = mesh(sph(0.13, 8, 6), water, 0, 0, 0, false); scene.add(d); jets.push(d); }
+  // the low-poly town's spray is small white drops, so it reads as water, not candy
+  const drop = FACET.on ? toon('#eef8f6', { emissive: new T3.Color('#3a4a48') }) : water;
+  for (let i = 0; i < 12; i++) { const d = mesh(sph(FACET.on ? 0.09 : 0.13, 8, 6), drop, 0, 0, 0, false); scene.add(d); jets.push(d); }
 
   // apartments: much taller than the residents
   {
@@ -182,7 +186,7 @@ function buildTown() {
     const g = new T3.Group();
     for (let i = 0; i < 3; i++) {
       g.add(mesh(box(8, 0.35, 1.5), toon('#8a6a4e'), 0, 0.17, -2.4 + i * 2.4));
-      for (let k = 0; k < 7; k++) { g.add(mesh(new T3.ConeGeometry(0.26, 0.7, 6), toon(['#7cc86a', '#9fe3a0', '#5fae5a'][i]), -3.2 + k * 1.07, 0.65, -2.4 + i * 2.4)); if (i === 1) g.add(mesh(sph(0.2, 8, 6), toon('#ff6f5e'), -3.2 + k * 1.07, 0.35, -2.1)); }
+      for (let k = 0; k < 7; k++) { const leafC = toon(['#7cc86a', '#9fe3a0', '#5fae5a'][i]), cx = -3.2 + k * 1.07, cz = -2.4 + i * 2.4; g.add(FACET.on ? mesh(sproutGeo(), leafC, cx, 0.33, cz) : mesh(new T3.ConeGeometry(0.26, 0.7, 6), leafC, cx, 0.65, cz)); if (i === 1) g.add(mesh(sph(0.2, 8, 6), toon('#ff6f5e'), -3.2 + k * 1.07, 0.35, -2.1)); }
     }
     for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; g.add(mesh(box(0.16, 0.9, 0.16), toon('#fff4dc'), Math.cos(a) * 5.6, 0.45, Math.sin(a) * 4.8)); }
     const [x, z] = polar(158, 22); g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z); scene.add(g);
@@ -197,7 +201,7 @@ function buildTown() {
     g.add(mesh(cyl(0.05, 0.05, 2.6, 6), toon('#fff4dc'), 3.6, 1.3, 1.8)); g.add(mesh(new T3.ConeGeometry(1.5, 0.6, 12), toon('#ffe98a'), 3.6, 2.7, 1.8));
     const castle = new T3.Group(); castle.add(mesh(box(1.2, 0.5, 1.2), toon('#e8cf9a'), 0, 0.25, 0)); for (const [cx, cz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) { castle.add(mesh(cyl(0.2, 0.22, 0.8, 8), toon('#e8cf9a'), cx, 0.4, cz)); castle.add(mesh(new T3.ConeGeometry(0.22, 0.3, 8), toon('#e8cf9a'), cx, 0.95, cz)); } castle.add(mesh(new T3.ConeGeometry(0.06, 0.3, 4), toon('#ff6f5e'), 0.5, 1.2, 0.5)); castle.position.set(-2.5, 0, -1.5); g.add(castle);
     const log = mesh(cyl(0.25, 0.3, 2.6, 8), toon('#bfa27a'), -1, 0.25, 4.5); log.rotation.z = Math.PI / 2; log.rotation.y = 0.6; g.add(log);
-    for (let i = 0; i < 5; i++) { const a = rand() * 6.28, r = BEACH_R - 1 + rand(); g.add(mesh(new T3.DodecahedronGeometry(0.35 + rand() * 0.3, 0), toon('#a9a3c2'), Math.cos(a) * r, 0.1, Math.sin(a) * r)); }
+    for (let i = 0; i < 5; i++) { const a = rand() * 6.28, r = BEACH_R - 1 + rand(); g.add(mesh(new T3.DodecahedronGeometry(0.35 + rand() * 0.3, 0), toon(FACET.on ? '#c9b48c' : '#a9a3c2'), Math.cos(a) * r, 0.1, Math.sin(a) * r)); }
     const sign = mesh(box(1.8, 0.7, 0.08), toon('#fff4dc'), 0, 1.0, 0); const tx = document.createElement('canvas'); tx.width = 256; tx.height = 96; const c2 = tx.getContext('2d'); c2.fillStyle = '#fff4dc'; c2.fillRect(0, 0, 256, 96); c2.fillStyle = '#6b4a3a'; c2.font = '26px "Mochiy Pop One", sans-serif'; c2.textAlign = 'center'; c2.fillText('Seashell', 128, 42); c2.fillText('Beach', 128, 80);
     const face = mesh(new T3.PlaneGeometry(1.74, 0.64), new T3.MeshBasicMaterial({ map: new T3.CanvasTexture(tx) }), 0, 1.0, 0.045, false); const sg = new T3.Group(); sg.add(sign, face, mesh(cyl(0.05, 0.05, 1, 5), toon('#8a6a4e'), 0, 0.4, -0.02));
     const [sx, sz] = polar(222, 30.5); sg.position.set(sx - bx, 0, sz - bz); sg.rotation.y = Math.atan2(sx, sz) + Math.PI; g.add(sg);
@@ -220,7 +224,8 @@ function buildTown() {
     else { g.add(mesh(cyl(0.7, 1.0, 5, 10), toon('#9a6f4e'), 0, 2.5, 0));
     g.add(mesh(new T3.IcosahedronGeometry(3.4, 0), toon('#7cc86a'), 0, 6.4, 0));
     g.add(mesh(new T3.IcosahedronGeometry(2.4, 0), toon('#8fd48a'), 1.8, 7.8, 0.6)); }
-    g.add(mesh(box(4.5, 0.3, 0.6), toon('#9a6f4e'), 1.6, 4.9, 0)); // branch for the swing
+    // branch for the swing (the low-poly crown is narrower, so its branch stays inside)
+    g.add(FACET.on ? mesh(box(3.2, 0.3, 0.6), toon('#9a6f4e'), 1.0, 4.9, 0) : mesh(box(4.5, 0.3, 0.6), toon('#9a6f4e'), 1.6, 4.9, 0));
     g.position.set(x, 0, z); scene.add(g);
   }
   // trees, bushes, benches, lamps
@@ -247,7 +252,7 @@ function buildTown() {
   }
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2 + 0.2, x = Math.cos(a) * 12.8, z = Math.sin(a) * 12.8;
-    scene.add(mesh(cyl(0.09, 0.12, 3.8, 8), toon('#5a5470'), x, 1.9, z));
+    scene.add(mesh(cyl(0.09, 0.12, 3.8, 8), toon(FACET.on ? '#6a5440' : '#5a5470'), x, 1.9, z));
     const lm = makeToon({ color: '#fff4c4', gradientMap: gradMap, emissive: new T3.Color('#000') }); lampMats.push(lm);
     scene.add(mesh(sph(0.36, 12, 8), lm, x, 3.95, z, false));
   }

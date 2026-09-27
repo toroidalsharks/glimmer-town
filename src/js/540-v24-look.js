@@ -10,6 +10,7 @@ const GFX = { level: 'pretty', post: false, dof: true, bloom: true, frames: [], 
 function makeToon(p) {
   if (!gfxOn()) return new T3.MeshToonMaterial(p);
   const q = { ...(p || {}) }; delete q.gradientMap;
+  if (facetsOn() && q.flatShading === undefined && !q.emissive) q.flatShading = true;
   if (GFX.cheap) { delete q.roughness; delete q.metalness; delete q.envMapIntensity; delete q.envMap; return new T3.MeshLambertMaterial(q); }
   if (q.color === '#bfe8ff') return new T3.MeshStandardMaterial({ roughness: 0.18, metalness: 0.15, envMap: GFX.env || null, envMapIntensity: 1.2, ...q });
   return new T3.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...q });
@@ -33,8 +34,8 @@ function rimHook(sh) {
   sh.uniforms.uRimC = RIM.color; sh.uniforms.uRimK = RIM.k;
   sh.fragmentShader = 'uniform vec3 uRimC; uniform float uRimK;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  { float fr = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0); totalEmissiveRadiance += uRimC * pow(fr, 3.0) * uRimK; }');
 }
-function leafMat(color) {
-  return cachedMat('leaf:' + color, () => { const m = makeToon({ color, vertexColors: true, roughness: 0.9 }); m.userData.leafOf = color; return m; });
+function leafMat(color, double = false) {
+  return cachedMat((double ? 'leaf2:' : 'leaf:') + color, () => { const m = makeToon({ color, vertexColors: true, roughness: 0.9, side: double ? T3.DoubleSide : T3.FrontSide }); m.userData.leafOf = color; return m; });
 }
 function bakedMat(key, opts = {}) { return cachedMat('baked:' + key, () => makeToon({ color: '#ffffff', vertexColors: true, roughness: 0.85, ...opts })); }
 
@@ -66,8 +67,8 @@ function texFrom(N, fill, repeat = true) {
 function paintGrass(d, N) {
   const big = periodicNoise(N, 4, 11), mid = periodicNoise(N, 16, 12), fine = periodicNoise(N, 64, 13), r = mulberry(5);
   for (let i = 0; i < N * N; i++) { d[i * 4] = 150 + (mid[i] - 0.5) * 70 + (fine[i] - 0.5) * 60; d[i * 4 + 1] = big[i] * 255; d[i * 4 + 2] = 0; d[i * 4 + 3] = 255; }
-  // little grass marks: short upside-down V strokes, lighter on one side
-  for (let k = 0; k < 520; k++) {
+  // little grass marks: short upside-down V strokes, lighter on one side (the low-poly lawn stays plain)
+  for (let k = 0; k < (FACET.on ? 0 : 520); k++) {
     const cx = Math.floor(r() * N), cy = Math.floor(r() * N), light = r() < 0.6;
     for (let s = -3; s <= 3; s++) {
       const x = (cx + s + N) % N, y = (cy + Math.abs(s) - 3 + N) % N, j = (y * N + x) * 4;
@@ -160,6 +161,8 @@ function gfxTextures() {
 // pieces share one continuous pattern. lo/hi set how strong the detail is.
 function worldMat(key, color, tex, scale = 0.25, lo = 0.8, hi = 1.12, patch = 0.14, extra = {}) {
   if (!gfxOn()) return toon(color);
+  // the low-poly town keeps the pattern, a little softer
+  if (FACET.on && !/grass/i.test(key)) { lo = 1 - (1 - lo) * 0.8; hi = 1 + (hi - 1) * 0.8; patch *= 0.7; }
   return cachedMat('world:' + key, () => {
     const m = makeToon({ color, map: tex, roughness: 0.92, ...extra });
     const U = { uS: { value: scale }, uLo: { value: lo }, uHi: { value: hi }, uP: { value: patch } };
@@ -180,10 +183,11 @@ function worldMat(key, color, tex, scale = 0.25, lo = 0.8, hi = 1.12, patch = 0.
 }
 function grassMat(lobe) {
   if (!gfxOn()) return toon(ISL.grass);
-  return lobe ? worldMat('grassLobe', ISL.grass, gfxTextures().grass, 0.3, 0.82, 1.1, 0.16)
-    : worldMat('grass', ISL.grass, gfxTextures().grass, 0.3, 0.82, 1.1, 0.16);
+  // the low-poly lawn is calmer: softer blades and patches
+  const [lo, hi, pa] = FACET.on ? [0.93, 1.05, 0.1] : [0.82, 1.1, 0.16];
+  return worldMat(lobe ? 'grassLobe' : 'grass', ISL.grass, gfxTextures().grass, 0.3, lo, hi, pa);
 }
-function pathMat() { return gfxOn() ? worldMat('cobble', '#f1e6d2', gfxTextures().cobble, 0.34, 0.72, 1.06, 0.06) : toon('#efe4d0'); }
+function pathMat() { return gfxOn() ? worldMat('cobble', FACET.on ? '#d4c4a6' : '#f1e6d2', gfxTextures().cobble, 0.34, 0.72, 1.06, 0.06) : toon('#efe4d0'); }
 // a soft dark footprint under each building so it sits on the ground
 function gfxContact(g) {
   if (!gfxOn()) return;
@@ -195,6 +199,8 @@ function gfxContact(g) {
 // a material with its own UVs and a detail texture (roofs, walls, planks)
 function detailMat(key, color, tex, repeat = 1, extra = {}, rot = 0, lo = 0.72, hi = 1.12) {
   if (!gfxOn()) return toon(color);
+  // low-poly roofs, walls and floors keep their shingles and planks, a little softer
+  if (FACET.on) { lo = 1 - (1 - lo) * 0.8; hi = 1 + (hi - 1) * 0.8; }
   const rr = Array.isArray(repeat) ? repeat : [repeat, repeat];
   return cachedMat('detail:' + key + color + rr.join('x') + rot, () => {
     const t = tex.clone(); t.needsUpdate = true; t.repeat.set(rr[0], rr[1]); t.rotation = rot; t.center.set(0.5, 0.5);
@@ -215,9 +221,9 @@ let assetBytes = null;
 function assetParts(name) {
   if (ASSET_GEO[name]) return ASSET_GEO[name];
   if (!assetBytes) { const s = atob(ASSET_BIN); assetBytes = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) assetBytes[i] = s.charCodeAt(i); }
-  const A = ASSET_META[name]; if (!A) return [];
+  const A = ASSET_META[name] || (FACET.on && FACET_SHAPE[name] && ASSET_META[FACET_SHAPE[name].from]); if (!A) return [];
   const buf = assetBytes.buffer;
-  const parts = A.parts.map((P) => {
+  const parts = A.parts.map((P, idx) => {
     const n = P.vc, q = new Int16Array(buf, P.p, n * 3), nn = new Int8Array(buf, P.n, n * 3), cc = new Uint8Array(buf, P.c, n * 3);
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);
     for (let i = 0; i < n * 3; i++) { const k = i % 3; pos[i] = P.min[k] + ((q[i] + 32768) / 65535) * (P.max[k] - P.min[k]); nor[i] = nn[i] / 127; col[i] = cc[i] / 255; }
@@ -226,7 +232,8 @@ function assetParts(name) {
     if (P.i !== undefined) g.setIndex(new T3.BufferAttribute(new Uint16Array(buf, P.i, P.ic).slice(), 1));
     g.computeBoundingSphere(); g.computeBoundingBox();
     g.userData.keep = true;
-    return { geo: g, tint: P.tint || null, double: !!P.double };
+    const part = { geo: g, tint: P.tint || null, double: !!P.double };
+    return FACET.on ? facetPart(name, idx, part) : part;
   });
   ASSET_GEO[name] = parts;
   return parts;
@@ -236,10 +243,10 @@ function prop(name, tints = {}, cast = true) {
   const g = new T3.Group();
   for (const P of assetParts(name)) {
     let m;
-    if (P.tint) { const c = tints[P.tint] || '#ffffff'; m = P.tint === 'leaf' ? leafMat(c) : bakedMat(P.tint + c, { color: c, side: P.double ? T3.DoubleSide : T3.FrontSide }); }
+    if (P.tint) { const c = tints[P.tint] || '#ffffff'; m = P.tint === 'leaf' ? leafMat(c, P.double) : bakedMat(P.tint + c, { color: c, side: P.double ? T3.DoubleSide : T3.FrontSide }); }
     else m = bakedMat(name + (P.double ? ':2' : ''), P.double ? { side: T3.DoubleSide } : {});
-    if (P.double && P.tint === 'leaf') m.side = T3.DoubleSide;
-    const o = new T3.Mesh(P.geo, m); o.castShadow = cast; o.receiveShadow = true; g.add(o);
+    // thin two-sided leaves (palm fronds) catch striped shadows on flat facets
+    const o = new T3.Mesh(P.geo, m); o.castShadow = cast; o.receiveShadow = !(FACET.on && P.double && P.tint === 'leaf'); g.add(o);
   }
   return g;
 }
@@ -380,7 +387,7 @@ function buildWater() {
 // ---------- the island pieces: a flat lawn with a rounded lip, a little cliff, then sand into the sea ----------
 function islandPiece(x, z, R, grass, opts = {}) {
   const g = new T3.Group(); g.position.set(x, 0, z);
-  const seg = opts.seg || 96;
+  const seg = opts.seg || (FACET.on ? 40 : 96);
   // lawn + rounded lip, textured in world space
   const top = [new T3.Vector2(0.001, 0), new T3.Vector2(R - 0.9, 0), new T3.Vector2(R - 0.45, -0.035), new T3.Vector2(R - 0.18, -0.11), new T3.Vector2(R, -0.26)];
   const lawn = mesh(new T3.LatheGeometry(top.reverse(), seg), grass, 0, opts.dy || 0, 0, false); lawn.receiveShadow = true; g.add(lawn);
@@ -404,7 +411,7 @@ function islandPiece(x, z, R, grass, opts = {}) {
 function sandPiece(x, z, R) {
   const g = new T3.Group(); g.position.set(x, 0, z);
   const pts = [[0.001, 0.05], [R - 1.2, 0.05], [R - 0.2, -0.05], [R + 0.8, -0.45], [R + 1.8, -0.85], [R + 3, -1.3], [R + 6, -2.8]].map(([r, y]) => new T3.Vector2(r, y));
-  const m = mesh(new T3.LatheGeometry(pts.reverse(), 72), worldMat('sand', '#f6e4b8', gfxTextures().sand, 0.35, 0.86, 1.08, 0.08), 0, 0, 0, false);
+  const m = mesh(new T3.LatheGeometry(pts.reverse(), FACET.on ? 32 : 72), worldMat('sand', FACET.on ? '#dec899' : '#f6e4b8', gfxTextures().sand, 0.35, 0.86, 1.08, 0.08), 0, 0, 0, false);
   m.receiveShadow = true; g.add(m);
   return g;
 }
@@ -522,7 +529,8 @@ function renderView(scn, cam) {
   if (dof) { _proj.copy(controls.target).project(cam); C.uFocus.value = Math.min(0.8, Math.max(0.2, _proj.y * 0.5 + 0.5)); const dist = cam.position.distanceTo(controls.target); C.uBand.value = 0.12 + Math.min(0.2, Math.max(0, (dist - 20) / 400)); }
   C.uAspect.value = W0 / H0; C.uT.value = (now * 7.13) % 100; C.uBox.value = cfg.boxMode ? 1 : 0;
   C.uVig.value = cfg.boxMode ? 0.05 : interior ? 0.3 : 0.22;
-  const dk = interior ? 0 : (GFX.dusk || 0) * 0.7; C.uGain.value.set(1.03 + dk * 0.1, 1.0 - dk * 0.03, 0.96 - dk * 0.12); C.uLift.value.set(0.97 + dk * 0.02, 0.98 - dk * 0.02, 1.04 + dk * 0.04);
+  const dk = interior ? 0 : (GFX.dusk || 0) * 0.7, MG = moodOf(); C.uSat.value = MG.sat;
+  C.uGain.value.set(MG.gain[0] + dk * 0.1, MG.gain[1] - dk * 0.03, MG.gain[2] - dk * 0.12); C.uLift.value.set(MG.lift[0] + dk * 0.02, MG.lift[1] - dk * 0.02, MG.lift[2] + dk * 0.04);
   fsDraw(POST.comp, null);
 }
 
