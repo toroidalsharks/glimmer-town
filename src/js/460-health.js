@@ -566,7 +566,7 @@ function healthMigration() {
   }
   const [cx, cz] = polarDT(DT_BLD.clinic.a, DT_BLD.clinic.r);
   const moved = (W.placed || []).filter((pl) => Math.hypot(pl.x - cx, pl.z - cz) < 7.5);
-  if (moved.length) { for (const pl of moved) W.creator.coins = Math.min(9999, W.creator.coins + (BUILDS[pl.type]?.price || 5)); W.placed = W.placed.filter((pl) => !moved.includes(pl)); buildPlaced(); }
+  if (moved.length) { for (const pl of moved) creatorEarn(BUILDS[pl.type]?.price || 5); W.placed = W.placed.filter((pl) => !moved.includes(pl)); buildPlaced(); }
   if (typeof logUpdate === 'function') logUpdate('build', 'Built Glimmer Clinic downtown and opened two new floors at Glimmer Labs (Science and Engineering). Residents can catch colds and get hurt now, and some live with ongoing conditions, including mental health ones.', 'Clinic + new lab floors');
   diary(`🩺 <b>Glimmer Clinic</b> opened downtown, with a doctor's office and a quiet corner for therapy. Glimmer Labs opened two new floors: 🧪 Science and ⚙️ Engineering.${moved.length ? ' A few things you built were in the way, so they were refunded.' : ''}`);
 }

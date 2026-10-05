@@ -46,6 +46,7 @@ function wireTownInput() {
     else if (tp.kind === 'labs') openInterior({ kind: 'labs', wing: labWingLast });
     else if (tp.kind === 'clinic') openInterior({ kind: 'clinic' });
     else if (tp.kind === 'city') cityTap(tp.place);
+    else if (tp.kind === 'tproj') tpTap(tp.id);
     else if (tp.kind === 'robot') robotTap(tp.id);
     else if (tp.kind === 'tgarden') { const r = applyCmd({ t: 'gather', bed: 'tgarden', x: TOWN.garden.spot[0], z: TOWN.garden.spot[1] }); if (r) toast(r); }
     else if (tp.kind === 'placed') { const pl = (W.placed || []).find((q) => q.id === tp.id); if (pl && ['flowers', 'planter', 'arch', 'tree'].includes(pl.type)) { const r = applyCmd({ t: 'gather', bed: pl.id, wood: pl.type === 'tree', x: pl.x, z: pl.z }); if (r) toast(r); } }
