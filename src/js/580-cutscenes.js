@@ -135,6 +135,7 @@ function cutLine(i) {
   const S = CUT.live, el = cutEl(), L = S.lines[i];
   CUT.i = i; CUT.typed = 0; CUT.lineT = 0; CUT.waiting = null;
   if (!L) return cutEnd(false);
+  if (L.text && !L.fresh && !S.replay) { L.text = freshLine(L); L.fresh = true; } // never the same line twice
   S.played.push(L);
   const sp = cutSpeaker(L), nm = el.querySelector('.cname'), tx = el.querySelector('.ctext');
   nm.textContent = sp.name; nm.style.background = sp.color;
