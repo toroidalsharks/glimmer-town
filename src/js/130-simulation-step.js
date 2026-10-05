@@ -53,7 +53,7 @@ function step(dt) {
     if (p.task.phase === 'go') { p.at = p.dest || p.at; startDo(p); continue; }
     if (p.task.phase === 'do' && now >= p.busyUntil) { if (finishDo(p) !== false) p.task = null; }
   }
-  personalSpace(dt); textTick(); chirpTick(); healthTick(dt); dramaTick(); showTick(); clubTick(); socialTick(); lifeTick(); kidTick(); notifyTick(); if (Math.floor(now) % 5 === 0 && Math.floor(now - dt) % 5 !== 0) laptopTick(); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
+  personalSpace(dt); textTick(); voiceTick(); chirpTick(); healthTick(dt); dramaTick(); showTick(); clubTick(); socialTick(); lifeTick(); kidTick(); notifyTick(); if (Math.floor(now) % 5 === 0 && Math.floor(now - dt) % 5 !== 0) laptopTick(); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
   const festNight = W.event?.id === 'festival' && W.event.day === W.day && W.t < 0.665;
   if ((!isNight() || festNight) && !W.meeting) {
     const ok = W.people.filter(canChat);

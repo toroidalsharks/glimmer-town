@@ -24,6 +24,7 @@ ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hu
 SEASON: ${seasonOf().name}, ${W.weather} weather.${isBirthday(me) ? ' Today is YOUR birthday.' : ''}${isBirthday(them) ? ` Today is ${them.name}'s birthday.` : ''}
 TODAY SO FAR:
 ${recent}
+${voiceSpark(me)}
 ${transcript.length ? `\nCONVERSATION SO FAR:\n${transcript.map((l) => `${l.who}: "${l.say}"${l.action !== 'chat' ? ` [${l.action}]` : ''}`).join('\n')}\n` : ''}
 SITUATION: ${situation}
 
