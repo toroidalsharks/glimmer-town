@@ -89,11 +89,15 @@ function plan(p) {
   if (planBuyLaptop(p)) return;
   if (cityCrewPlan(p)) return;
   if (tpCrewPlan(p)) return;
+  dayOffPlan(p);
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
   if (goalPlan(p)) return;
   const seek = p.makeup || p.befriend || p.confessTo || p.proposeTo || p.breakWith || p.confront;
   if (seek) { const t = person(seek); if (!t) { p.makeup = p.befriend = p.confessTo = p.proposeTo = p.breakWith = p.confront = null; } else if (!t.inside) { setTask(p, 'visit', t.path.length ? t.dest : t.at, jitter([t.x, t.z], 1.5), { who: t.id }); return; } }
   if (t > 0.26 && t < 0.56 && p.hunger < 0.6 && planDate(p)) return;
+  // free time: wander somewhere they haven't been lately, and sometimes keep going
+  if (p.keepGoing) { p.keepGoing = false; if (explorePlan(p)) return; }
+  if (rand() < 0.3 && explorePlan(p)) return;
   if (planHangout(p)) return;
   if (planLandmark(p)) return;
   if (tpVisitPlan(p)) return;
@@ -153,6 +157,7 @@ function startDo(p) {
   if (cityStart(p, k)) return;
   if (tpStart(p, k)) return;
   if (growStart(p, k)) return;
+  if (k === 'stroll' && p.task.explore) { exploreArrive(p); return; }
   p.busyUntil = now + (2 + rand() * 4) * ts();
 }
 function finishDo(p) {
@@ -163,7 +168,7 @@ function finishDo(p) {
   if (TP_TASKS.includes(k)) { tpFinish(p, k); return true; }
   if (k === 'browse') { browseDone(p); return true; }
   if (k === 'write') { writeDone(p); return true; }
-  if (k === 'work') { if (W.t < workUntil(p.job)) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
+  if (k === 'work') { if (W.t < workShiftEnd(p)) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
   else if (k === 'event') { if (W.t < (p.task.until || 0) && W.t < 0.67) { p.busyUntil = now + 1; if (rand() < 0.02) { const ev = EVENTS[W.event?.id]; if (ev) bubble(p, pick(['This is so fun!', 'Best day ever.', W.event.id === 'snowball' ? 'Got you!' : W.event.id === 'bday' ? 'Happy birthday!' : W.event.id === 'beach' ? 'The water is perfect!' : W.event.id === 'blossoms' ? 'The petals are falling on my head!' : W.event.id === 'harvest' ? 'Pass the pumpkin soup?' : W.event.id === 'wedding' ? "I'm not crying, you're crying." : W.event.id === 'stars' ? 'Look, a shooting star!' : W.event.id === 'fishing' ? 'I got a bite!' : 'Yay!']), 2); } return false; } if (W.event?.id === 'fishing' && W.event.host === p.id) { const winner = pick(W.people.filter((q) => W.event.going.includes(q.id))); if (winner) { winner.coins += 4; remember(winner, 'I won the fishing contest!', 3, 'won'); diary(`<b>${esc(winner.name)}</b> won the fishing contest and 4 coins.`); } } remember(p, `Went to ${EVENTS[W.event?.id]?.name || 'the event'}.`, 2, 'event'); addJoy(p, 10); }
   else if (k === 'hangout') hangoutEnd(p);
   else if (k === 'read') readProgress(p, 0.5);
