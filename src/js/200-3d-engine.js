@@ -22,6 +22,8 @@ function mesh(geo, mat, x = 0, y = 0, z = 0, cast = true) { const m = new T3.Mes
 const box = (w, h, d) => roundBox(w, h, d);
 const cyl = (rt, rb, h, s = 24) => new T3.CylinderGeometry(rt, rb, h, lowSegs(s, Math.max(rt, rb) > 2 ? 14 : 10));
 const sph = (r, w = 20, h = 14) => new T3.SphereGeometry(r, lowSegs(w, 10), lowSegs(h, 7));
+// the trees around the main island: [angle, radius, size, color]
+const TOWN_TREES = [[30, 27, 1.1], [90, 26.5, 1], [138, 27, 1, '#f7b6c8'], [172, 25, 0.9, '#b8e39a'], [190, 25.5, 0.9, '#b8e39a'], [235, 27, 1.1, '#f7b6c8'], [275, 26, 1], [330, 27, 1.1], [18, 20, 0.8, '#b8e39a'], [345, 20, 0.8], [265, 18, 0.9, '#f7b6c8']];
 const glow = (color, strength = 0.9) => makeToon({ color, gradientMap: gradMap, emissive: new T3.Color(color).multiplyScalar(strength) });
 
 function signTexture(text, bg, fg) {
@@ -238,7 +240,7 @@ function buildTown() {
     g.position.set(x, 0, z); g.rotation.y = rand() * 6; scene.add(g);
     const tid = 'tree' + Math.round(x * 10) + '_' + Math.round(z * 10); g.traverse((o) => (o.userData.tap = { kind: 'tree', id: tid, x, z })); g.children.forEach((c) => tappables.push(c));
   };
-  for (const [a, r, s, c] of [[30, 27, 1.1], [90, 26.5, 1], [138, 27, 1, '#f7b6c8'], [172, 25, 0.9, '#b8e39a'], [190, 25.5, 0.9, '#b8e39a'], [235, 27, 1.1, '#f7b6c8'], [275, 26, 1], [330, 27, 1.1], [18, 20, 0.8, '#b8e39a'], [345, 20, 0.8], [265, 18, 0.9, '#f7b6c8']]) { const [x, z] = polar(a, r); tree(x, z, s, c); }
+  for (const [a, r, s, c] of TOWN_TREES) { const [x, z] = polar(a, r); tree(x, z, s, c); }
   bushBerries = BUSHES.map(([x, z]) => {
     if (gfxOn()) scene.add(propAt('bushA', { leaf: '#6fbf6a' }, x, z, 1.05, x * 3)); else scene.add(mesh(sph(1.0, 12, 8), toon('#6fbf6a'), x, 0.7, z));
     const bs = []; for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.4; const b = mesh(sph(0.18, 8, 6), toon('#ff5f8f', { emissive: new T3.Color('#3a0a18') }), x + Math.cos(a) * (gfxOn() ? 1.02 : 0.75), gfxOn() ? 0.92 : 1.0, z + Math.sin(a) * (gfxOn() ? 1.02 : 0.75), false); scene.add(b); bs.push(b); }

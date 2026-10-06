@@ -117,7 +117,7 @@ const shines = [];
 function shineCmd(id) {
   const i = shines.findIndex((s) => s.id === id); if (i < 0) return '';
   const s = shines.splice(i, 1)[0]; scene.remove(s.g);
-  const v = s.big ? 8 : rand() < 0.62 ? 1 : rand() < 0.9 ? 2 : 3; W.creator.coins = Math.min(9999, W.creator.coins + v);
+  const v = s.big ? 40 + Math.floor(rand() * 41) : rand() < 0.6 ? 2 + Math.floor(rand() * 3) : rand() < 0.9 ? 5 + Math.floor(rand() * 4) : 12; creatorEarn(v);
   spawnBurst(s.x, 1.2, s.z, ['#ffd36b', '#fff6d6'], s.big ? 50 : 18, 2, 0.3); Sound.coin(); if (s.big) Sound.levelup();
   W.shinesFound = (W.shinesFound || 0) + 1; markDirty();
   return s.big ? `A golden star! +${v} coins.` : `+${v} ✦`;
@@ -133,7 +133,7 @@ function shineFrame(dt) {
   for (let k = 0; k < 20; k++) {
     const x = cx + (rand() - 0.5) * 30, z = cz + (rand() - 0.5) * 30;
     if (spotProblem(x, z)) continue;
-    const big = rand() < 0.035, m = toon(big ? '#ffd36b' : '#ffe98a', { emissive: new T3.Color(big ? '#8a6a10' : '#6a5a10') });
+    const big = rand() < (tpIsOpen('lighthouse') ? 0.1 : 0.035), m = toon(big ? '#ffd36b' : '#ffe98a', { emissive: new T3.Color(big ? '#8a6a10' : '#6a5a10') });
     const g = new T3.Group(); const c = mesh(big ? new T3.OctahedronGeometry(0.9, 0) : cyl(0.6, 0.6, 0.14, 18), m, 0, 0, 0, false); if (!big) c.rotation.x = Math.PI / 2; g.add(c);
     g.position.set(x, 1.2, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'shine', id })); scene.add(g); tappables.push(c);
     shines.push({ id, g, x, z, big }); break;

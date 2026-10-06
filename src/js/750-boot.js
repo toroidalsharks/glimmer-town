@@ -4,7 +4,7 @@
 function resize() { if (!renderer) return; const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); roomCam.aspect = w / h; roomCam.updateProjectionMatrix(); }
 function hud() {
   const hr = (6 + W.t * 24) % 24, hh = Math.floor(hr), mm = Math.floor((hr - hh) * 60);
-  $('#clock').textContent = `${seasonOf().icon} Day ${W.day} · ${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'} · ${W.meeting ? 'town meeting' : isNight() ? 'night' : W.weather} · ${plural(W.people.length, 'resident')} · ${W.creator.coins} ✦${(W.mail || []).some((m) => !m.read) ? ` · ✉ ${W.mail.filter((m) => !m.read).length}` : ''}`;
+  $('#clock').textContent = `${seasonOf().icon} Day ${W.day} · ${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'} · ${W.meeting ? 'town meeting' : isNight() ? 'night' : W.weather} · ${plural(W.people.length, 'resident')} · ${coinText(W.creator.coins)} ✦${(W.mail || []).some((m) => !m.read) ? ` · ✉ ${W.mail.filter((m) => !m.read).length}` : ''}`;
   if (mailFlag) mailFlag.rotation.z = (W.mail || []).some((m) => !m.read) ? 0 : -Math.PI / 2;
   $('#mailTab').textContent = (W.mail || []).some((m) => !m.read) ? `Mail (${W.mail.filter((m) => !m.read).length})` : 'Mail';
 }
@@ -35,6 +35,7 @@ async function boot() {
   W.people.forEach((p) => { if (!p.want) p.want = newWant(p); modelOf(p); });
   W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); wishBoardBoot(); creatorTreatsBoot(); townRecordBoot(); townRecordDiaryBoot(); loveRepairBoot(); growUpBoot(); socialBoot(); lifeBoot(); awayOnBoot(); buildLand(); cityBoot(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
+  coinsBoot(); tpBoot();
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
   moodBoot();
@@ -56,7 +57,7 @@ async function boot() {
     if (CUT.live && CUT.cam) { if (interior) roomCam.lookAt(roomControls.target); else camera.lookAt(controls.target); }
     else if (interior) roomControls.update();
     else { controls.autoRotate = cfg.spin && now - lastTouch > 10 && !keysDown.size; const tx = controls.target.x, tz = controls.target.z; controls.update(); if (Math.abs(controls.target.x - tx) + Math.abs(controls.target.z - tz) > 1e-4) { userPanned(); clampView(); } }
-    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); cityFrame(dt); weddingFrame(dt); fishingFrame(dt); courtTick(); seasonFrame(dt); catFrame(dt); claudeTick(dt); shineFrame(dt); nodeFrame(dt); robotsFrame(dt); labsSpin(dt); sceneFrame(); cuteFrame(); cutFrame(dt); owlFrame(); crimeFrame(dt); crimeGossipTick();
+    visuals(dt); ferryFrame(); fireworksFrame(dt); downtownFrame(dt); cityFrame(dt); tpFrame(dt); goalsFrame(); weddingFrame(dt); fishingFrame(dt); courtTick(); seasonFrame(dt); catFrame(dt); claudeTick(dt); shineFrame(dt); nodeFrame(dt); robotsFrame(dt); labsSpin(dt); sceneFrame(); cuteFrame(); cutFrame(dt); owlFrame(); crimeFrame(dt); crimeGossipTick();
     gfxFrame(dt); renderView(interior ? roomScene : scene, interior ? roomCam : camera);
     if (wantPhoto) { wantPhoto = false; try { takePhoto(); } catch (e) { console.error(e); toast('The camera jammed. Try again?'); } }
     if (now - lastHud > 0.5) { hud(); lastHud = now; }

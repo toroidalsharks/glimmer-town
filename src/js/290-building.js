@@ -45,6 +45,7 @@ function spotProblem(x, z, size = 0) {
   if (Math.abs(x) < 3.2 + size && z > 11) return 'That would block the path to the pier.';
   if (Math.hypot(x - PLOT_AT[0], z - PLOT_AT[1]) < 3.5 + size) return "That's your garden plot.";
   for (const pl of W.placed || []) if (Math.hypot(x - pl.x, z - pl.z) < 3 + size + (BUILDS[pl.type]?.size || 0)) return 'Something is already there.';
+  for (const S of tpSites()) if (Math.hypot(x - S.x, z - S.z) < 2.5 + size + S.size) return 'A big project is there.';
   return null;
 }
 function autoSpot(size = 0) {

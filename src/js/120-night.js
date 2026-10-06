@@ -85,7 +85,7 @@ function newDay() {
   applySeason(); meltSnowmen(); buildPlot();
   if (seasonDay() === 1) diary(`${seasonOf().icon} <b>${seasonOf().name}</b> is here.${seasonOf().id === 'winter' ? ' Everything is covered in snow.' : seasonOf().id === 'autumn' ? ' The leaves are turning.' : seasonOf().id === 'spring' ? ' The cherry trees are blooming.' : ' It is so warm out.'}`);
   W.bushes = BUSHES.map(() => 3);
-  W.creator.coins = Math.min(999, W.creator.coins + 20);
+  { const got = morningAllowance(); creatorEarn(got); W.lastAllowance = got; }
   for (const [ia, ib] of W.babies) {
     const a = person(ia), b = person(ib);
     if (a && b && freeRoom() >= 0) { const k = birth(a, b); W.people.push(k); buildKin(k); queueLetter(a, 'baby', { who: k.name }); queueLetter(b, 'baby', { who: k.name }); diary(`<b>${esc(k.name)}</b> was born to ${esc(a.name)} and ${esc(b.name)}, and moved into room ${k.room + 1}.`); birthCut(k, a, b); }
@@ -98,7 +98,7 @@ function newDay() {
   }
   growMorning(); importStock();
   dailyWishes();
-  cityDaily();
+  cityDaily(); tpDaily();
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }

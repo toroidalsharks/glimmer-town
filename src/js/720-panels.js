@@ -11,7 +11,7 @@ function doing(p) {
   if (p.inside && k === 'home') return W.t >= 0.63 || W.t < 0.008 ? 'asleep' : 'at home';
   if (k === 'carried') return `in ${person(p.task.who)?.name || 'a parent'}'s arms`;
   if (k === 'nap') return p.task.snack ? 'having a snack at home' : 'napping';
-  return { play: 'playing', fetchkid: 'picking up the baby', dropkid: 'putting the baby down for a nap', arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service', rest: 'resting in bed', doctor: 'at the clinic', therapy: 'at the clinic', ritual: 'double-checking something at home', buylaptop: 'buying a laptop', browse: 'browsing books', write: 'writing', crowd: W.scene?.kind === 'uproar' ? 'in the uproar at the fountain' : 'chatting in a group' }[k] || cityDoing(k) || 'wandering';
+  return { play: 'playing', fetchkid: 'picking up the baby', dropkid: 'putting the baby down for a nap', arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service', rest: 'resting in bed', doctor: 'at the clinic', therapy: 'at the clinic', ritual: 'double-checking something at home', buylaptop: 'buying a laptop', browse: 'browsing books', write: 'writing', crowd: W.scene?.kind === 'uproar' ? 'in the uproar at the fountain' : 'chatting in a group' }[k] || cityDoing(k) || tpDoing(k) || 'wandering';
 }
 function showTab(t) {
   activeTab = t;
@@ -143,7 +143,7 @@ function renderShops() {
     items = W.stock[shopTab].map((it) => itemCard(it, `<div class="item-row"><span class="price">${itemPrice(it)} ✦</span><button class="btn" type="button" data-buy="${shopTab}" data-uid="${it.uid}" ${C.coins < itemPrice(it) ? 'disabled' : ''}>Buy</button></div>`));
   }
   $('#pane-shops').innerHTML = `
-    <div class="wallet"><b>${C.coins} ✦</b><span class="hint">Your coins. You get 20 more every morning.</span></div>
+    <div class="wallet"><b>${coinText(C.coins)} ✦</b><span class="hint">Your coins. ${allowanceText()}</span></div>
     <div class="shop-tabs">${Object.entries(SHOPS).map(([k, s]) => `<button class="btn" type="button" data-shoptab="${k}" aria-pressed="${k === shopTab}">${s.name}</button>`).join('')}</div>
     <p class="hint">${SHOPS[shopTab].blurb} ${workers.length ? `Works here: ${workers.map((w) => esc(w.name)).join(', ')}.` : 'Nobody works here right now.'}${isFood ? (keeper ? ` Today's food is made by ${esc(keeper.name)}.` : '') : ' New pieces show up after each workday.'}</p>
     <div class="btns"><button class="btn gold" type="button" data-inside="${shopTab}">${MODE === 'host' ? 'Go inside' : 'Show inside in the box'}</button></div>
@@ -155,7 +155,7 @@ function renderGifts() {
   const C = W.creator;
   const pickTo = giftPick && person(giftPick) ? giftPick : null;
   $('#pane-gifts').innerHTML = `
-    <div class="wallet"><b>${C.coins} ✦</b><span class="hint">You get 20 more every morning.</span></div>
+    <div class="wallet"><b>${coinText(C.coins)} ✦</b><span class="hint">${allowanceText()}</span></div>
     ${plotHtml()}
     ${workshopHtml()}
     <p class="label">Give to</p>
@@ -213,7 +213,7 @@ function renderDiary() {
 function renderBuild() {
   const C = W.creator;
   $('#pane-build').innerHTML = `
-    <div class="wallet"><b>${C.coins} ✦</b><span class="hint">Make the island yours. Residents notice what you add, and they'll hang out around it.</span></div>
+    <div class="wallet"><b>${coinText(C.coins)} ✦</b><span class="hint">Make the island yours. Residents notice what you add, and they'll hang out around it. ${allowanceText()}</span></div>
     <p class="label">Decorations</p>
     <div class="items">${Object.entries(BUILDS).filter(([, b]) => !b.big).map(([k, b]) => `<div class="item"><div class="item-top"><span class="item-name">${esc(cap(b.name))}</span></div><div class="item-row"><span class="price">${b.price} ✦</span></div><div class="btns">${MODE === 'host' ? `<button class="btn gold" type="button" data-place="${k}" ${C.coins < b.price ? 'disabled' : ''}>Place it</button>` : ''}<button class="btn" type="button" data-autoplace="${k}" ${C.coins < b.price ? 'disabled' : ''}>${MODE === 'host' ? 'Anywhere' : 'Place it'}</button></div></div>`).join('')}</div>
     <p class="label">Landmarks</p><p class="hint">Big, expensive buildings that change what residents do.${(W.museum || []).length ? ` The museum has ${plural(W.museum.length, 'exhibit')}.` : ''}</p>
@@ -221,6 +221,8 @@ function renderBuild() {
     <p class="label">More land</p>
     <div class="items">${Object.entries(LOBES).map(([k, l]) => `<div class="item"><span class="item-name">${esc(l.name)}</span><span class="item-by">${esc(l.blurb || '')}</span>${W.lobes.includes(k) ? '<span class="chip good">Yours</span>' : `<div class="item-row"><span class="price">${l.price} ✦</span><button class="btn gold" type="button" data-land="${k}" ${C.coins < l.price ? 'disabled' : ''}>Raise it</button></div>`}</div>`).join('')}</div>
     ${cityBuildHtml()}
+    ${tpBuildHtml()}
+    ${goalsHtml()}
     ${workshopAgentHtml()}
     ${(W.placed || []).length ? `<p class="label">What you've built</p><div class="chips">${W.placed.map((pl) => `<span class="chip">${esc(BUILDS[pl.type].name)} <button class="btn" type="button" data-unplace="${pl.id}" style="padding:1px 8px;font-size:11px">Remove</button></span>`).join('')}</div>` : ''}`;
 }
@@ -357,6 +359,8 @@ sheet.addEventListener('click', (e) => {
   if (d.land) { send({ t: 'land', lobe: d.land }); return; }
   if (d.cityfund) { send({ t: 'city', a: 'give', what: d.cityfund, n: d.n === 'all' ? 'all' : Number(d.n) }); return; }
   if (d.cityhelp !== undefined) { send({ t: 'city', a: 'help' }); return; }
+  if (d.tpfund) { send({ t: 'tproj', a: 'give', id: d.tpid, what: d.tpfund, n: d.n === 'all' ? 'all' : Number(d.n) }); return; }
+  if (d.tphelp) { send({ t: 'tproj', a: 'help', id: d.tphelp }); return; }
   if (d.unplace) { send({ t: 'unplace', id: d.unplace }); return; }
   if (d.mail) { if (!mailOpen) mailListScroll = $('#pane-mail').scrollTop; mailOpen = d.mail; refreshPanel(true); $('#pane-mail').scrollTop = 0; return; }
   if (d.mailnav) { mailStep(Number(d.mailnav)); return; }

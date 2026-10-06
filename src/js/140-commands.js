@@ -74,7 +74,7 @@ function applyCmd(c) {
     }
     case 'sponsor': return sponsorCmd(c);
     case 'chip': {
-      const n = clamp(Math.floor(c.n) || 0, 1, 999);
+      const n = clamp(Math.floor(c.n) || 0, 1, COIN_MAX);
       if (!W.project) return 'There is no project right now.'; if (C.coins < n) return 'You don\'t have enough coins.';
       C.coins -= n; W.project.raised += n;
       for (const p of W.people) { if (p.cr.score > -2) creatorShift(p, 0.3); remember(p, `Someone said the Creator chipped in ${plural(n, 'coin')} for ${PROJECTS[W.project.id].name}.`, 1, 'creatorHelp'); }
@@ -138,6 +138,7 @@ function applyCmd(c) {
     case 'rule': { const k = (W.cases || []).find((x) => x.id === c.id); if (!k) return 'That case is gone.'; const r = applyRuling(k, c.choice, false); if (k.status === 'closed' && cutsOn()) verdictMini(k); return r; }
     case 'cut': return cutCmd(c);
     case 'city': return cityCmd(c);
+    case 'tproj': return tpCmd(c);
     case 'crime': return crimeCmd(c);
     case 'hallview': if (MODE === 'host') openInterior({ kind: 'hall' }); return '';
     case 'debate': { const a = person(c.a), b = person(c.b); if (!a || !b) return ''; const k = fileCase('debate', a, b, { topic: String(c.topic || pick(DEBATES)).slice(0, 80), byCreator: true }); return k ? `⚖ ${a.name} and ${b.name} have been summoned to debate: ${k.topic}` : 'They already have a debate waiting.'; }
@@ -151,12 +152,12 @@ function applyCmd(c) {
       if (c.kind === 'scrap') { const n = 1 + (rand() < 0.4 ? 1 : 0); M.parts += n; spawnBurst(c.x, 1.2, c.z, ['#c9ccd6', '#9fe3ff'], 14, 1.8, 0.25); Sound.coin(); markDirty(); return `+${n} metal parts ⚙️ (from the recycling bin)`; }
       if (c.kind === 'boulder') { const n = 2 + (rand() < 0.3 ? 1 : 0); M.stone += n; spawnBurst(c.x, 1, c.z, ['#c9c3e0', '#8a84a8'], 16, 2, 0.3); Sound.step(); markDirty(); return `+${n} stone 🪨`; }
       const got = pick(['shells', 'flowers', 'stone', 'parts', 'parts']), n = 2 + Math.floor(rand() * 2); M[got] += n; spawnBurst(c.x, 1.5, c.z, ['#9fd3ff', '#c9b3ff', '#ffb3e6', '#ffffff'], 30, 2.4, 0.3); Sound.sparkle(); markDirty();
-      if (rand() < 0.08) { const n2 = 5; W.creator.coins += n2; return `+${n} ${MATS[got]} and ${n2} coins hidden inside ✨`; }
+      if (rand() < 0.12) { const n2 = 20 + Math.floor(rand() * 31); creatorEarn(n2); return `+${n} ${MATS[got]} and ${n2} coins hidden inside ✨`; }
       return `+${n} ${MATS[got]} ✨`;
     }
     case 'craft': return craftCmd(c);
     case 'donate': { if (!(W.placed || []).some((pl) => pl.type === 'museum')) return 'Build a museum first.'; const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return ''; const it = C.items.splice(i, 1)[0]; W.museum = W.museum || []; W.museum.push({ name: itemName(it), day: W.day }); for (const p of W.people) if (rand() < 0.4) remember(p, `The Creator gave ${a_an(itemName(it))} to the museum.`, 1, 'museum'); diary(`🏛 <span class="cr">Creator</span> donated ${a_an(esc(itemName(it)))} to the museum.`); Sound.sparkle(); markDirty(); return `Donated ${a_an(itemName(it))}. The museum has ${plural(W.museum.length, 'exhibit')} now.`; }
-    case 'sell': { const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return 'That item is gone.'; const it = C.items.splice(i, 1)[0], v = sellValue(it); C.coins = Math.min(9999, C.coins + v); Sound.coin(); markDirty(); return `Sold ${a_an(itemName(it))} for ${plural(v, 'coin')}.`; }
+    case 'sell': { const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return 'That item is gone.'; const it = C.items.splice(i, 1)[0], v = sellValue(it); const v2 = tpIsOpen('market') ? v * 2 : v; creatorEarn(v2); Sound.coin(); markDirty(); return `Sold ${a_an(itemName(it))} for ${plural(v2, 'coin')}${v2 > v ? ' (double, thanks to the Night Market)' : ''}.`; }
     case 'shine': return shineCmd(c.id);
     case 'catname': W.catName = String(c.name || '').slice(0, 20) || null; markDirty(); return `Her cat is called ${catName()} now.`;
     case 'cam': if (c.home) { openDetail = null; camHome = true; } if (c.place && MODE === 'host') camGo(c.place); return '';

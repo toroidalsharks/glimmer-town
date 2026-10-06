@@ -86,6 +86,7 @@ function plan(p) {
   if (planPicket(p)) return;
   if (planBuyLaptop(p)) return;
   if (cityCrewPlan(p)) return;
+  if (tpCrewPlan(p)) return;
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
   if (goalPlan(p)) return;
   const seek = p.makeup || p.befriend || p.confessTo || p.proposeTo || p.breakWith || p.confront;
@@ -93,6 +94,7 @@ function plan(p) {
   if (t > 0.26 && t < 0.56 && p.hunger < 0.6 && planDate(p)) return;
   if (planHangout(p)) return;
   if (planLandmark(p)) return;
+  if (tpVisitPlan(p)) return;
   if (planRead(p)) return;
   if (planBrowse(p)) return;
   if (planSurf(p)) return;
@@ -147,6 +149,7 @@ function startDo(p) {
   if (k === 'write') { writeStart(p); return; }
   if (k === 'crowd') { p.busyUntil = Infinity; if (W.scene) faceCenter(p, W.scene); return; }
   if (cityStart(p, k)) return;
+  if (tpStart(p, k)) return;
   if (growStart(p, k)) return;
   p.busyUntil = now + (2 + rand() * 4) * ts();
 }
@@ -155,6 +158,7 @@ function finishDo(p) {
   if (['rest', 'doctor', 'therapy', 'ritual'].includes(k)) return healthFinish(p, k);
   if (k === 'buylaptop') { buyLaptopDone(p); return true; }
   if (SL_TASKS.includes(k)) { cityFinish(p, k); return true; }
+  if (TP_TASKS.includes(k)) { tpFinish(p, k); return true; }
   if (k === 'browse') { browseDone(p); return true; }
   if (k === 'write') { writeDone(p); return true; }
   if (k === 'work') { if (W.t < workUntil(p.job)) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }

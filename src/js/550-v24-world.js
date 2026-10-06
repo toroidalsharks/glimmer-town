@@ -50,6 +50,7 @@ function freeMain(x, z, pad = 0) {
   for (const [cx, cz] of CAFE_SEATS) if (Math.hypot(x - cx, z - cz) < 2.4) return false;
   if (z > 24 && Math.abs(x) < 3.5) return false;
   for (const pl of W?.placed || []) if (Math.hypot(x - pl.x, z - pl.z) < 3.2 + pad) return false;
+  if (!tpClear(x, z, pad)) return false;
   return true;
 }
 function freeDT(x, z, pad = 0) {
@@ -69,7 +70,7 @@ function freeLobe(x, z, pad = 0) {
     if (Math.hypot(x, z) < 31) return false;
     if (segDist(x, z, polar(L.a, 12.2), polar(L.a, D - 2)) < 2.1 + pad) return false;
     for (const [px, pz, r] of lobeProps(k)) if (Math.hypot(x - cx - px, z - cz - pz) < (r || 1.5) + 0.8 + pad) return false;
-    return true;
+    return tpClear(x, z, pad);
   }
   return false;
 }
