@@ -290,6 +290,7 @@ function wildPlay(p, v, near) {
   const what = { announce: 'made an announcement', confess: `told ${to ? to.name : 'everyone'} a secret`, outburst: `blew up${to ? ` at ${to.name}` : ''}`, hype: `hyped up ${to ? to.name : 'everyone'}`, hot_take: 'posted a hot take', obsession: 'found a new obsession', song: 'broke into song', dare: `dared ${to ? to.name : 'someone'}`, vow: 'made a vow', gift: `gave ${to ? to.name : 'someone'} a coin` }[move];
   diary(`⚡ <b>${esc(p.name)}</b> ${esc(what)}: "${esc(say)}"${v.thought ? ` <span class="th">thinks: ${esc(String(v.thought).slice(0, 200))}</span>` : ''}`);
   remember(p, `I ${what}: "${say}"`, 3, 'wild', to ? to.name : null);
+  if (v.thought) p.thought = { text: fitLine(String(v.thought), 200), at: Date.now() };
   if (move === 'outburst') { addMood(p, 0.3); if (to) { feel(to, p, -1); remember(to, `${p.name} blew up at me out of nowhere: "${say}"`, 3, 'gotMean', p.name); } }
   if (move === 'confess' && to) { feel(to, p, 1, true); feel(p, to, 0.5, true); remember(to, `${p.name} told me a secret: "${say}"`, 3, 'confidedIn', p.name); }
   if (move === 'hype' && to) { feel(to, p, 1.5); addJoy(to, 8); remember(to, `${p.name} hyped me up out of nowhere: "${say}"`, 2, 'gotKind', p.name); }
@@ -298,15 +299,20 @@ function wildPlay(p, v, near) {
   if (move === 'vow') p.want = { text: fitLine(say, 140) };
   if (move === 'song') { emote(p, '🎵', 6); addJoy(p, 6); }
   if (move === 'hot_take' && v.post && typeof postChirp === 'function') { voiceTrust(String(v.post)); postChirp(p, fitLine(String(v.post), 220)); }
-  const reacts = Array.isArray(v.reactions) ? v.reactions.slice(0, 3) : [];
+  sceneReactions(p, v.reactions, near, what, say);
+  if (v.diary) diary(`<i>${esc(fitLine(String(v.diary), 220))}</i>`);
+  markDirty();
+  return true;
+}
+
+// people nearby answer a scene out loud, a beat apart, and remember it
+function sceneReactions(p, reactions, near, what, say) {
+  const reacts = Array.isArray(reactions) ? reactions.slice(0, 3) : [];
   reacts.forEach((x, i) => {
     const q = near.find((n) => n.name.toLowerCase() === String(x?.who || '').toLowerCase()); if (!q || !x.say) return;
     const line = fitLine(String(x.say), 160); voiceTrust(line);
     setTimeout(() => { if (q.inside || q.away) return; q.face = Math.atan2(p.x - q.x, p.z - q.z); bubbleRaw(q, line, 2.8 + line.length / 15); voiceHeard(q, line, 'say'); emote(q, '👀', 2.4); diary(`<b>${esc(q.name)}</b>: "${esc(line)}"`); remember(q, `${p.name} ${what}: "${say.slice(0, 90)}". I said: "${line.slice(0, 90)}"`, 2, 'wildSaw', p.name); }, 2600 + i * 2300 + say.length * 30);
   });
-  if (v.diary) diary(`<i>${esc(fitLine(String(v.diary), 220))}</i>`);
-  markDirty();
-  return true;
 }
 
 function voiceTick() {
@@ -314,10 +320,11 @@ function voiceTick() {
   voiceBatch();
   if (!nextWildAt) nextWildAt = now + 120 + rand() * 120;
   if (now >= nextWildAt) { nextWildAt = now + 240 + rand() * 300; if (rand() < 0.8) wildMoment(false); }
+  arcTick();
 }
 function voicesBoot() {
   W.added = W.added || {}; if (W.added.voices1) return; W.added.voices1 = true;
-  if (typeof logUpdate === 'function') logUpdate('build', 'Residents stopped reading from a script. With a key in Settings, the model now writes their everyday lines too (shopping, work, texts, Chirp posts, babysitting, everything), in their own voice, using what they have been up to. Each line is used once, and the town remembers what it has heard so nobody repeats themselves. Every few minutes someone also does something nobody saw coming: a confession, an outburst, a song, a vow, a hot take, a new obsession, and whoever is nearby reacts. Without a key they still mix up how they say things.', 'Residents speak for themselves');
+  if (typeof logUpdate === 'function') logUpdate('build', 'Residents stopped reading from a script. With a key in Settings, the model now writes their everyday lines too (shopping, work, texts, Chirp posts, babysitting, everything), in their own voice, using what they have been up to. Each line is used once, and the town remembers what it has heard so nobody repeats themselves. Every few minutes someone also does something nobody saw coming: a confession, an outburst, a song, a vow, a hot take, a new obsession, and whoever is nearby reacts. Now and then someone also gets a storyline of their own (a secret project, a rivalry, a comeback) that plays out in a few scenes over a few hours; you can follow it on their page, along with what is on their mind. Chirp posts are written by them too. Without a key they still mix up how they say things.', 'Residents speak for themselves');
 }
 function voiceStatus() {
   voiceToday();

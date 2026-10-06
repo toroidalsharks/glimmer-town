@@ -31,10 +31,10 @@ function cutCss() {
   #cut .cskip { position: absolute; right: 14px; top: calc(11vh + 10px); pointer-events: auto; background: rgba(16,12,30,.7); color: #e9dcff; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; padding: 5px 12px; font: 13px var(--body); }
   #cut .cfx { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
   #cut .burst { font-family: var(--display); font-size: clamp(40px, 11vw, 110px); color: #fff; padding: .35em .7em .45em; transform: rotate(-6deg) scale(.2); opacity: 0; animation: cutburst 1.25s cubic-bezier(.2,1.6,.4,1) forwards; clip-path: polygon(0% 18%, 9% 0%, 22% 14%, 36% 1%, 49% 15%, 63% 0%, 76% 13%, 90% 2%, 100% 22%, 93% 44%, 100% 64%, 90% 83%, 97% 100%, 78% 88%, 63% 100%, 50% 86%, 35% 100%, 22% 87%, 8% 100%, 3% 78%, 0% 58%, 6% 40%); text-shadow: 0 4px 0 rgba(0,0,0,.35); letter-spacing: .02em; white-space: nowrap; }
-  #cut .burst.objection { background: linear-gradient(#ff5a5a, #c2123a); }
-  #cut .burst.holdit { background: linear-gradient(#5aa8ff, #2346c9); }
-  #cut .burst.takethat { background: linear-gradient(#ffd23f, #e07b00); color: #3a1a00; text-shadow: none; }
-  #cut .burst.order { background: linear-gradient(#b98a5e, #6b4a2e); }
+  #cut .burst.objection { background: #d8263f; }
+  #cut .burst.holdit { background: #2f63d6; }
+  #cut .burst.takethat { background: #f2a516; color: #3a1a00; text-shadow: none; }
+  #cut .burst.order { background: #8a6240; }
   @keyframes cutburst { 0% { transform: rotate(-6deg) scale(.2); opacity: 0; } 18% { transform: rotate(-4deg) scale(1.08); opacity: 1; } 30% { transform: rotate(-6deg) scale(1); } 80% { opacity: 1; } 100% { transform: rotate(-6deg) scale(1.02); opacity: 0; } }
   #cut .stamp { font-family: var(--display); font-size: clamp(44px, 12vw, 120px); padding: .1em .45em; border: .09em solid currentColor; border-radius: .18em; transform: rotate(-9deg) scale(2.4); opacity: 0; animation: cutstamp 2.4s cubic-bezier(.3,1.4,.5,1) forwards; background: rgba(10,6,20,.55); }
   #cut .stamp.guilty { color: #ff5a6e; } #cut .stamp.innocent { color: #7ff0b8; } #cut .stamp.plain { color: #fff6d6; }

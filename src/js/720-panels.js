@@ -78,6 +78,7 @@ function renderDetail(id) {
     ${lookStudioHtml(p)}
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>
+    ${voiceDetailHtml(p)}
     ${bookshelfHtml(p)}
     ${LAB_JOBS.includes(p.job) && ensureResearch(p) ? `<p class="hint">🔬 Working on ${esc(p.research.title)} (${Math.round(p.research.progress)}%${p.research.stuck ? ', stuck' : ''}). <button class="btn" type="button" data-openlab="${p.id}">Visit their desk</button></p>` : ''}
     ${goalHtml(p)}

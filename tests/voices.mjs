@@ -33,6 +33,9 @@ try {
         return { lines };
       }
       if (/Something surprising/.test(text)) return window.__wild;
+      if (/Give .* a storyline/.test(text)) return { title: 'The Midnight Bakery', premise: 'Secretly baking bread at night to beat the bakery.', beats: 3 };
+      if (/storyline "/.test(text)) { const last = /the LAST one/.test(text); return { say: last ? 'It rose. It actually rose!' : 'Nobody can know about the flour.', thought: 'Almost there.', reactions: [], diary: last ? 'The loaf came out perfect.' : 'Flour everywhere.', outcome: 'success', changed: 'Now they believe they can do anything.' }; }
+      if (/opens Chirp and posts/.test(text)) return { post: 'the sea smelled like pennies today and nobody else noticed' };
       return { say: 'A model line.', thought: '', action: 'chat' };
     };
   })()`);
@@ -83,6 +86,14 @@ try {
     W.people.splice(W.people.indexOf(k), 1);
     return r === false && !/hot_take \\(/.test(prompt) && /outburst \\(/.test(prompt) === false || [r, prompt.slice(-600)].join(' ');
   })()`), 'kids only get kid-friendly surprise moves');
+  ok(await E(`(async () => {
+    const p = ${P}; W.people.forEach((q) => { q.inside = q !== p; }); p.state = 'free'; p.task = null; p.path = []; p.heldByDlg = false;
+    const arc = await arcStart(true); if (!arc) return 'no arc';
+    for (let i = 0; i < 3; i++) { p.state = 'free'; await arcBeat(arc, true); }
+    const html = voiceDetailHtml(p);
+    return arc.done && arc.outcome === 'success' && arc.beats.length === 3 && W.log.some((e) => /Midnight Bakery/.test(e.text)) && p.past.some((m) => /believe they can do anything/.test(m.text)) && html.includes('The loaf came out perfect') && html.includes('Almost there') || [arc.beats.length, arc.done, html.slice(0, 200)].join(' ');
+  })()`), 'a storyline starts, plays out scene by scene, resolves, and shows on their page');
+  ok(await E(`(async () => { const p = ${P}; const t = await aiChirp(p); postChirp(p, t); return W.chirps.slice(-1)[0].text === 'the sea smelled like pennies today and nobody else noticed'; })()`), 'residents write their own Chirp posts');
   ok(await E(`(() => { const c = () => (W.updates || []).filter((u) => /stopped reading from a script/.test(u.text)).length; W.added.voices1 = false; const n = c(); voicesBoot(); voicesBoot(); return c() === n + 1; })()`), 'old towns hear about it once');
   ok(await E(`(() => { brainCfg.key = ''; W.people.forEach((q) => { q.inside = false; }); W.t = 0.25; for (let i = 0; i < 600; i++) step(0.2); voiceDirty = true; voiceSave(); return !!localStorage.getItem(VOICE_KEY) && W.people.every((p) => Number.isFinite(p.x)); })()`), 'a busy stretch runs clean and the voices are kept on the phone');
 } finally {

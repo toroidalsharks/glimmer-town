@@ -149,6 +149,7 @@ function chirpTick() {
     setTimeout(() => { if (rand() < 0.7) { feel(enemy, p, -0.6, true); remember(enemy, `${p.name} posted something vague on Chirp. Pretty sure it was about me.`, 2, 'subtweeted', p.name); } }, 20000);
     return;
   }
+  if (voiceRoom() && rand() < 0.65) { aiChirp(p).then((t) => { if (t && W) postChirp(p, t); }); return; }
   const mem = (p.today || []).filter((m) => m.weight >= 2 && !m.chirped && !String(m.tag).startsWith('text')).slice(-4);
   if (mem.length) { const m = pick(mem); m.chirped = true; return postChirp(p, `${lc(m.text)} ${pick(['', 'lol', '!!', '🥲', '✨', 'anyway'])}`.trim()); }
   const r = (p.read || []).slice(-1)[0];
