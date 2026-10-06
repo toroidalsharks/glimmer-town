@@ -59,6 +59,21 @@ async function creatorChatReplies(text) {
   const line = q && await chatReplyLine(q, { followup: true });
   if (W && line && gen === chatRound) postText(q, 'town', line, 'group');
 }
+// her newest message, plus any she sent right before it that nobody answered yet
+function chatCreatorSaid(town) {
+  const out = [];
+  for (let i = town.length - 1; i >= 0 && out.length < 3; i--) { if (town[i].from === 'creator') out.unshift(`"${town[i].text}"`); else if (out.length) break; }
+  if (!out.length) { const m = town.filter((x) => x.from === 'creator').slice(-1)[0]; if (m) out.push(`"${m.text}"`); }
+  return out.join(' then ') || 'nothing yet';
+}
+// what keeps a reply on topic: answer her, don't drag in old business or make things up about her
+function chatFocusRules() {
+  return `- Answer what the Creator just said. That is the point of your message. Read it the plain way a friend would.
+- Don't bring up your own old requests, projects or arguments unless they ask about them or they fit what they said.
+- If the Creator sounds confused ("huh?", "what?"), say plainly what you meant, or that you got mixed up.
+- You only know about the Creator what they've told you. Don't invent things about them (a birthday, where they are, how they feel).
+- Talk to the Creator as "you". Never call them he or she.`;
+}
 // how residents should sound when they talk to you: a person in the chat, not a god
 function creatorTalkRules(q) {
   const s = q.cr?.score || 0;
@@ -72,16 +87,20 @@ function creatorTalkRules(q) {
 async function chatReplyLine(q, opts = {}) {
   const first = (W.creatorChats || 0) <= 1;
   if (aiReady()) {
-    const log = (W.texts || []).filter((m) => m.to === 'town').slice(-14).map((m) => `${m.from === 'creator' ? 'THE CREATOR' : m.fromName}: ${m.text}`).join('\n');
+    const town = (W.texts || []).filter((m) => m.to === 'town');
+    const log = town.slice(-10).map((m) => `${m.from === 'creator' ? 'THE CREATOR' : m.fromName}: ${m.text}`).join('\n');
+    const said = chatCreatorSaid(town);
     const mem = await textRecall(q, null, (W.texts || []).filter((m) => m.from === 'creator').slice(-2).map((m) => m.text).join(' '), { noTown: true });
     const prompt = `${voiceCard(q)}${outsideClockContext()}${mem}
 ${voiceRules()}
 THE CREATOR: the one who made ${ISL.name}. They live in The Outside and nobody here has ever seen them. ${q.name} ${attitude(q)[1]}.
 ${first ? `The Creator just wrote in the ${ISL.name} group chat for the very first time. Nobody knew they could.` : `The Creator is in the ${ISL.name} group chat again.`} The whole town can see it.
 ${creatorTalkRules(q)}
-THE GROUP CHAT (oldest first):
+THE GROUP CHAT (oldest first; older messages are background, not what you're answering):
 ${log}
 
+WHAT THE CREATOR JUST SAID: ${said}
+${chatFocusRules()}
 ${opts.followup ? `Write ${q.name}'s next message: answer something one of the others just said, or ask the Creator a quick question about what they said. Keep it short and casual.` : `Write ${q.name}'s next message in the group chat. React the way ${q.name} really would: ask, tease, joke, disagree, share something. If the Creator asked you something, answer it.`} No quotation marks, no name in front.
 Reply with only JSON: {"text": "the message", "thought": "what you privately think about the Creator writing here"}`;
     try {

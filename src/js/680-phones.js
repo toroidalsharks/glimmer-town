@@ -188,6 +188,8 @@ function sendText(from, to, tone) {
   startConvo(from, to, { kind, who: to && to.name });
 }
 function groupPost(a) {
+  // when the Creator just wrote, the chat answers them instead of talking past them
+  if (W.creatorChatAt && Date.now() - W.creatorChatAt < 15 * 60e3) return;
   const others = W.people.filter((q) => q !== a && !q.away && !isAsleep(q));
   const latest = (W.updates || []).slice(-1)[0];
   const lines = [
@@ -202,7 +204,8 @@ function groupPost(a) {
   const n = rand() < 0.3 ? 0 : rand() < 0.7 ? 1 : 2;
   for (let i = 0; i < n && others.length; i++) {
     const q = pick(others);
-    setTimeout(() => { const low = text.toLowerCase(); postText(q, 'town', pickFresh(low.includes('mili') ? (isMili(q) ? ['…yes. hi.', 'i can read it the normal way. like everyone', 'please stop 😭'] : ['LMAO', 'guys stop', 'she is literally right there', 'honestly valid question']) : low.includes('claude') ? ['lol', 'i like it tbh', 'it keeps rearranging things', 'claude if ur reading this: more benches'] : ['lol', 'me', 'NO', 'omg', 'real', 'why is this chat like this', `${a.name.toLowerCase()} pls`, 'same', 'on my way']), 'group'); }, (4 + rand() * 12) * 1000 * (i + 1));
+    // a quick 'lol' only makes sense right under what it answers
+    setTimeout(() => { if (!(W.texts || []).filter((m) => m.to === 'town').slice(-3).some((m) => m.from === a.id) || (W.creatorChatAt && Date.now() - W.creatorChatAt < 15 * 60e3)) return; const low = text.toLowerCase(); postText(q, 'town', pickFresh(low.includes('mili') ? (isMili(q) ? ['…yes. hi.', 'i can read it the normal way. like everyone', 'please stop 😭'] : ['LMAO', 'guys stop', 'she is literally right there', 'honestly valid question']) : low.includes('claude') ? ['lol', 'i like it tbh', 'it keeps rearranging things', 'claude if ur reading this: more benches'] : ['lol', 'me', 'NO', 'omg', 'real', 'why is this chat like this', `${a.name.toLowerCase()} pls`, 'same', 'on my way']), 'group'); }, (4 + rand() * 12) * 1000 * (i + 1));
   }
 }
 function textTick() {
