@@ -71,6 +71,14 @@ async function llmOnce(model, messages, opts) {
   if (!text) throw { code: 'empty' };
   return text;
 }
+// what to tell the player when talking fails for want of a working key; null for every other error
+function talkKeyErr(err) {
+  if (err?.code === 'no_credit') return 'The OpenRouter key in this town is out of credit. Top it up on openrouter.ai and talking comes back.';
+  if (err?.code !== 'no_key') return null;
+  if (MODE === 'remote') return 'Add an OpenRouter key in Settings on the box to talk.';
+  return brainCfg.key ? 'OpenRouter turned down the key in Settings. Check it there.' : needKeyText();
+}
+function needKeyText() { return 'Talking needs an OpenRouter key, and every town uses its own. Paste yours in Settings, under OpenRouter key.'; }
 let lastAiError = '';
 async function llm(input, opts = {}) {
   if (!brainCfg.key) throw { code: 'no_key' };
