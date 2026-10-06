@@ -15,8 +15,11 @@ function loadBrain() {
 // keep only the key itself
 function cleanKey(raw) {
   const t = String(raw || '').normalize('NFKC').replace(/[\u200b-\u200d\u2060\ufeff\s"'\u2018\u2019\u201c\u201d]/g, '');
-  const m = t.match(/sk-or-[A-Za-z0-9_-]+/);
-  return m ? m[0] : t.replace(/^bearer/i, '');
+  // pasting into a field that still holds an older key glues the two together; the newest paste is last
+  const at = t.lastIndexOf('sk-or-');
+  if (at < 0) return t.replace(/^bearer/i, '');
+  const m = t.slice(at).match(/^sk-or-v1-[a-f0-9]{64}/i) || t.slice(at).match(/^sk-or-[A-Za-z0-9_-]+/);
+  return m[0];
 }
 // ask OpenRouter whether it knows the key, without spending anything; true, false, or null if it couldn't tell
 async function checkKey(key) {
