@@ -15,7 +15,7 @@ function renderBrainSettings() {
     ${MODE === 'remote' ? '<div hidden>' : '<div style="display:flex;flex-direction:column;gap:10px">'}
     <p class="label">Their minds</p>
     <p class="hint">Each resident runs on its own model through OpenRouter. They talk to each other, argue, gossip and rewrite who they are each night. Without a key they fall back to simple rules.</p>
-    <div class="field"><label for="orKey">OpenRouter key</label><input id="orKey" type="password" autocomplete="off" placeholder="sk-or-..." value="${esc(brainCfg.key)}" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
+    <div class="field"><label for="orKey">OpenRouter key</label><input id="orKey" type="password" autocomplete="off" placeholder="sk-or-..." value="${esc(brainCfg.key)}" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px">${brainCfg.key ? `<span class="hint">Saved key ends in …${esc(brainCfg.key.slice(-6))}, ${brainCfg.key.length} characters long.</span>` : ''}</div>
     <div class="field"><label for="orModels">Models residents can have (one per line)</label><textarea id="orModels" rows="4" style="font:14px ui-monospace,monospace;color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px">${esc(brainCfg.models.join('\n'))}</textarea></div>
     <div class="field"><label for="orJudge">Model that judges how conversations went</label><input id="orJudge" type="text" value="${esc(brainCfg.judge)}" style="font:14px ui-monospace,monospace;color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
     <div class="field"><label for="orBudget">Most model calls per real day (about 3 or 4 per conversation)</label><input id="orBudget" type="number" min="0" max="5000" value="${brainCfg.budget}" style="font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px"></div>
@@ -37,11 +37,11 @@ function renderBrainSettings() {
       <div class="btns"><button class="btn" type="button" data-copy="${esc(fbLink + '#remote')}">Copy remote link</button><button class="btn" type="button" data-copy="${esc(fbLink + '#isle2')}">Copy second island link</button><button class="btn" type="button" data-copy="${esc(fbLink + '#box')}">Copy box link</button></div>` : ''}`;
 }
 // a pasted key counts even if Save minds never gets tapped
-document.addEventListener('change', (e) => { if (e.target.id === 'orKey' && e.target.value.trim() !== brainCfg.key) $('#orSave')?.click(); });
+document.addEventListener('change', (e) => { if (e.target.id === 'orKey' && cleanKey(e.target.value) !== brainCfg.key) $('#orSave')?.click(); });
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'orSave') {
-    brainCfg.key = $('#orKey').value.trim();
+    brainCfg.key = cleanKey($('#orKey').value);
     brainCfg.models = $('#orModels').value.split(/\s*\n\s*/).map((s) => s.trim()).filter(Boolean);
     if (!brainCfg.models.length) brainCfg.models = DEFAULT_MODELS.slice();
     brainCfg.judge = $('#orJudge').value.trim() || brainCfg.models[0];
@@ -49,7 +49,13 @@ document.addEventListener('click', async (e) => {
     aiDown = ''; saveBrain();
     if (MODE === 'host') RT.sample = brainCfg.key ? makeSample() : null;
     badModels.clear(); lastAiError = ''; checkModels(); if (W) W.people.forEach(modelOf);
-    toast(brainCfg.key ? 'Saved. Residents will start thinking for themselves.' : 'Saved.'); renderBrainSettings();
+    toast(brainCfg.key ? 'Saved. Checking the key with OpenRouter…' : 'Saved.'); renderBrainSettings();
+    if (MODE === 'host' && brainCfg.key) {
+      const key = brainCfg.key, ok = await checkKey(key);
+      if (key !== brainCfg.key) return;
+      if (ok === false) { aiDown = 'OpenRouter doesn\'t recognize this key. Copy it again from openrouter.ai/keys, or make a new one there.'; toast(aiDown); renderBrainSettings(); }
+      else toast(ok ? 'OpenRouter knows this key. Residents will start thinking for themselves.' : 'Saved. Residents will start thinking for themselves.');
+    }
   }
   if (b.dataset.usemodels) {
     const m = MODEL_PICKS.find((x) => x.key === b.dataset.usemodels); if (!m) return;

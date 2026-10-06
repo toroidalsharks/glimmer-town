@@ -6,9 +6,24 @@ const DEFAULT_MODELS = ['deepseek/deepseek-v4-flash', 'z-ai/glm-5.3-flash', 'xia
 const brainCfg = { key: '', models: DEFAULT_MODELS.slice(), judge: 'deepseek/deepseek-v4-flash', budget: 2000, fbUrl: '', code: '' };
 function loadBrain() {
   try { Object.assign(brainCfg, JSON.parse(localStorage.getItem(BRAIN_KEY) || '{}')); } catch (e) {}
+  brainCfg.key = cleanKey(brainCfg.key);
   const q = new URLSearchParams(location.search);
   if (q.get('db')) { brainCfg.fbUrl = q.get('db'); brainCfg.code = q.get('code') || brainCfg.code; saveBrain(); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if (!brainCfg.models.length) brainCfg.models = DEFAULT_MODELS.slice();
+}
+// a pasted key can carry invisible characters, smart quotes, a "Bearer " prefix or a label around it;
+// keep only the key itself
+function cleanKey(raw) {
+  const t = String(raw || '').normalize('NFKC').replace(/[\u200b-\u200d\u2060\ufeff\s"'\u2018\u2019\u201c\u201d]/g, '');
+  // pasting into a field that still holds an older key glues the two together; the newest paste is last
+  const at = t.lastIndexOf('sk-or-');
+  if (at < 0) return t.replace(/^bearer/i, '');
+  const m = t.slice(at).match(/^sk-or-v1-[a-f0-9]{64}/i) || t.slice(at).match(/^sk-or-[A-Za-z0-9_-]+/);
+  return m[0];
+}
+// ask OpenRouter whether it knows the key, without spending anything; true, false, or null if it couldn't tell
+async function checkKey(key) {
+  try { const r = await fetch('https://openrouter.ai/api/v1/key', { headers: { Authorization: `Bearer ${key}` } }); return r.ok ? true : r.status === 401 ? false : null; } catch (e) { return null; }
 }
 function saveBrain() { try { localStorage.setItem(BRAIN_KEY, JSON.stringify(brainCfg)); } catch (e) {} }
 const TAB = DEVICE + '-' + uid();
