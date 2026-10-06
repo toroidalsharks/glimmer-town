@@ -1,7 +1,7 @@
 // ============================================================
 // SETTINGS (per device)
 // ============================================================
-const cfg = { daySec: 300, spin: true, follow: true, shadows: true, boxMode: false, mirror: false, music: true, sfx: true, voices: true, volume: 0.7, cute: true, cutscenes: true };
+const cfg = { daySec: 300, spin: true, follow: true, shadows: true, boxMode: false, mirror: false, music: true, ownMusic: false, sfx: true, voices: true, volume: 0.7, cute: true, cutscenes: true };
 function loadPrefs() { try { Object.assign(cfg, JSON.parse(localStorage.getItem(SAVE_KEY + '-prefs') || '{}')); } catch (e) {} }
 function savePrefs() { try { localStorage.setItem(SAVE_KEY + '-prefs', JSON.stringify(cfg)); } catch (e) {} }
 const ts = () => clamp(cfg.daySec / 300, 0.35, 4);
