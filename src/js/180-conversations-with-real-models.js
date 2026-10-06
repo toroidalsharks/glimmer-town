@@ -10,7 +10,7 @@ function aboutThem(me, them) {
   const mem = [...me.past, ...me.today].filter((m) => m.who === them.name || (m.text || '').includes(them.name)).slice(-5).map((m) => `- ${m.text}`).join('\n');
   return rel + `${f ? `You feel ${f.score >= 5 ? 'close to' : f.score >= 2 ? 'warm toward' : f.score > -2 ? 'neutral about' : f.score > -5 ? 'annoyed by' : 'hostile toward'} ${them.name} (${Math.round(f.score)} on -10..10). Your note on them: "${f.note}"` : `You have never really talked to ${them.name}.`}${mem ? `\nWhat you remember about ${them.name}:\n${mem}` : ''}`;
 }
-function aiLine(me, them, transcript, situation) {
+function aiLine(me, them, transcript, situation, opts = {}) {
   const recent = me.today.slice(-5).map((m) => `- ${m.text}`).join('\n') || '- nothing much';
   const system = `You are ${me.name}, a small villager in ${ISL.name}, a tiny island town. This is a character simulation with real personalities: ${me.name} can be petty, jealous, stubborn, sarcastic, proud, shy, loving, or wrong, exactly as their history suggests. Never act like an assistant and never lecture. Do not smooth over conflict just to be nice; only soften if something in this conversation earned it. People here hold grudges, keep secrets, gossip, and sometimes lie. Like anyone in a small town, you care where you stand: you may go along with your crowd even when you privately disagree, say different things to different people, and remember who sided with whom. The Creator is only a small, distant part of life here: don't bring them up unless the conversation naturally goes there. Mostly talk about your own life: neighbors, work, food, plans, rumors, the town, and what you want. Keep lines short and natural, the way people actually talk.`;
   const user = `WHO YOU ARE (your own words): ${me.selfNote}
@@ -21,15 +21,15 @@ ${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${clas
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
 ${aboutThem(me, them)}
 ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hungry' : ''}.${ageNote(them, false)}
-SEASON: ${seasonOf().name}, ${W.weather} weather.${isBirthday(me) ? ' Today is YOUR birthday.' : ''}${isBirthday(them) ? ` Today is ${them.name}'s birthday.` : ''}
+SEASON: ${seasonOf().name}, ${W.weather} weather.${isBirthday(me) ? ' Today is YOUR birthday.' : ''}${isBirthday(them) ? ` Today is ${them.name}'s birthday.` : ''}${outsideClockContext()}
 TODAY SO FAR:
 ${recent}
 ${voiceSpark(me)}
 ${transcript.length ? `\nCONVERSATION SO FAR:\n${transcript.map((l) => `${l.who}: "${l.say}"${l.action !== 'chat' ? ` [${l.action}]` : ''}`).join('\n')}\n` : ''}
 SITUATION: ${situation}
 
-Reply with only JSON: {"thought": "what you privately think right now (can differ from what you say)", "say": "what you say out loud, 1-2 short sentences", "action": "one of ${AI_ACTIONS.join(', ')}", "gossip_about": "a name, only if you are gossiping about someone"}`;
-  return llm([{ role: 'system', content: system }, { role: 'user', content: user }], { model: modelOf(me), max: 220, fallbackKey: 'say' }).then((r) => { if (r && r.thought) me.thought = { text: fitLine(String(r.thought), 200), at: Date.now() }; return r; }).then((r) => (r && r.say ? { thought: String(r.thought || '').slice(0, 240), say: fitLine(r.say, 280), action: AI_ACTIONS.includes(r.action) ? r.action : 'chat', gossip: r.gossip_about ? String(r.gossip_about) : null } : null)).catch(() => null);
+Reply with only JSON: {"thought": "what you privately think right now (can differ from what you say)", "say": "${opts.long ? 'the whole message, as long or short as you would really write it' : 'what you say out loud, 1-2 short sentences'}", "action": "one of ${AI_ACTIONS.join(', ')}", "gossip_about": "a name, only if you are gossiping about someone"}`;
+  return llm([{ role: 'system', content: system }, { role: 'user', content: user }], { model: modelOf(me), max: opts.long ? 600 : 220, fallbackKey: 'say' }).then((r) => { if (r && r.thought) me.thought = { text: fitLine(String(r.thought), 200), at: Date.now() }; return r; }).then((r) => (r && r.say ? { thought: String(r.thought || '').slice(0, 240), say: opts.long ? String(r.say).trim() : fitLine(r.say, 280), action: AI_ACTIONS.includes(r.action) ? r.action : 'chat', gossip: r.gossip_about ? String(r.gossip_about) : null } : null)).catch(() => null);
 }
 function aiJudge(a, b, transcript, thoughts) {
   const fa = a.feelings[b.id], fb = b.feelings[a.id];

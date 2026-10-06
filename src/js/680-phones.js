@@ -120,7 +120,7 @@ function textThreadKey(a, b) { return b === 'town' ? 'town' : [a, b].sort().join
 let nextConvoAt = 45, nextGroupAt = 120, lastGoodnightDay = {};
 const convos = [];
 function postText(from, toId, text, tone, T) {
-  text = String(voiceLine(from, text, toId === 'town' ? 'post' : 'text') || '').replace(/^["']|["']$/g, '').trim().slice(0, 180); if (!text) return null;
+  text = String(voiceLine(from, text, toId === 'town' ? 'post' : 'text') || '').replace(/^["']|["']$/g, '').trim(); if (!text) return null;
   W.texts = W.texts || [];
   const msg = { id: uid(), from: from.id, fromName: from.name, to: toId, text, tone, day: W.day, t: W.t };
   W.texts.push(msg); if (W.texts.length > 400) W.texts.splice(0, W.texts.length - 400);
@@ -133,7 +133,7 @@ function postText(from, toId, text, tone, T) {
     if (tone === 'bully') { remember(to, `${from.name} texted me: "${text}"`, 3, 'bullied', from.name); to.joy = Math.max(0, (to.joy || 0) - 5); if ((to.today || []).filter((m) => m.tag === 'bullied').length >= 2 && rand() < 0.5) fileCase('bully', to, from); }
   }
   markDirty();
-  if (activeTab === 'texts' && !sheet.hidden) refreshPanel(false);
+  textsArrived(msg);
   return msg;
 }
 function toneFor(a, b, T) {
@@ -148,7 +148,7 @@ async function aiText(from, to, T, transcript, replying) {
   if (!(aiReady() && aiBusy < 3)) return null;
   const topic = T.mem ? `what happened: ${T.mem.text}` : { miss: 'you miss them', plans: 'making plans', crush: 'you have a crush on them and are nervous', beef: 'you are angry at them', bully: 'you want to be mean to them (PG, no slurs)', wonder: 'a big random thought', claude: 'the AI named Claude that keeps changing the island', mili: 'what Mili really is', interest: `something you're into: ${interestOf(from) || 'anything'}`, jealous: 'you felt jealous today' }[T.kind] || T.kind;
   try {
-    const l = await aiLine(from, to, [], `You are TEXTING ${to.name} on your phone, not talking in person. ${replying ? 'Reply to their last message.' : `Start a text about ${topic}.`}${transcript.length ? `\nThe texts so far:\n${transcript.map((m) => `${m.fromName}: ${m.text}`).join('\n')}` : ''}\nWrite ONE short text message the way you personally text (lowercase is fine, emoji only if that is you). Say something specific and real, not generic. No quotation marks.`);
+    const l = await aiLine(from, to, [], `You are TEXTING ${to.name} on your phone, not talking in person. ${replying ? 'Reply to their last message.' : `Start a text about ${topic}.`}${transcript.length ? `\nThe texts so far:\n${transcript.map((m) => `${m.fromName}: ${m.text}`).join('\n')}` : ''}\nWrite ONE text message the way you personally text (lowercase is fine, emoji only if that is you). Most texts are short, but when you have a lot to say, say all of it. Say something specific and real, not generic. No quotation marks.`, { long: true });
     return l && l.say ? l.say : null;
   } catch (e) { return null; }
 }

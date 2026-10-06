@@ -60,7 +60,7 @@ SO FAR: ${arc.beats.length ? arc.beats.map((b, i) => `${i + 1}. ${b.text}`).join
 ${VOICE_RULES}
 - No romance or flirting, no crimes.${kid ? ` ${p.name} is a ${stageOf(p)}; keep it right for their age.` : ''}
 
-${arcCard(p)}
+${arcCard(p)}${outsideClockContext()}
 NEARBY RIGHT NOW: ${near.length ? near.map((q) => `${q.name}${stageOf(q) !== 'adult' ? ` (${stageOf(q)})` : ''}, feels ${Math.round(fscore(q, p))} about ${p.name}`).join('; ') : 'nobody close'}
 
 Write scene ${n} of ${arc.total}${last ? ', the LAST one: resolve it. It can succeed, fail, or twist into something nobody expected, but it has to land' : '. Move it forward and make it escalate or turn'}. Use the people nearby if it helps. Show it, keep it short.
@@ -113,6 +113,7 @@ async function aiChirp(p) {
   const recent = (W.chirps || []).slice(-6).map((c) => `${c.name}: ${c.text}`).join('\n');
   const prompt = `${voiceCard(p)}
 ${VOICE_RULES}
+${outsideClockContext()}
 ${recent ? `\nRECENT POSTS ON CHIRP (the island feed):\n${recent}\n` : ''}
 ${p.name} opens Chirp and posts something. It could be about their day, a hot opinion, a vague complaint, a brag, a question for the town, a reply to the feed, something oddly specific. Write it exactly the way ${p.name} posts. One post, under 200 characters, no hashtags, no quotation marks.
 Reply with only JSON: {"post": "..."}`;

@@ -175,7 +175,7 @@ WHO: ${voiceCard(p)}
 THE MOMENT: the game's old script had them say "${r.seed}" here.${r.about ? ` ${r.about}` : ''} That shows what is going on. Write ${VOICE_PER} NEW, different things ${p.name} might say instead, as ${how}.
 ${slots ? `SLOTS: ${slots}. Write a slot exactly like {A} when you mention it; the game fills it in. Never make up other {…}.\n` : ''}${book ? `ALREADY USED FOR THIS MOMENT (don't reuse): ${book}\n` : ''}`;
   }).join('\n');
-  const prompt = `You write lines for the residents of ${where}. They are small, vivid, strange, funny, petty, tender people. Each one sounds only like themself.
+  const prompt = `You write lines for the residents of ${where}. They are small, vivid, strange, funny, petty, tender people. Each one sounds only like themself.${outsideClockContext()}
 ${VOICE_RULES}
 
 For each numbered item, write ${VOICE_PER} lines. Make them really different from each other: different moods, angles and lengths. Some should be surprising, oddly specific, or reveal something about the person. Use what they have going on lately. Don't start them all the same way, don't explain, no stage directions, no quotation marks, no hashtags.
@@ -188,7 +188,7 @@ Reply with only JSON: {"lines": {"1": ["...", "..."], "2": [...]}}`;
     jobs.forEach((job, i) => {
       const got = (Array.isArray(L) ? L[i] : L[String(i + 1)] || L[i + 1]) || [];
       const p = person(job.pid); if (!p || !Array.isArray(got)) return;
-      const clean = got.map((t) => fitLine(String(t || '').replace(/^["'\s]+|["'\s]+$/g, ''), job.channel === 'say' ? 150 : 200)).filter((t) => t.length > 1 && !/\{(?![A-Z]\}|n\d+\}|q\d+\})/.test(t) && voiceFill(t, job.slotNames) && !voiceUsed(voiceFill(t, job.slotNames)) && (!job.safe || job.safe(voiceFill(t, job.slotNames))));
+      const clean = got.map((t) => { t = String(t || '').replace(/^["'\s]+|["'\s]+$/g, ''); return job.channel === 'say' ? fitLine(t, 150) : t; }).filter((t) => t.length > 1 && !/\{(?![A-Z]\}|n\d+\}|q\d+\})/.test(t) && voiceFill(t, job.slotNames) && !voiceUsed(voiceFill(t, job.slotNames)) && (!job.safe || job.safe(voiceFill(t, job.slotNames))));
       if (!clean.length) return;
       const B = VOICE.bank[p.id] = VOICE.bank[p.id] || {};
       B[job.key] = [...(B[job.key] || []), ...clean.map((t) => ({ t, at: Date.now() }))].slice(-8);
@@ -264,7 +264,7 @@ async function wildMoment(force) {
 ${VOICE_RULES}
 - Nothing romantic or flirty here; love has its own story in the game.
 
-${voiceCard(p)}
+${voiceCard(p)}${outsideClockContext()}
 How ${p.name} feels about people: ${Object.values(p.feelings || {}).filter((f) => Math.abs(f.score) >= 3).slice(0, 6).map((f) => `${f.name} ${Math.round(f.score)} ("${String(f.note || '').slice(0, 70)}")`).join('; ') || 'nothing strong yet'}
 NEARBY: ${near.length ? near.map((q) => `${q.name}${ageNote(q) ? ` (${stageOf(q)})` : ''}, ${q.name} feels ${Math.round(fscore(q, p))} about ${p.name}`).join('; ') : 'nobody close'}
 ${recent ? `IN TOWN LATELY: ${recent}\n` : ''}${(VOICE.mine[p.id] || []).length ? `${p.name} said lately (don't repeat): ${(VOICE.mine[p.id] || []).slice(-6).map((s) => `"${s}"`).join(' ')}\n` : ''}

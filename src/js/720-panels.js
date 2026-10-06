@@ -22,7 +22,7 @@ function showTab(t) {
 let lastPanel = 0, panelBusy = false;
 function refreshPanel(force) {
   if (!W || sheet.hidden) return;
-  if (!force && (panelBusy || document.activeElement?.closest?.('.sheet input, .sheet select, .sheet textarea'))) return;
+  if (!force && (panelBusy || (document.activeElement?.closest?.('.sheet input, .sheet select, .sheet textarea') && !(activeTab === 'texts' && chatInputFocused())))) return;
   const pane = $('#pane-' + activeTab), scroll = pane.scrollTop;
   if (activeTab === 'people') openDetail && person(openDetail) ? renderDetail(openDetail) : renderPeople();
   else if (activeTab === 'mail') renderMail();
@@ -36,6 +36,7 @@ function refreshPanel(force) {
   else if (activeTab === 'court') renderCourt();
   else if (activeTab === 'box') { renderLink(); if (force) { renderBrainSettings(); renderNotify(); } }
   pane.scrollTop = scroll;
+  if (textsStick && activeTab === 'texts') { pane.scrollTop = pane.scrollHeight; textsStick = false; }
 }
 function itemCard(it, btn) {
   const by = it.kind === 'book' && BOOKS[it.id] ? `${SUBJECTS[BOOKS[it.id].subj].icon} ${esc(SUBJECTS[BOOKS[it.id].subj].name)} · by ${esc(BOOKS[it.id].by)}` : it.makerName ? `Made by ${esc(it.makerName)}` : it.kind === 'food' ? 'From the menu' : it.handmade ? 'Handmade by you' : 'Imported from over the sea';
@@ -294,6 +295,10 @@ sheet.addEventListener('input', (e) => {
   setMailDraft(ta.closest('form').dataset.mailreply, ta.value); mailCount(ta);
 });
 addEventListener('pagehide', () => { if (mailDraftTimer) saveMailDrafts(); });
+// the group chat box in the Texts tab
+sheet.addEventListener('input', (e) => { if (e.target.id === 'groupChatInput') setChatDraft(e.target.value); });
+sheet.addEventListener('submit', (e) => { const f = e.target.closest && e.target.closest('form[data-groupchat]'); if (!f) return; e.preventDefault(); sendGroupChat(f); });
+sheet.addEventListener('keydown', (e) => { if (e.target.id === 'groupChatInput' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendGroupChat(e.target.closest('form')); } });
 let peerCount = 0;
 function renderLink() {
   const s = $('#linkStatus');

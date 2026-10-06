@@ -18,7 +18,7 @@ function canNotify(level, key) {
 }
 async function sendPush(level, title, message, opts = {}) {
   if (!notifyCfg.topic) return false;
-  const payload = { topic: notifyCfg.topic, title: String(title).slice(0, 120), message: String(message).slice(0, 900), priority: level === 'bad' ? 4 : level === 'ask' ? 3 : 3, tags: opts.tags || [level === 'bad' ? 'rotating_light' : level === 'ask' ? 'pray' : 'sparkles'] };
+  const payload = { topic: notifyCfg.topic, title: String(title).slice(0, 120), message: String(message).slice(0, 3800), priority: level === 'bad' ? 4 : level === 'ask' ? 3 : 3, tags: opts.tags || [level === 'bad' ? 'rotating_light' : level === 'ask' ? 'pray' : 'sparkles'] };
   try { payload.click = location.href.split('#')[0]; } catch (e) {}
   if ((level === 'bad' || opts.email) && notifyCfg.email && notifyCfg.token) payload.email = notifyCfg.email;
   try {
@@ -32,10 +32,10 @@ async function residentVoice(p, situation, fallback) {
   if (p && aiReady() && aiBusy < 3) {
     try {
       const r = await llm(`You are ${p.name}, a villager in ${ISL.name}, a tiny island town. In your own words: ${p.selfNote}${p.style ? `\nHOW YOU TALK: ${styleOf(p)}` : ''}
-You're texting the Creator (the mysterious being who made your island; they're away right now and you can reach them on their phone). What's going on: ${situation}
-Write the text: one or two short sentences, in your own voice, like a real text message.
-Reply with only JSON: {"text": "..."}`, { model: modelOf(p), max: 90, fallbackKey: 'text' });
-      if (r?.text) return String(r.text).replace(/^["']|["']$/g, '').slice(0, 240);
+You're texting the Creator (the mysterious being who made your island; they're away right now and you can reach them on their phone). What's going on: ${situation}${outsideClockContext()}
+Write the text in your own voice, like a real text message, as long or short as you would really write it.
+Reply with only JSON: {"text": "..."}`, { model: modelOf(p), max: 400, fallbackKey: 'text' });
+      if (r?.text) return String(r.text).replace(/^["']|["']$/g, '').trim();
     } catch (e) {}
   }
   return fallback;
