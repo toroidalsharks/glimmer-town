@@ -244,7 +244,10 @@
   .msg.r { align-self: flex-end; background: rgba(255, 255, 255, .12); border-bottom-right-radius: 4px; }
   .msg.bad { border-color: #7a3a4e; }
   .msg-n { font-size: 11px; font-weight: 700; }
-  .msg-t { font-size: 14px; }
+  .msg-t { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.you .msg-n { color: var(--accent); }
+  .chat-send { margin-top: 12px; align-items: flex-end; }
+  .talk-row textarea { flex: 1; min-width: 0; font: 15px var(--body); color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; resize: none; max-height: 40vh; }
   .msg-d { font-size: 10px; color: var(--faint); }
   .chirp { background: var(--raise); border: 1px solid var(--line); border-radius: 14px; padding: 9px 12px; margin: 6px 0; display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
   .chirp .reply { font-size: 13px; color: var(--dim); border-left: 2px solid var(--line); padding-left: 8px; }
@@ -282,7 +285,7 @@
   .who:active, .item:active { transform: scale(.99); }
   .tile, .minutes .mi, .chirp, .msg, .rel-wrap { background: var(--card); border-radius: 10px; }
   .tile.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .field select, .talk-row input { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .14); }
+  .field select, .talk-row input, .talk-row textarea { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .14); }
   .roomcard .rc, .awaybox, .fishbox, .goto { border-color: rgba(255, 255, 255, .14); box-shadow: 0 8px 24px rgba(0, 0, 0, .4); }
   .dlg-name { box-shadow: none; }
   .dlg .btn { background: #f4eeff; box-shadow: 0 2px 0 #2a2238; }
