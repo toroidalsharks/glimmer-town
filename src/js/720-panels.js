@@ -400,7 +400,7 @@ sheet.addEventListener('submit', async (e) => {
     st.glimpse = thoughtGlimpse(reply, r?.thought); if (leave) st.err = notNowText(p, NOT_NOW_MS / 60e3);
   } catch (err) {
     st.log.pop();
-    st.err = err?.code === 'no_key' || err?.code === 'no_credit' ? 'Add an OpenRouter key in Settings on the box to talk.' : err?.code === 'rate_limited' ? "You've been talking a lot. Try again in a bit." : err?.code === 'refused' ? `${p.name} didn't answer that.` : (err?.code === 'bad_model' ? 'Their model is missing on OpenRouter. Pick another in Settings.' : err?.code === 'rate_limited' ? 'OpenRouter is busy. Try again in a moment.' : 'They got distracted. Try saying it again.');
+    st.err = talkKeyErr(err) || (err?.code === 'rate_limited' ? "You've been talking a lot. Try again in a bit." : err?.code === 'refused' ? `${p.name} didn't answer that.` : (err?.code === 'bad_model' ? 'Their model is missing on OpenRouter. Pick another in Settings.' : err?.code === 'rate_limited' ? 'OpenRouter is busy. Try again in a moment.' : 'They got distracted. Try saying it again.'));
   }
   st.busy = false; panelBusy = false; refreshPanel(true);
   const inp = document.getElementById('talk-' + id); if (inp) inp.focus();

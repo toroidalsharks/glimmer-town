@@ -59,8 +59,9 @@ async function llmOnce(model, messages, opts) {
   if (!res.ok) {
     clearTimeout(timer);
     let msg = ''; try { msg = (await res.json())?.error?.message || ''; } catch (e) {}
-    if (res.status === 401) { aiDown = 'OpenRouter rejected the key. Check it in Settings.'; throw { code: 'no_key' }; }
-    if (res.status === 402) { aiDown = 'Your OpenRouter credits ran out, so residents went back to their own rules.'; throw { code: 'no_credit' }; }
+    const said = msg ? ` OpenRouter said: "${String(msg).slice(0, 160)}"` : '';
+    if (res.status === 401) { aiDown = 'OpenRouter rejected the key. Check it in Settings.' + said; throw { code: 'no_key', said }; }
+    if (res.status === 402) { aiDown = 'OpenRouter says there is not enough credit for this key, so residents went back to their own rules. A key can have its own spending limit on openrouter.ai/keys, apart from the account balance.' + said; throw { code: 'no_credit', said }; }
     if (res.status === 400 || res.status === 404) { if (/model|not a valid|not found|no endpoints/i.test(msg)) { badModels.add(model); lastAiError = `${shortModel(model)} isn't available on OpenRouter, so I'm skipping it.`; } throw { code: 'bad_model' }; }
     throw { code: res.status === 429 ? 'rate_limited' : 'upstream_error' };
   }
@@ -71,6 +72,14 @@ async function llmOnce(model, messages, opts) {
   if (!text) throw { code: 'empty' };
   return text;
 }
+// what to tell the player when talking fails for want of a working key; null for every other error
+function talkKeyErr(err) {
+  if (err?.code === 'no_credit') return 'OpenRouter says this key has no credit left. Check the account balance and the key\'s own limit on openrouter.ai/keys.' + (err.said || '');
+  if (err?.code !== 'no_key') return null;
+  if (MODE === 'remote') return 'Add an OpenRouter key in Settings on the box to talk.';
+  return brainCfg.key ? 'OpenRouter turned down the key in Settings. Paste it again, with nothing before or after it.' + (err.said || '') : needKeyText();
+}
+function needKeyText() { return 'Talking needs an OpenRouter key, and every town uses its own. Paste yours in Settings, under OpenRouter key.'; }
 let lastAiError = '';
 async function llm(input, opts = {}) {
   if (!brainCfg.key) throw { code: 'no_key' };

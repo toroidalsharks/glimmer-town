@@ -91,7 +91,9 @@ function renderDlg(retype) {
       <button class="btn" data-d="page">Their page</button></div>`;
   } else if (dlg.mode === 'talk') {
     const st = talkState[p.id] || (talkState[p.id] = { log: [], busy: false });
-    html = RT.sample ? `<form class="talk-row" data-dtalk="${p.id}"><input id="dlgInput" type="text" maxlength="240" autocomplete="off" placeholder="Say something to ${esc(p.name)}…" ${st.busy || notNowLeft(p) ? 'disabled' : ''}><button class="btn gold" type="submit" ${st.busy || notNowLeft(p) ? 'disabled' : ''}>Speak</button></form>${st.glimpse ? `<p class="hint" style="font-style:italic">💭 For a second you caught what ${esc(p.name)} was really thinking: “${esc(st.glimpse)}”</p>` : ''}${st.err || notNowLeft(p) ? `<p class="hint" style="color:#8a4a4a">${esc(st.err || notNowText(p))}</p>` : ''}<div class="dlg-choices"><button class="btn" data-d="menu">Back</button></div>`
+    const noKey = MODE === 'host' && !brainCfg.key;
+    html = noKey ? `<p class="hint" style="color:#6d6488">${esc(needKeyText())}</p><div class="dlg-choices"><button class="btn gold" data-d="settings">Open Settings</button><button class="btn" data-d="menu">Back</button></div>`
+      : RT.sample ? `<form class="talk-row" data-dtalk="${p.id}"><input id="dlgInput" type="text" maxlength="240" autocomplete="off" placeholder="Say something to ${esc(p.name)}…" ${st.busy || notNowLeft(p) ? 'disabled' : ''}><button class="btn gold" type="submit" ${st.busy || notNowLeft(p) ? 'disabled' : ''}>Speak</button></form>${st.glimpse ? `<p class="hint" style="font-style:italic">💭 For a second you caught what ${esc(p.name)} was really thinking: “${esc(st.glimpse)}”</p>` : ''}${st.err || notNowLeft(p) ? `<p class="hint" style="color:#8a4a4a">${esc(st.err || notNowText(p))}</p>` : ''}<div class="dlg-choices"><button class="btn" data-d="menu">Back</button></div>`
       : `<p class="hint" style="color:#6d6488">Add an OpenRouter key in Settings to talk to them.</p><div class="dlg-choices"><button class="btn" data-d="menu">Back</button></div>`;
   } else if (dlg.mode === 'gift') {
     html = C.items.length ? `<div class="items">${C.items.map((it) => itemCard(it, `<div class="item-row"><span class="item-by">${wishMatch(p, it) ? '✨ their wish' : ''}</span><button class="btn gold" data-d="give" data-u="${it.uid}">Give</button></div>`)).join('')}</div>` : `<p class="hint" style="color:#6d6488">You don't have anything yet. Tap a shop in town to go inside and buy something.</p>`;
@@ -124,6 +126,7 @@ dlgEl.addEventListener('click', (e) => {
   if (d === 'feed') { dlgSay(quoteOf(applyCmd({ t: 'feed', to: p.id, id: b.dataset.f }))); return; }
   if (d === 'coin') { dlgSay(quoteOf(applyCmd({ t: 'coins', to: p.id, n: Number(b.dataset.n) }))); return; }
   if (d === 'room') { const id = p.id; releaseDlg(); openInterior({ kind: 'room', id }); if (person(id).inside && person(id).task?.kind === 'home') setTimeout(() => openInteract(id), 400); return; }
+  if (d === 'settings') { releaseDlg(); activeTab = 'box'; openSheet(); return; }
   if (d === 'page') { const id = p.id; releaseDlg(); activeTab = 'people'; openDetail = id; openSheet(); return; }
 });
 dlgEl.addEventListener('submit', async (e) => {
@@ -145,7 +148,7 @@ dlgEl.addEventListener('submit', async (e) => {
     if (dlg && dlg.pid === p.id) { dlg.text = reply; }
   } catch (err) {
     st.log.pop();
-    st.err = err?.code === 'no_key' || err?.code === 'no_credit' ? 'Add an OpenRouter key in Settings on the box to talk.' : err?.code === 'rate_limited' ? "You've been talking a lot. Try again in a bit." : (err?.code === 'bad_model' ? 'Their model is missing on OpenRouter. Pick another in Settings.' : err?.code === 'rate_limited' ? 'OpenRouter is busy. Try again in a moment.' : 'They got distracted. Try saying it again.');
+    st.err = talkKeyErr(err) || (err?.code === 'rate_limited' ? "You've been talking a lot. Try again in a bit." : (err?.code === 'bad_model' ? 'Their model is missing on OpenRouter. Pick another in Settings.' : err?.code === 'rate_limited' ? 'OpenRouter is busy. Try again in a moment.' : 'They got distracted. Try saying it again.'));
     if (dlg && dlg.pid === p.id) dlg.text = `(${st.err})`;
   }
   st.busy = false;

@@ -36,6 +36,8 @@ function renderBrainSettings() {
     ${fbLink ? `<p class="hint">Open these on your other devices. They copy the sync settings over, but never your OpenRouter key.</p>
       <div class="btns"><button class="btn" type="button" data-copy="${esc(fbLink + '#remote')}">Copy remote link</button><button class="btn" type="button" data-copy="${esc(fbLink + '#isle2')}">Copy second island link</button><button class="btn" type="button" data-copy="${esc(fbLink + '#box')}">Copy box link</button></div>` : ''}`;
 }
+// a pasted key counts even if Save minds never gets tapped
+document.addEventListener('change', (e) => { if (e.target.id === 'orKey' && e.target.value.trim() !== brainCfg.key) $('#orSave')?.click(); });
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'orSave') {
