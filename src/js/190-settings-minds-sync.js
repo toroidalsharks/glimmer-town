@@ -37,11 +37,11 @@ function renderBrainSettings() {
       <div class="btns"><button class="btn" type="button" data-copy="${esc(fbLink + '#remote')}">Copy remote link</button><button class="btn" type="button" data-copy="${esc(fbLink + '#isle2')}">Copy second island link</button><button class="btn" type="button" data-copy="${esc(fbLink + '#box')}">Copy box link</button></div>` : ''}`;
 }
 // a pasted key counts even if Save minds never gets tapped
-document.addEventListener('change', (e) => { if (e.target.id === 'orKey' && e.target.value.trim() !== brainCfg.key) $('#orSave')?.click(); });
+document.addEventListener('change', (e) => { if (e.target.id === 'orKey' && cleanKey(e.target.value) !== brainCfg.key) $('#orSave')?.click(); });
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'orSave') {
-    brainCfg.key = $('#orKey').value.trim();
+    brainCfg.key = cleanKey($('#orKey').value);
     brainCfg.models = $('#orModels').value.split(/\s*\n\s*/).map((s) => s.trim()).filter(Boolean);
     if (!brainCfg.models.length) brainCfg.models = DEFAULT_MODELS.slice();
     brainCfg.judge = $('#orJudge').value.trim() || brainCfg.models[0];
@@ -49,7 +49,13 @@ document.addEventListener('click', async (e) => {
     aiDown = ''; saveBrain();
     if (MODE === 'host') RT.sample = brainCfg.key ? makeSample() : null;
     badModels.clear(); lastAiError = ''; checkModels(); if (W) W.people.forEach(modelOf);
-    toast(brainCfg.key ? 'Saved. Residents will start thinking for themselves.' : 'Saved.'); renderBrainSettings();
+    toast(brainCfg.key ? 'Saved. Checking the key with OpenRouter…' : 'Saved.'); renderBrainSettings();
+    if (MODE === 'host' && brainCfg.key) {
+      const key = brainCfg.key, ok = await checkKey(key);
+      if (key !== brainCfg.key) return;
+      if (ok === false) { aiDown = 'OpenRouter doesn\'t recognize this key. Copy it again from openrouter.ai/keys, or make a new one there.'; toast(aiDown); renderBrainSettings(); }
+      else toast(ok ? 'OpenRouter knows this key. Residents will start thinking for themselves.' : 'Saved. Residents will start thinking for themselves.');
+    }
   }
   if (b.dataset.usemodels) {
     const m = MODEL_PICKS.find((x) => x.key === b.dataset.usemodels); if (!m) return;
