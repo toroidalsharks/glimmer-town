@@ -135,7 +135,7 @@ function reactToBuild(name) {
   for (const p of nearby) {
     const s = p.cr.score;
     const line = s >= 4 ? pick([`The Creator made us ${a_an(name)}!`, `${cap(a_an(name))}! It's perfect.`]) : s <= -4 ? pick([`${cap(a_an(name))}? Nobody asked for that.`, "Hmph. Whatever."]) : pick([`Ooh, ${a_an(name)}.`, `Where did that ${name} come from?`, `I might sit by the new ${name} later.`]);
-    bubble(p, line, 3.2); remember(p, `${cap(a_an(name))} appeared in town. ${line}`, 1, 'build');
+    const said = voiceLine(p, line, 'say'); bubbleRaw(p, said, 3.2); remember(p, `${cap(a_an(name))} appeared in town. ${said}`, 1, 'build');
   }
 }
 function placeStrollSpot() {

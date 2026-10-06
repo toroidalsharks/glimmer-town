@@ -111,8 +111,16 @@ function surfDone(p) {
 }
 // ---------- Chirp: the island's social feed ----------
 let nextChirp = 60;
+async function chirpReplyLine(q, p, c, mean) {
+  if (aiReady() && aiBusy < 3 && voiceOn() && rand() < 0.6) {
+    const l = await aiLine(q, p, [], `You're scrolling Chirp, the island's social feed, and ${p.name} just posted: "${c.text}". Write ONE short reply under their post, the way you personally post${mean ? ". You can't stand them, so it's snide (PG, no slurs)" : ''}. React to what they actually said. No quotation marks.`);
+    if (l && l.say) return fitLine(l.say, 200);
+  }
+  return voiceLine(q, mean ? pick(['nobody asked', 'ratio', 'ok and?', 'this is so embarrassing lol']) : pick(['LOL', 'real', 'omg same', 'this!!', '🥺', 'wait what']), 'post');
+}
 function postChirp(p, text, extra = {}) {
   if (!p || !text) return;
+  text = voiceLine(p, text, 'post');
   W.chirps = W.chirps || [];
   const c = { id: uid(), by: p.id, name: p.name, text: String(text).slice(0, 220), day: W.day, t: W.t, likes: [], replies: [], ...extra };
   W.chirps.push(c); if (W.chirps.length > 120) W.chirps.splice(0, W.chirps.length - 120);
@@ -123,7 +131,7 @@ function postChirp(p, text, extra = {}) {
     if (rand() < 0.25 + Math.max(0, f) * 0.06) setTimeout(() => { if (!c.likes.includes(q.id)) { c.likes.push(q.id); markDirty(); } }, (5 + rand() * 40) * 1000);
   }
   const fans = W.people.filter((q) => q !== p && !q.away && (fscore(q, p) >= 4 || fscore(q, p) <= -4));
-  if (fans.length && rand() < 0.45) { const q = pick(fans), mean = fscore(q, p) <= -4; setTimeout(() => { c.replies.push({ by: q.id, name: q.name, text: mean ? pick(['nobody asked', 'ratio', 'ok and?', 'this is so embarrassing lol']) : pick(['LOL', 'real', 'omg same', 'this!!', '🥺', 'wait what']) }); if (mean) { feel(p, q, -0.4, true); remember(p, `${q.name} was mean to me on Chirp.`, 2, 'textMean', q.name); } markDirty(); }, (8 + rand() * 30) * 1000); }
+  if (fans.length && rand() < 0.45) { const q = pick(fans), mean = fscore(q, p) <= -4; setTimeout(async () => { c.replies.push({ by: q.id, name: q.name, text: await chirpReplyLine(q, p, c, mean) }); if (mean) { feel(p, q, -0.4, true); remember(p, `${q.name} was mean to me on Chirp.`, 2, 'textMean', q.name); } markDirty(); }, (8 + rand() * 30) * 1000); }
   if (c.outside) outsideChirpReplies(p, c);
   if (activeTab === 'web' && !sheet.hidden) refreshPanel(false);
   markDirty();
@@ -141,6 +149,7 @@ function chirpTick() {
     setTimeout(() => { if (rand() < 0.7) { feel(enemy, p, -0.6, true); remember(enemy, `${p.name} posted something vague on Chirp. Pretty sure it was about me.`, 2, 'subtweeted', p.name); } }, 20000);
     return;
   }
+  if (voiceRoom() && rand() < 0.65) { aiChirp(p).then((t) => { if (t && W) postChirp(p, t); }); return; }
   const mem = (p.today || []).filter((m) => m.weight >= 2 && !m.chirped && !String(m.tag).startsWith('text')).slice(-4);
   if (mem.length) { const m = pick(mem); m.chirped = true; return postChirp(p, `${lc(m.text)} ${pick(['', 'lol', '!!', '🥲', '✨', 'anyway'])}`.trim()); }
   const r = (p.read || []).slice(-1)[0];

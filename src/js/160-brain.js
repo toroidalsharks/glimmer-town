@@ -75,8 +75,8 @@ async function llm(input, opts = {}) {
   for (const model of order.slice(0, 3)) {
     try {
       const text = await llmOnce(model, messages, opts);
-      if (opts.raw) return text;
-      try { return parseLoose(text); }
+      if (opts.raw) { voiceTrust(text); return text; }
+      try { const out = parseLoose(text); voiceTrustAll(out); return out; }
       catch (e) { if (opts.fallbackKey) return { [opts.fallbackKey]: text.replace(/^```\w*|```$/g, '').replace(/^["'\s]+|["'\s]+$/g, '').slice(0, 500) }; err = { code: 'invalid_json' }; }
     } catch (e) { err = e; if (e.code === 'no_key' || e.code === 'no_credit') throw e; }
   }

@@ -322,12 +322,12 @@ function slDrama(st) {
   const b = (p) => `<b>${esc(p.name)}</b>`;
   switch (k) {
     case 'argue': {
-      const a = pick(pro), c = pick(con), sa = pick(slReason(a.slWhy).say), sc = pick(slReason(c.slWhy).say), calm = rand() < 0.3;
+      const a = pick(pro), c = pick(con), sa = voiceLine(a, pick(slReason(a.slWhy).say), 'say'), sc = voiceLine(c, pick(slReason(c.slWhy).say), 'say'), calm = rand() < 0.3;
       diary(`💬 ${b(a)} and ${b(c)} argued about Starline. ${esc(a.name)}: "${esc(sa)}" ${esc(c.name)}: "${esc(sc)}"${calm ? ' They agreed to disagree over ice cream.' : ''}`);
       feel(a, c, calm ? 0.1 : -0.25, true); feel(c, a, calm ? 0.1 : -0.25, true);
       remember(a, `Argued with ${c.name} about Starline. ${calm ? 'We agreed to disagree.' : "They just don't get it."}`, 2, 'starline', c.name);
       remember(c, `Argued with ${a.name} about Starline. ${calm ? 'We agreed to disagree.' : 'They only see the shiny parts.'}`, 2, 'starline', a.name);
-      if (!a.inside) bubble(a, sa, 3); if (!c.inside) bubble(c, sc, 3);
+      if (!a.inside) bubbleRaw(a, sa, 3); if (!c.inside) bubbleRaw(c, sc, 3);
       break;
     }
     case 'petition': {

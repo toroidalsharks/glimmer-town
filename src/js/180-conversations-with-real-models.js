@@ -24,11 +24,12 @@ ${them.name} is wearing ${outfitText(them)}${them.hunger > 0.75 ? ' and looks hu
 SEASON: ${seasonOf().name}, ${W.weather} weather.${isBirthday(me) ? ' Today is YOUR birthday.' : ''}${isBirthday(them) ? ` Today is ${them.name}'s birthday.` : ''}
 TODAY SO FAR:
 ${recent}
+${voiceSpark(me)}
 ${transcript.length ? `\nCONVERSATION SO FAR:\n${transcript.map((l) => `${l.who}: "${l.say}"${l.action !== 'chat' ? ` [${l.action}]` : ''}`).join('\n')}\n` : ''}
 SITUATION: ${situation}
 
 Reply with only JSON: {"thought": "what you privately think right now (can differ from what you say)", "say": "what you say out loud, 1-2 short sentences", "action": "one of ${AI_ACTIONS.join(', ')}", "gossip_about": "a name, only if you are gossiping about someone"}`;
-  return llm([{ role: 'system', content: system }, { role: 'user', content: user }], { model: modelOf(me), max: 220, fallbackKey: 'say' }).then((r) => (r && r.say ? { thought: String(r.thought || '').slice(0, 240), say: fitLine(r.say, 280), action: AI_ACTIONS.includes(r.action) ? r.action : 'chat', gossip: r.gossip_about ? String(r.gossip_about) : null } : null)).catch(() => null);
+  return llm([{ role: 'system', content: system }, { role: 'user', content: user }], { model: modelOf(me), max: 220, fallbackKey: 'say' }).then((r) => { if (r && r.thought) me.thought = { text: fitLine(String(r.thought), 200), at: Date.now() }; return r; }).then((r) => (r && r.say ? { thought: String(r.thought || '').slice(0, 240), say: fitLine(r.say, 280), action: AI_ACTIONS.includes(r.action) ? r.action : 'chat', gossip: r.gossip_about ? String(r.gossip_about) : null } : null)).catch(() => null);
 }
 function aiJudge(a, b, transcript, thoughts) {
   const fa = a.feelings[b.id], fb = b.feelings[a.id];

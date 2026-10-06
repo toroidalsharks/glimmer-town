@@ -96,7 +96,7 @@ function setMood(k) {
 }
 function moodSettingsHtml() {
   const cur = MOODS[cfg.mood] ? cfg.mood : 'meadow';
-  return `<p class="label">Town look</p><div class="moods" role="group" aria-label="Town look">${Object.entries(MOODS).map(([k, M]) => `<button class="mood" type="button" data-mood="${k}" aria-pressed="${cur === k}"><i style="background:linear-gradient(160deg, ${M.top[0]}, ${M.hor[0]} 55%, ${M.water[0]} 56%, ${M.water[2]})"></i><b>${esc(M.name)}</b><span>${esc(M.blurb)}</span></button>`).join('')}</div>`;
+  return `<p class="label">Town look</p><div class="moods" role="group" aria-label="Town look">${Object.entries(MOODS).map(([k, M]) => `<button class="mood" type="button" data-mood="${k}" aria-pressed="${cur === k}"><i style="background:linear-gradient(${M.top[0]} 0 55%, ${M.water[1]} 55% 100%)"></i><b>${esc(M.name)}</b><span>${esc(M.blurb)}</span></button>`).join('')}</div>`;
 }
 function wireMoodSettings() {
   const box = $('#moodBox'); if (!box) return;

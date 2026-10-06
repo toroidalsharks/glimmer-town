@@ -245,8 +245,9 @@ function crimeGossipTick() {
   const b = free.find((q) => q !== a && Math.hypot(q.x - a.x, q.z - a.z) < 6); if (!b) return;
   const s = pick(C.suspects.filter((id) => id !== a.id && id !== b.id)), K = CRIME_TYPES[C.type];
   const guilty = a.id === C.culprit;
-  bubble(a, guilty ? pick([`Terrible about the ${K.label.toLowerCase()}. I bet it was ${nameOf(s)}.`, 'Can we talk about something else?', 'Why is everyone so obsessed with it?']) : pick([`Did you hear about the ${K.label.toLowerCase()}?`, `I think ${nameOf(s)} did it.`, 'I locked my door twice last night.', `Something about ${nameOf(s)} is off.`]), 3);
-  setTimeout(() => bubble(b, pick(['No way. Really?', 'Keep your voice down!', `Honestly? I thought the same.`, 'I heard the detective found something.', 'This island used to be so peaceful.']), 3), 2600);
+  const safe = { safe: (t) => factSafe(t, [...C.suspects, a.id, b.id]) };
+  bubbleRaw(a, voiceLine(a, guilty ? pick([`Terrible about the ${K.label.toLowerCase()}. I bet it was ${nameOf(s)}.`, 'Can we talk about something else?', 'Why is everyone so obsessed with it?']) : pick([`Did you hear about the ${K.label.toLowerCase()}?`, `I think ${nameOf(s)} did it.`, 'I locked my door twice last night.', `Something about ${nameOf(s)} is off.`]), 'say', safe), 3);
+  setTimeout(() => bubbleRaw(b, voiceLine(b, pick(['No way. Really?', 'Keep your voice down!', `Honestly? I thought the same.`, 'I heard the detective found something.', 'This island used to be so peaceful.']), 'say', safe), 3), 2600);
   emote(b, '👀', 2.5);
 }
 

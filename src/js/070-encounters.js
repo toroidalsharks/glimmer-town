@@ -2,7 +2,9 @@
 // ENCOUNTERS
 // ============================================================
 function emote(p, ch, secs = 2.4) { p.emote = { ch, until: now + secs }; }
-function bubble(p, text, secs, sky = false) { p.bubble = { text, until: now + secs, sky }; if (text && text !== '…' && MODE === 'host' && controls && !offlineSim) { try { if (hearable(p)) Sound.voice(p, text); } catch (e) {} } }
+// every line a resident says goes through voiceLine() (185-voices.js), so scripted lines get rewritten and never repeat
+function bubble(p, text, secs, sky = false) { const said = voiceLine(p, text, 'say'); if (said !== text && typeof said === 'string' && typeof text === 'string') secs = Math.max(secs, secs * Math.min(2, said.length / Math.max(8, text.length))); bubbleRaw(p, said, secs, sky); }
+function bubbleRaw(p, text, secs, sky = false) { p.bubble = { text, until: now + secs, sky }; if (text && text !== '…' && MODE === 'host' && controls && !offlineSim) { try { if (hearable(p)) Sound.voice(p, text); } catch (e) {} } }
 function applyAction(a, b, action) {
   if (action === 'share_food') {
     if (a.hunger < 0.8) { a.hunger = clamp(a.hunger + 0.12, 0, 1); b.hunger = clamp(b.hunger - 0.25, 0, 1); favorDone(a, b, 'shared a snack with you'); return { text: `${a.name} shared a snack with ${b.name}`, kind: 1 }; }
@@ -41,7 +43,7 @@ async function encounter(a, b) {
   if (stageOf(a) === 'toddler' || stageOf(b) === 'toddler') return toddlerChat(a, b);
   const intent = a.makeup === b.id ? 'makeup' : a.befriend === b.id ? 'befriend' : a.confront === b.id ? 'confront' : null;
   spaceOut(a, b);
-  if (aiReady() && aiBusy < 2) { if (intent) { a.makeup = null; a.befriend = null; a.confront = null; } await aiEncounter(a, b, intent); }
+  if (aiReady() && aiBusy < 3) { if (intent) { a.makeup = null; a.befriend = null; a.confront = null; } await aiEncounter(a, b, intent); }
   else await ruleEncounter(a, b);
   afterChat(a, b); goalAfterEncounter(a, b, intent); socialAfterChat(a, b); lifeAfterChat(a, b);
 }
@@ -53,7 +55,8 @@ async function ruleEncounter(a, b) {
     bubble(a, '…', 30);
     const op = specialOpening(a, b) || kidOpening(a, b) || daydream(a, b, { opening: true });
     await sleep(500);
-    bubble(a, op.say, secsFor(op.say));
+    op.say = voiceLine(a, op.say, 'say');
+    bubbleRaw(a, op.say, secsFor(op.say));
     await sleep(900);
     const act1 = applyAction(a, b, op.action);
     feel(a, b, op.feeling);
@@ -66,7 +69,8 @@ async function ruleEncounter(a, b) {
     bubble(b, '…', 30);
     await sleep(500);
     const rep = op.reply || daydream(b, a, { replyTo: op.action, compliment: op.compliment, topic: op.topic, stance: op.stance });
-    bubble(b, rep.say, secsFor(rep.say));
+    rep.say = voiceLine(b, rep.say, 'say');
+    bubbleRaw(b, rep.say, secsFor(rep.say));
     await sleep(900);
     const act2 = applyAction(b, a, rep.action);
     feel(b, a, rep.feeling);
