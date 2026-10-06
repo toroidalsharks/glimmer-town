@@ -68,7 +68,7 @@ async function llmOnce(model, messages, opts) {
       signal: ac.signal,
       method: 'POST',
       headers: { Authorization: `Bearer ${brainCfg.key}`, 'Content-Type': 'application/json', 'X-Title': 'Glimmer Town' },
-      body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.95, max_tokens: Math.max(1600, (opts.max || 450) * 4), reasoning: { effort: 'low', exclude: true }, usage: { include: true } }),
+      body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.95, max_tokens: Math.max(1600, (opts.max || 450) * 4), reasoning: { effort: 'low', exclude: true }, usage: { include: true }, ...(opts.plugins ? { plugins: opts.plugins } : {}) }),
     });
   } catch (e) { clearTimeout(timer); throw { code: ac.signal.aborted ? 'timeout' : 'upstream_error' }; }
   if (!res.ok) {
@@ -85,6 +85,7 @@ async function llmOnce(model, messages, opts) {
   if (d.usage?.cost) aiStats.cost += d.usage.cost;
   const text = (d.choices?.[0]?.message?.content || '').trim();
   if (!text) throw { code: 'empty' };
+  if (opts.onCites) opts.onCites((d.choices?.[0]?.message?.annotations || []).filter((a) => a?.type === 'url_citation').map((a) => a.url_citation || {}));
   return text;
 }
 // what to tell the player when talking fails for want of a working key; null for every other error
