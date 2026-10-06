@@ -76,8 +76,10 @@ function plan(p) {
   const ev = W.event && W.event.day === W.day ? EVENTS[W.event.id] : null;
   const going = ev && W.event.going.includes(p.id);
   if (isBaby(p)) { babyNap(p); return; }
-  if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
+  if (t >= homeByT(p) && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
+  if (t >= 0.6 && !(going && t < ev.t1) && nightPlan(p)) return;
   if (healthPlan(p)) return;
+  if (sleepPlan(p)) return;
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
   if (kidPlan(p)) return;
   // really hungry comes before work, goals and books
@@ -186,6 +188,7 @@ function endWork(p) {
   let pay = payOf(p) + (p.saving ? 1 : 0);
   if (p.job === 'pier') pay += Math.floor(rand() * 3);
   if (p.job === 'garden') pay += rand() < 0.4 ? 2 : 0;
+  pay = sleepLateWork(p, pay);
   earn(p, pay); p.workedToday = true;
   craft(p); workInjury(p);
   const joy = p.body.jobAff[p.job] * 0.8 + (rand() - 0.5) * 0.6;

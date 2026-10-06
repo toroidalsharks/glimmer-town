@@ -107,9 +107,9 @@ function lookForget(p) {
 // someone with something on their list looks it up when they get a free moment; now and then
 // someone just wonders about something
 function lookTick() {
-  if (!lookOn() || lookBusy || W.meeting || Date.now() < nextLookAt || isNight()) return;
+  if (!lookOn() || lookBusy || W.meeting || Date.now() < nextLookAt) return;
   nextLookAt = Date.now() + 5000;
-  const free = W.people.filter((p) => canLookUp(p) && p.state === 'free' && !(p.inside && p.task?.kind === 'home' && isNight()));
+  const free = W.people.filter((p) => canLookUp(p) && p.state === 'free' && !isAsleep(p));
   const due = free.filter((p) => (p.toLookUp || []).length);
   if (due.length) { lookUp(pick(due)); return; }
   if (Date.now() < nextIdleLookAt || !aiReady() || !voiceRoom()) return;

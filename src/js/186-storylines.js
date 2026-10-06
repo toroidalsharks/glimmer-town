@@ -69,7 +69,7 @@ Reply with only JSON: {"say": "what ${p.name} says out loud, 1-2 sentences", "to
   arc.nextAt = Date.now() + 5 * 60e3;
   p.state = 'talk'; emote(p, '…', 6);
   let v = null;
-  try { v = await llm(prompt, { model: modelOf(p), temperature: 1.0, max: 420 }); } catch (e) { v = null; }
+  try { v = await within(llm(prompt, { model: modelOf(p), temperature: 1.0, max: 420, patience: 25000 }), 30000); } catch (e) { v = null; }
   finally { if (p.state === 'talk' && !p.heldByDlg) p.state = 'free'; }
   if (!v || !v.say || !v.diary) return false;
   const say = fitLine(String(v.say), 200), text = fitLine(String(v.diary), 320);

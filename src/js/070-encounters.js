@@ -32,7 +32,7 @@ function feel(me, them, delta, quiet = false) {
 const tagFor = (kind, giver) => (kind > 0 ? (giver ? 'gaveKind' : 'gotKind') : kind < 0 ? (giver ? 'wasMean' : 'gotMean') : 'talk');
 function canChat(p) {
   if (p.inside || p.state !== 'free' || W.meeting || isBaby(p)) return false;
-  if (W.t >= 0.6 && p.task?.kind !== 'event') return false;
+  if (W.t >= 0.6 && p.task?.kind !== 'event' && !nightOut(p)) return false;
   const k = p.task?.kind;
   if ((k === 'work' || k === 'event') && p.task.phase === 'go') return false;
   return !k || ['stroll', 'visit', 'cafe', 'forage', 'work', 'event'].includes(k);

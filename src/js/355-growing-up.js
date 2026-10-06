@@ -83,7 +83,7 @@ function babyNap(p, secs) {
   const hk = homeKey(p), s = TOWN[hk].spot;
   p.path = []; p.inside = true; p.at = hk; p.state = 'free'; p.x = s[0] + (rand() - 0.5) * 2; p.z = s[1] + 0.3;
   p.hunger = Math.min(p.hunger, 0.3);
-  if (W.t >= 0.6 || W.t < 0.008) { p.task = { kind: 'home', phase: 'do' }; p.busyUntil = Infinity; }
+  if (W.t >= bedT(p) || W.t < wakeT(p)) { p.task = { kind: 'home', phase: 'do' }; p.busyUntil = Infinity; }
   else { p.task = { kind: 'nap', phase: 'do' }; p.busyUntil = now + (secs || 10) * ts(); }
 }
 // babies can't walk anywhere: whatever a system asks of one, they stay in a parent's arms or in the crib
