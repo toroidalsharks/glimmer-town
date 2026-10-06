@@ -244,7 +244,7 @@ function laptopMigration() {
   if (fans.length) diary(`💻 ${fans.map((p) => `<b>${esc(p.name)}</b>`).join(', ')} started saving up for laptops.`);
 }
 
-function outsideContext(me, them) { const base = outsideContext0(me), lap = laptopContext(me, them), heard = heardContext(me); if (!base && !lap && !heard) return ''; return (base || '\nTHE OUTSIDE:') + lap + heard + (base ? ' When you talk about Outside news, stick to what you actually read or heard and never invent details about real people. You can still have feelings and opinions about it, like anyone would.' : ''); }
+function outsideContext(me, them) { const base = outsideContext0(me), lap = laptopContext(me, them), heard = heardContext(me), look = lookupContext(me); if (!base && !lap && !heard && !look) return ''; return (base || '\nTHE OUTSIDE:') + lap + heard + look + (base ? ' When you talk about Outside news, stick to what you actually read or heard and never invent details about real people. You can still have feelings and opinions about it, like anyone would.' : ''); }
 
 // a laptop is for keeping: residents always know they own one, and a one-time fix gives back the laptops
 // that fell out of full rooms (the 12-item room limit used to throw out the oldest thing, usually the laptop)

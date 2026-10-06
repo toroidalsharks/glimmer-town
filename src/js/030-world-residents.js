@@ -8,10 +8,10 @@ function uniqueName() {
   return 'Kin' + W.nextId;
 }
 function mixHue(a, b) { const d = ((b - a + 540) % 360) - 180; return (a + d / 2 + 360) % 360; }
-function freeRoom() { for (let i = 0; i < MAX_POP; i++) if (!W.people.some((p) => p.room === i)) return i; return -1; }
+function freeRoom() { const n = roomCount(); if (residentCount() >= n) return -1; for (let i = 0; i < n; i++) if (!W.people.some((p) => p.room === i)) return i; return -1; }
 for (const [k, c] of Object.entries({ nook: 'blue', garden: 'blue', pier: 'blue' })) JOBS[k].collar = c;
 for (const J of Object.values(JOBS)) J.collar = J.collar || 'service';
-const randomJob = () => pick(Object.keys(JOBS).filter((k) => JOBS[k].collar !== 'white'));
+const randomJob = () => pick(Object.keys(JOBS).filter((k) => JOBS[k].collar !== 'white' && jobOpen(k)));
 const randAff = (keys) => Object.fromEntries(keys.map((k) => [k, rand() * 2 - 1]));
 
 function birth(a, b) {
@@ -46,7 +46,7 @@ function birth(a, b) {
   const p = {
     id: 'k' + (W.nextId++), name: uniqueName(), bornDay: W.day,
     gen: a ? Math.max(a.gen, b.gen) + 1 : 1, parents: a ? [a.name, b.name] : [],
-    body, grow: a ? 0.55 : 1, hunger: 0.3, coins: a ? 1 : 5 + Math.floor(rand() * 5),
+    body, grow: a ? LIFE_STAGES.baby.grow : 1, stage: a ? 'baby' : undefined, hunger: 0.3, coins: a ? 1 : 5 + Math.floor(rand() * 5),
     room: freeRoom(), job: a ? null : randomJob(), jobDays: 0, jobMood: 0, workedToday: false,
     tastes: {}, likes: { [shirt]: 0.4 },
     wardrobe: { hats: [], shirts: [shirt] }, outfit: { hat: null, shirt }, decor: [],

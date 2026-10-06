@@ -62,7 +62,7 @@ function nightfall() {
     if (T.length && aiReady()) { p.today = []; aiReflect(p, T).then((res) => { if (res) finishReflection(p, res, T); else { p.today = T.concat(p.today); reflect(p); } markDirty(); }); }
     else reflect(p);
   }
-  diary('The lights went out one by one. Everyone lay in bed thinking about their day.');
+  diary(`The lights went out one by one. Everyone lay in bed thinking about their day.${sleepNightfallLine()}`);
   const ppl = W.people;
   for (let i = 0; i < ppl.length; i++) for (let j = i + 1; j < ppl.length; j++) {
     const a = ppl[i], b = ppl[j], fa = a.feelings[b.id], fb = b.feelings[a.id];
@@ -71,7 +71,7 @@ function nightfall() {
     if (W.day - a.lastBaby < 3 || W.day - b.lastBaby < 3) continue;
     if (a.parents.includes(b.name) || b.parents.includes(a.name) || (a.parents.length && a.parents.some((n) => b.parents.includes(n)))) continue;
     if (a.partner !== b.id || !a.married) continue;
-    if (ppl.length + W.babies.length >= MAX_POP) continue;
+    if (residentCount() + W.babies.length >= roomCount()) continue;
     if (rand() < 0.5) { W.babies.push([a.id, b.id]); a.lastBaby = b.lastBaby = W.day; }
   }
   W.reflectedDay = W.day;
@@ -85,7 +85,7 @@ function newDay() {
   applySeason(); meltSnowmen(); buildPlot();
   if (seasonDay() === 1) diary(`${seasonOf().icon} <b>${seasonOf().name}</b> is here.${seasonOf().id === 'winter' ? ' Everything is covered in snow.' : seasonOf().id === 'autumn' ? ' The leaves are turning.' : seasonOf().id === 'spring' ? ' The cherry trees are blooming.' : ' It is so warm out.'}`);
   W.bushes = BUSHES.map(() => 3);
-  W.creator.coins = Math.min(999, W.creator.coins + 20);
+  { const got = morningAllowance(); creatorEarn(got); W.lastAllowance = got; }
   for (const [ia, ib] of W.babies) {
     const a = person(ia), b = person(ib);
     if (a && b && freeRoom() >= 0) { const k = birth(a, b); W.people.push(k); buildKin(k); queueLetter(a, 'baby', { who: k.name }); queueLetter(b, 'baby', { who: k.name }); diary(`<b>${esc(k.name)}</b> was born to ${esc(a.name)} and ${esc(b.name)}, and moved into room ${k.room + 1}.`); birthCut(k, a, b); }
@@ -93,15 +93,16 @@ function newDay() {
   W.babies = [];
   for (const p of W.people) {
     p.workedToday = false;
-    if (p.grow < 1) { p.grow = Math.min(1, p.grow + 0.1); if (p.grow >= 1 && !p.job) { p.job = randomJob(); diary(`<b>${esc(p.name)}</b> grew up and started work as a ${JOBS[p.job].short}.`); } scaleMesh(p); }
+    growUp(p);
     morningOutfit(p); selfHaircut(p); styleDrift(p);
   }
-  importStock();
+  growMorning(); importStock();
   dailyWishes();
+  cityDaily(); tpDaily();
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }
-  birthdayMorning(); miliMorning(); courtMorning(); crimeMorning(); museumDaily(); classMorning(); healthMorning(); laptopMorning(); dramaMorning(); flingMorning(); socialMorning(); lifeMorning(); goalMorning();
+  birthdayMorning(); miliMorning(); courtMorning(); crimeMorning(); museumDaily(); classMorning(); healthMorning(); laptopMorning(); dramaMorning(); flingMorning(); socialMorning(); lifeMorning(); goalMorning(); innerMorning(); sleepMorning();
   if (MODE === 'host') { morningFerry(); ferryDepartures(); checkOther(); }
   diary(`Morning. The weather is ${W.weather}. You got 20 new coins.`);
   saveNow();

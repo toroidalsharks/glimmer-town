@@ -1,7 +1,6 @@
 // ============================================================
 // DREAMS
 // ============================================================
-const isAsleep = (p) => p.inside && p.task?.kind === 'home' && (W.t >= 0.63 || W.t < 0.008);
 function daydreamDream(p) {
   const people = Object.values(p.feelings).map((f) => f.name);
   const friend = people.length ? pick(people) : 'a stranger with no face';

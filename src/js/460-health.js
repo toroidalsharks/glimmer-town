@@ -259,7 +259,8 @@ function healthPlan(p) {
   const evNow = ev && ev.going.includes(p.id) && t >= EVENTS[ev.id].t0 - 0.03 && t < EVENTS[ev.id].t1;
   if (clinicOpen() && H.docDay !== W.day && (H.docNext || (I && !H.ill.treated && (I.sev >= 2 || rand() < 0.25)) || (J && !H.injury.set && (J.needsDoc || J.rank >= 3 || rand() < 0.15)))) { H.docNext = false; setTask(p, 'doctor', 'clinic', clinicSpot()); return true; }
   const mind = H.cond.some((c) => CONDITIONS[c].mind);
-  if (clinicOpen() && H.therapyDay !== W.day && (H.therapyNext || ((mind || H.low) && W.day - (H.lastTherapy ?? -9) >= 4 && ((H.flare && CONDITIONS[H.flare.id].mind) || H.low || rand() < 0.06)))) { H.therapyNext = false; setTask(p, 'therapy', 'clinic', clinicSpot()); return true; }
+  // babies and toddlers don't take themselves to therapy
+  if (clinicOpen() && H.therapyDay !== W.day && !['baby', 'toddler'].includes(p.stage) && (H.therapyNext || ((mind || H.low) && W.day - (H.lastTherapy ?? -9) >= 4 && ((H.flare && CONDITIONS[H.flare.id].mind) || H.low || rand() < 0.06)))) { H.therapyNext = false; setTask(p, 'therapy', 'clinic', clinicSpot()); return true; }
   if (evNow) return false;
   if (H.flare?.id === 'ocd' && !H.eased && (H.rituals || 0) < 2 && rand() < 0.12 && p.at !== homeKey(p) && t < 0.55) { H.rituals = (H.rituals || 0) + 1; setTask(p, 'ritual', homeKey(p)); return true; }
   if (H.flare && !H.eased && ['schizotypal', 'anxiety'].includes(H.flare.id) && rand() < 0.35) { const [pl, sp] = quietSpot(); setTask(p, 'stroll', pl, sp); return true; }
@@ -566,7 +567,7 @@ function healthMigration() {
   }
   const [cx, cz] = polarDT(DT_BLD.clinic.a, DT_BLD.clinic.r);
   const moved = (W.placed || []).filter((pl) => Math.hypot(pl.x - cx, pl.z - cz) < 7.5);
-  if (moved.length) { for (const pl of moved) W.creator.coins = Math.min(9999, W.creator.coins + (BUILDS[pl.type]?.price || 5)); W.placed = W.placed.filter((pl) => !moved.includes(pl)); buildPlaced(); }
+  if (moved.length) { for (const pl of moved) creatorEarn(BUILDS[pl.type]?.price || 5); W.placed = W.placed.filter((pl) => !moved.includes(pl)); buildPlaced(); }
   if (typeof logUpdate === 'function') logUpdate('build', 'Built Glimmer Clinic downtown and opened two new floors at Glimmer Labs (Science and Engineering). Residents can catch colds and get hurt now, and some live with ongoing conditions, including mental health ones.', 'Clinic + new lab floors');
   diary(`🩺 <b>Glimmer Clinic</b> opened downtown, with a doctor's office and a quiet corner for therapy. Glimmer Labs opened two new floors: 🧪 Science and ⚙️ Engineering.${moved.length ? ' A few things you built were in the way, so they were refunded.' : ''}`);
 }

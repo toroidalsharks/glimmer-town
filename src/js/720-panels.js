@@ -8,8 +8,11 @@ function doing(p) {
   if (p.state === 'talk') return 'chatting';
   const k = p.task?.kind;
   if (k === 'away' && p.away) return `visiting ${ISLES[p.away.to].name}`;
-  if (p.inside && k === 'home') return W.t >= 0.63 || W.t < 0.008 ? 'asleep' : 'at home';
-  return { arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service', rest: 'resting in bed', doctor: 'at the clinic', therapy: 'at the clinic', ritual: 'double-checking something at home', buylaptop: 'buying a laptop', browse: 'browsing books', write: 'writing', crowd: W.scene?.kind === 'uproar' ? 'in the uproar at the fountain' : 'chatting in a group' }[k] || 'wandering';
+  if (p.inside && k === 'home') return isAsleep(p) ? (napping(p) ? 'napping' : 'asleep') : W.t >= 0.6 ? 'up late at home' : 'at home';
+  if (nightOut(p)) return p.sleep?.sneak === W.day && stageOf(p) === 'teen' ? 'sneaking around after dark' : 'out late';
+  if (k === 'carried') return `in ${person(p.task.who)?.name || 'a parent'}'s arms`;
+  if (k === 'nap') return p.task.snack ? 'having a snack at home' : 'napping';
+  return { play: 'playing', fetchkid: 'picking up the baby', dropkid: 'putting the baby down for a nap', arcade: 'at the arcade', work: 'at work', eat: 'eating out', shop: 'shopping', cafe: 'having tea', forage: 'picking berries', stroll: 'out for a walk', visit: 'visiting a friend', home: 'heading home', meeting: 'at the town meeting', event: 'at the town event', donate: 'chipping in', pray: 'wishing at the sky', date: 'on a date', snowman: 'building a snowman', tinker: 'building something', hangout: 'hanging out at home with a friend', walkwith: 'out walking with a friend', read: 'reading', picket: 'on strike', surf: 'on GlimmerNet', landmark: 'out and about', court: 'at Glimmer Hall', service: 'doing community service', rest: 'resting in bed', doctor: 'at the clinic', therapy: 'at the clinic', ritual: 'double-checking something at home', buylaptop: 'buying a laptop', browse: 'browsing books', write: 'writing', crowd: W.scene?.kind === 'uproar' ? 'in the uproar at the fountain' : 'chatting in a group' }[k] || cityDoing(k) || tpDoing(k) || 'wandering';
 }
 function showTab(t) {
   activeTab = t;
@@ -20,7 +23,7 @@ function showTab(t) {
 let lastPanel = 0, panelBusy = false;
 function refreshPanel(force) {
   if (!W || sheet.hidden) return;
-  if (!force && (panelBusy || document.activeElement?.closest?.('.sheet input, .sheet select, .sheet textarea'))) return;
+  if (!force && (panelBusy || (document.activeElement?.closest?.('.sheet input, .sheet select, .sheet textarea') && !(activeTab === 'texts' && chatInputFocused())))) return;
   const pane = $('#pane-' + activeTab), scroll = pane.scrollTop;
   if (activeTab === 'people') openDetail && person(openDetail) ? renderDetail(openDetail) : renderPeople();
   else if (activeTab === 'mail') renderMail();
@@ -34,6 +37,7 @@ function refreshPanel(force) {
   else if (activeTab === 'court') renderCourt();
   else if (activeTab === 'box') { renderLink(); if (force) { renderBrainSettings(); renderNotify(); } }
   pane.scrollTop = scroll;
+  if (textsStick && activeTab === 'texts') { pane.scrollTop = pane.scrollHeight; textsStick = false; }
 }
 function itemCard(it, btn) {
   const by = it.kind === 'book' && BOOKS[it.id] ? `${SUBJECTS[BOOKS[it.id].subj].icon} ${esc(SUBJECTS[BOOKS[it.id].subj].name)} · by ${esc(BOOKS[it.id].by)}` : it.makerName ? `Made by ${esc(it.makerName)}` : it.kind === 'food' ? 'From the menu' : it.handmade ? 'Handmade by you' : 'Imported from over the sea';
@@ -72,10 +76,11 @@ function renderDetail(id) {
     <button class="back" type="button" data-back>&larr; Everyone</button>
     <div class="d-head"><span class="dot" style="background:${skinCss(p)};border-color:${COLORS[p.outfit.shirt]}"></span>
       <div><div class="d-name">${esc(p.name)}</div>
-      <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}${p.job && JOBS[p.job] ? ` · ${JOBS[p.job].short}, ${payOf(p)}/day` : ''}</div></div></div>
+      <div class="d-sub">Room ${p.room + 1} · generation ${p.gen} · ${age === 0 ? (p.parents.length ? 'born today' : 'moved in today') : `${plural(age, 'day')} in town`}${p.parents.length ? ` · child of ${esc(p.parents.join(' and '))}` : ''}${stageLabel(p) ? ` · ${stageLabel(p)}` : ''} · ${doing(p)}</div><div class="d-sub">${p.married ? '💍' : p.partner ? '💕' : ''} ${esc(relStatus(p))}${p.bday ? ` · 🎂 ${dateText(p.bday)}${isBirthday(p) ? ', today!' : ''}` : ''}${p.job && JOBS[p.job] ? ` · ${JOBS[p.job].short}, ${payOf(p)}/day` : ''}</div></div></div>
     ${lookStudioHtml(p)}
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>
+    ${voiceDetailHtml(p)}${sleepDetailHtml(p)}${lookupDetailHtml(p)}
     ${bookshelfHtml(p)}
     ${LAB_JOBS.includes(p.job) && ensureResearch(p) ? `<p class="hint">🔬 Working on ${esc(p.research.title)} (${Math.round(p.research.progress)}%${p.research.stuck ? ', stuck' : ''}). <button class="btn" type="button" data-openlab="${p.id}">Visit their desk</button></p>` : ''}
     ${goalHtml(p)}
@@ -142,7 +147,7 @@ function renderShops() {
     items = W.stock[shopTab].map((it) => itemCard(it, `<div class="item-row"><span class="price">${itemPrice(it)} ✦</span><button class="btn" type="button" data-buy="${shopTab}" data-uid="${it.uid}" ${C.coins < itemPrice(it) ? 'disabled' : ''}>Buy</button></div>`));
   }
   $('#pane-shops').innerHTML = `
-    <div class="wallet"><b>${C.coins} ✦</b><span class="hint">Your coins. You get 20 more every morning.</span></div>
+    <div class="wallet"><b>${coinText(C.coins)} ✦</b><span class="hint">Your coins. ${allowanceText()}</span></div>
     <div class="shop-tabs">${Object.entries(SHOPS).map(([k, s]) => `<button class="btn" type="button" data-shoptab="${k}" aria-pressed="${k === shopTab}">${s.name}</button>`).join('')}</div>
     <p class="hint">${SHOPS[shopTab].blurb} ${workers.length ? `Works here: ${workers.map((w) => esc(w.name)).join(', ')}.` : 'Nobody works here right now.'}${isFood ? (keeper ? ` Today's food is made by ${esc(keeper.name)}.` : '') : ' New pieces show up after each workday.'}</p>
     <div class="btns"><button class="btn gold" type="button" data-inside="${shopTab}">${MODE === 'host' ? 'Go inside' : 'Show inside in the box'}</button></div>
@@ -154,7 +159,7 @@ function renderGifts() {
   const C = W.creator;
   const pickTo = giftPick && person(giftPick) ? giftPick : null;
   $('#pane-gifts').innerHTML = `
-    <div class="wallet"><b>${C.coins} ✦</b><span class="hint">You get 20 more every morning.</span></div>
+    <div class="wallet"><b>${coinText(C.coins)} ✦</b><span class="hint">${allowanceText()}</span></div>
     ${plotHtml()}
     ${workshopHtml()}
     <p class="label">Give to</p>
@@ -207,18 +212,21 @@ function renderDiary() {
   renderAlbum();
   let html = '', lastDay = null;
   for (const e of [...W.log].reverse().slice(0, 100)) { if (e.day !== lastDay) { html += `<div class="day">Day ${e.day}</div>`; lastDay = e.day; } html += `<p>${e.text}</p>`; }
-  $('#diaryList').innerHTML = `<div class="diary">${html || '<p>Nothing has happened yet.</p>'}</div>`;
+  $('#diaryList').innerHTML = mirrorHtml() + `<div class="diary">${html || '<p>Nothing has happened yet.</p>'}</div>`;
 }
 function renderBuild() {
   const C = W.creator;
   $('#pane-build').innerHTML = `
-    <div class="wallet"><b>${C.coins} ✦</b><span class="hint">Make the island yours. Residents notice what you add, and they'll hang out around it.</span></div>
+    <div class="wallet"><b>${coinText(C.coins)} ✦</b><span class="hint">Make the island yours. Residents notice what you add, and they'll hang out around it. ${allowanceText()}</span></div>
     <p class="label">Decorations</p>
     <div class="items">${Object.entries(BUILDS).filter(([, b]) => !b.big).map(([k, b]) => `<div class="item"><div class="item-top"><span class="item-name">${esc(cap(b.name))}</span></div><div class="item-row"><span class="price">${b.price} ✦</span></div><div class="btns">${MODE === 'host' ? `<button class="btn gold" type="button" data-place="${k}" ${C.coins < b.price ? 'disabled' : ''}>Place it</button>` : ''}<button class="btn" type="button" data-autoplace="${k}" ${C.coins < b.price ? 'disabled' : ''}>${MODE === 'host' ? 'Anywhere' : 'Place it'}</button></div></div>`).join('')}</div>
     <p class="label">Landmarks</p><p class="hint">Big, expensive buildings that change what residents do.${(W.museum || []).length ? ` The museum has ${plural(W.museum.length, 'exhibit')}.` : ''}</p>
     <div class="items">${Object.entries(BUILDS).filter(([, b]) => b.big).map(([k, b]) => { const have = (W.placed || []).some((pl) => pl.type === k); return `<div class="item"><div class="item-top"><span class="item-name">${esc(cap(b.name))}</span>${have ? ' <span class="chip good">Built</span>' : ''}</div><span class="item-by">${esc(b.blurb)}</span><div class="item-row"><span class="price">${b.price} ✦</span></div><div class="btns">${MODE === 'host' ? `<button class="btn gold" type="button" data-place="${k}" ${C.coins < b.price ? 'disabled' : ''}>Place it</button>` : ''}<button class="btn" type="button" data-autoplace="${k}" ${C.coins < b.price ? 'disabled' : ''}>${MODE === 'host' ? 'Anywhere' : 'Place it'}</button></div></div>`; }).join('')}</div>
     <p class="label">More land</p>
     <div class="items">${Object.entries(LOBES).map(([k, l]) => `<div class="item"><span class="item-name">${esc(l.name)}</span><span class="item-by">${esc(l.blurb || '')}</span>${W.lobes.includes(k) ? '<span class="chip good">Yours</span>' : `<div class="item-row"><span class="price">${l.price} ✦</span><button class="btn gold" type="button" data-land="${k}" ${C.coins < l.price ? 'disabled' : ''}>Raise it</button></div>`}</div>`).join('')}</div>
+    ${cityBuildHtml()}
+    ${tpBuildHtml()}
+    ${goalsHtml()}
     ${workshopAgentHtml()}
     ${(W.placed || []).length ? `<p class="label">What you've built</p><div class="chips">${W.placed.map((pl) => `<span class="chip">${esc(BUILDS[pl.type].name)} <button class="btn" type="button" data-unplace="${pl.id}" style="padding:1px 8px;font-size:11px">Remove</button></span>`).join('')}</div>` : ''}`;
 }
@@ -289,6 +297,10 @@ sheet.addEventListener('input', (e) => {
   setMailDraft(ta.closest('form').dataset.mailreply, ta.value); mailCount(ta);
 });
 addEventListener('pagehide', () => { if (mailDraftTimer) saveMailDrafts(); });
+// the group chat box in the Texts tab
+sheet.addEventListener('input', (e) => { if (e.target.id === 'groupChatInput') setChatDraft(e.target.value); });
+sheet.addEventListener('submit', (e) => { const f = e.target.closest && e.target.closest('form[data-groupchat]'); if (!f) return; e.preventDefault(); sendGroupChat(f); });
+sheet.addEventListener('keydown', (e) => { if (e.target.id === 'groupChatInput' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendGroupChat(e.target.closest('form')); } });
 let peerCount = 0;
 function renderLink() {
   const s = $('#linkStatus');
@@ -353,6 +365,10 @@ sheet.addEventListener('click', (e) => {
   if (d.place) { placing = { type: d.place }; sheet.hidden = true; $('#placeText').textContent = `Tap the ground where the ${BUILDS[d.place].name} should go.`; $('#placeBar').hidden = false; return; }
   if (d.autoplace) { send({ t: 'place', type: d.autoplace }); return; }
   if (d.land) { send({ t: 'land', lobe: d.land }); return; }
+  if (d.cityfund) { send({ t: 'city', a: 'give', what: d.cityfund, n: d.n === 'all' ? 'all' : Number(d.n) }); return; }
+  if (d.cityhelp !== undefined) { send({ t: 'city', a: 'help' }); return; }
+  if (d.tpfund) { send({ t: 'tproj', a: 'give', id: d.tpid, what: d.tpfund, n: d.n === 'all' ? 'all' : Number(d.n) }); return; }
+  if (d.tphelp) { send({ t: 'tproj', a: 'help', id: d.tphelp }); return; }
   if (d.unplace) { send({ t: 'unplace', id: d.unplace }); return; }
   if (d.mail) { if (!mailOpen) mailListScroll = $('#pane-mail').scrollTop; mailOpen = d.mail; refreshPanel(true); $('#pane-mail').scrollTop = 0; return; }
   if (d.mailnav) { mailStep(Number(d.mailnav)); return; }
@@ -403,8 +419,8 @@ let toastT = 0;
 function toast(text) { const t = $('#toast'); t.textContent = text; t.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => (t.style.opacity = 0), 3800); }
 
 // settings
-function syncSettingsUI() { ['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'music', 'sfx', 'voices', 'cute', 'cutscenes'].forEach((k) => ($('#' + k).checked = cfg[k] !== false && !!cfg[k])); $('#dayLen').value = String(cfg.daySec); $('#volume').value = String(cfg.volume ?? 0.7); }
-['music', 'sfx', 'voices'].forEach((k) => $('#' + k).addEventListener('change', (e) => { cfg[k] = e.target.checked; savePrefs(); Sound.unlock(); Sound.levels(); }));
+function syncSettingsUI() { ['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'music', 'ownMusic', 'sfx', 'voices', 'cute', 'cutscenes'].forEach((k) => ($('#' + k).checked = cfg[k] !== false && !!cfg[k])); $('#dayLen').value = String(cfg.daySec); $('#volume').value = String(cfg.volume ?? 0.7); }
+['music', 'ownMusic', 'sfx', 'voices'].forEach((k) => $('#' + k).addEventListener('change', (e) => { cfg[k] = e.target.checked; savePrefs(); Sound.unlock(); Sound.levels(); }));
 $('#volume').addEventListener('input', (e) => { cfg.volume = Number(e.target.value); savePrefs(); Sound.levels(); });
 ['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'cutscenes'].forEach((k) => $('#' + k).addEventListener('change', (e) => { if (MODE === 'remote') send({ t: 'set', key: k, value: e.target.checked }); else { cfg[k] = e.target.checked; savePrefs(); applyLook(); } }));
 $('#dayLen').addEventListener('change', (e) => { const v = Number(e.target.value); if (MODE === 'remote') send({ t: 'set', key: 'daySec', value: v }); else { cfg.daySec = v; savePrefs(); } });

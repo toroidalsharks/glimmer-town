@@ -84,6 +84,7 @@ function offlineDay() {
     if (d < -0.45 && f < -3 && rand() < 0.3) { remember(a, `Got into a fight with ${b.name}.`, 3, 'fight', b.name); remember(b, `${a.name} started a fight with me.`, 3, 'fight', a.name); diary(`💢 <b>${esc(a.name)}</b> and <b>${esc(b.name)}</b> got into a fight.`); if (typeof fightInjury === 'function') fightInjury(a, b); }
   }
   offlineRomance();
+  cityOfflineDay();
   const D = drama(); if (D.uproarAt) { D.uproarAt = null; offlineUproar(); }
   for (const c of W.clubs || []) if (W.day - c.last >= 2) { c.last = W.day; for (const id of c.members) { const p = person(id); if (p) remember(p, `The ${c.name} met today.`, 1, 'club'); } }
   if ((W.suggestions || []).some((s) => !s.done) && rand() < 0.6) fulfillSuggestion();

@@ -22,6 +22,10 @@ function renderBrainSettings() {
     <div class="field"><label>Quick switch (everyone gets the same model, and you can switch back any time)</label><div class="btns">${MODEL_PICKS.map((m) => `<button class="btn${brainCfg.models.length === m.models.length && m.models.every((x, i) => brainCfg.models[i] === x) ? ' gold' : ''}" type="button" data-usemodels="${esc(m.key)}" title="${esc(m.why)}">${esc(m.label)}</button>`).join('')}</div><p class="hint">${MODEL_PICKS.map((m) => `<b>${esc(m.label)}</b>: ${esc(m.why)}`).join('<br>')}</p></div>
     <div class="btns"><button class="btn gold" type="button" id="orSave">Save minds</button><button class="btn" type="button" id="orFind">Find cheap roleplay models</button><button class="btn" type="button" id="orShuffle">Give everyone a new model</button></div>
     <p class="status">${aiDown ? esc(aiDown) : lastAiError ? esc(lastAiError) + ' · ' + aiStats.n + ' calls today' : brainCfg.key ? `${aiStats.n} calls today, ${Math.max(0, left)} left · about $${aiStats.cost.toFixed(3)} spent today` : 'No key yet, so residents run on rules.'}</p>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="voicesOn" ${brainCfg.voices !== false ? 'checked' : ''}> Residents write all their own lines (never the same twice)</label>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="wildOn" ${brainCfg.wild !== false ? 'checked' : ''}> Surprise moments (confessions, outbursts, songs, hot takes)</label>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="swearOn" ${brainCfg.swear !== false ? 'checked' : ''}> Grown-ups can swear (kids and teens never do)</label>
+    <p class="hint">${voiceStatus()}</p>
     <div id="orList"></div></div>
     <hr>
     <p class="label">Sync between devices</p>
@@ -91,7 +95,7 @@ async function saveNow() {
   saving = false;
 }
 function fixLoaded(s) {
-  s.pairCool = {}; s.babies = s.babies || []; s.meeting = null; s.mail = s.mail || []; s.stock.books = s.stock.books || []; s.placed = s.placed || []; s.lobes = s.lobes || []; s.pantry = s.pantry || 0; for (const q of s.people) { q.body.openness = q.body.openness ?? rand() * 2 - 1; }
+  s.pairCool = {}; s.babies = s.babies || []; s.meeting = null; s.mail = s.mail || []; s.stock = s.stock || { clothes: [], nook: [] }; s.stock.books = s.stock.books || []; s.placed = s.placed || []; s.lobes = s.lobes || []; s.pantry = s.pantry || 0; for (const q of s.people) { if (q.body) q.body.openness = q.body.openness ?? rand() * 2 - 1; }
   for (const p of s.people) {
     p.state = 'free'; p.path = p.path || []; p.heldByDlg = false; p.joy = p.joy || 0; p.level = p.level || 1;
     if (p.inside && p.task?.kind === 'home') p.busyUntil = Infinity;
@@ -99,11 +103,29 @@ function fixLoaded(s) {
   }
   return s;
 }
+// A save that exists but can't be opened is copied here before a new town starts, because the new
+// town's first save would otherwise write over it. An older copy is never replaced by a newer one.
+const RESCUE_KEY = ISL.save + '-rescue';
+let rescuedSave = false;
+function readSave(v) {
+  try { const s = typeof v === 'string' ? JSON.parse(v) : JSON.parse(JSON.stringify(v)); if (s && s.v === 3 && s.people?.length) return s; } catch (e) {}
+  return null;
+}
+function keepRescue(raw) {
+  try { if (!localStorage.getItem(RESCUE_KEY)) localStorage.setItem(RESCUE_KEY, raw); rescuedSave = true; } catch (e) { console.error('could not keep the old save', e); }
+}
 async function loadWorld() {
+  // the online copy and this phone's copy can each be the newer one: a reload can land before the
+  // online save finishes, and the other device may have run the town since. Take the newest that opens.
+  let cloud = null, raw = null;
   if (RT.db) {
-    try { const d = await RT.db.doc(STATE_DOC).get(); const v = d.exists && d.data(); if (v && v.v === 3 && v.world?.people?.length) return fixLoaded(JSON.parse(JSON.stringify(v.world))); } catch (e) {}
+    try { const d = await Promise.race([RT.db.doc(STATE_DOC).get(), sleep(15000)]); const v = d && d.exists && d.data(); if (v && v.v === 3) cloud = readSave(v.world); } catch (e) {}
   }
-  try { const s = JSON.parse(localStorage.getItem(ISL.save) || 'null'); if (s && s.v === 3 && s.people?.length) return fixLoaded(s); } catch (e) {}
+  try { raw = localStorage.getItem(ISL.save); } catch (e) {}
+  const local = readSave(raw);
+  const saves = [cloud, local].filter(Boolean).sort((a, b) => (b.lastReal || 0) - (a.lastReal || 0));
+  for (const s of saves) { try { return fixLoaded(s); } catch (e) { console.error('a saved town would not open', e); } }
+  if (raw) keepRescue(raw);
   return null;
 }
 function newWorld() {

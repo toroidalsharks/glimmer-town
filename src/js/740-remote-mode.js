@@ -19,6 +19,7 @@ function startRemote() {
       const v = snap.exists && snap.data();
       if (!v || !v.world) { if (!Object.keys(RW).length) $('#remoteStatus').textContent = 'No town yet. Open this page on the box phone first.'; return; }
       RW[k] = JSON.parse(JSON.stringify(v.world)); snapAt[k] = v.savedAt || Date.now();
+      if (RW[k].city?.open) cityShopOn();
       if (!RW[rIsle]) rIsle = k;
       if (k === rIsle) { W = RW[k]; lastSnap = snapAt[k]; updateRemoteStatus(); refreshPanel(false); }
       drawSwitch();

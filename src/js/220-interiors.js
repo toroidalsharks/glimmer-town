@@ -95,7 +95,7 @@ function shell(S, wall, floor, opts = {}) {
 function addPerson(S, p, x, z, faceY, opts = {}) {
   const f = makeFigure(p);
   if (p.health) healthLook(p, f);
-  f.fig.scale.setScalar(1.05 * p.body.size * (0.6 + 0.4 * p.grow));
+  kidShape(p, f.fig, f.head, 1.05 * p.body.size * growScale(p));
   f.fig.position.set(x, opts.y || 0, z); f.fig.rotation.y = faceY;
   if (opts.lying) { f.fig.rotation.set(-Math.PI / 2, 0, 0); f.eyes.forEach((e) => (e.scale.y = 0.2)); }
   f.fig.traverse((o) => { o.userData.tap = { kind: 'person', pid: p.id }; if (o.isMesh) o.castShadow = true; });
@@ -218,7 +218,7 @@ function buildShop(shop) {
     S.add(mesh(box(1.2, 1.1, 2.6), toon('#6f73c9'), 2.9, 0.55, 1.2)); S.add(mesh(box(1.3, 0.1, 2.7), toon('#ffffff'), 2.9, 1.12, 1.2));
     S.add(mesh(box(0.1, 3, 1.4), new T3.MeshBasicMaterial({ color: 0xdfe8ff }), 1.2, 1.6, -3.8, false));
     if (clerk) addPerson(S, clerk, 3.8, 1.2, -Math.PI / 2);
-  } else if (['bakery', 'icecream', 'books', 'arcade'].includes(shop)) {
+  } else if (['bakery', 'icecream', 'books', 'arcade', 'trucks'].includes(shop)) {
     extraSub = buildShopExtra(shop, S, clerk, stock);
   } else {
     shell(S, '#d8f0d0', '#b98a5e', { wainscot: '#5f7f4a' });

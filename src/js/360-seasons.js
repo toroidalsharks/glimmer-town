@@ -25,7 +25,10 @@ function applySeason(force) {
   if (!force && seasonShown === S.id) return;
   seasonShown = S.id;
   const T = SEASON_TINT[S.id];
-  for (const k of FOLIAGE) { const m = matCache.get(k); if (m) m.color.set(T[k] || k); }
+  for (const k of FOLIAGE) {
+    const m = matCache.get(k); if (m) { m.color.set(T[k] || k); if (FACET.on) moodLeaf(m.color); }
+    const r = matCache.get('res|' + k); if (r) r.color.set(T[k] || k);
+  }
   const g = matCache.get(ISL.grass);
   if (g) { g.color.set(ISL.grass); if (S.id === 'autumn') g.color.lerp(new T3.Color('#c9b36a'), T.grass); if (S.id === 'winter') g.color.lerp(new T3.Color('#fbfdff'), T.grass); }
   gfxSeason(S, T);

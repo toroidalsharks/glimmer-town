@@ -4,13 +4,28 @@
 const Sound = (() => {
   let ctx = null, master, music, sfx, voiceBus, started = false, noiseBuf = null, nextBeat = 0, beat = 0, lastVoice = 0, lastStep = 0;
   const ok = () => ctx && ctx.state === 'running';
+  // "Keep my own music playing": the town's songs stay off and the game never takes over the phone's audio
+  const musicOn = () => cfg.music !== false && !cfg.ownMusic;
+  // nothing to hear: let the audio rest so the phone hands the speaker back to other apps
+  const silent = () => (cfg.volume ?? 0.7) <= 0 || (!musicOn() && cfg.sfx === false && cfg.voices === false);
+  // an iPhone pauses other apps for a page that plays sound unless the page asks to mix in ("ambient")
+  let session = '';
+  function setSession() {
+    const want = cfg.ownMusic ? 'ambient' : MODE === 'host' && cur ? 'playback' : '';
+    if (want === session) return false;
+    session = want;
+    try { if (navigator.audioSession) navigator.audioSession.type = want || 'auto'; } catch (e) {}
+    return true;
+  }
   function ensure() {
     if (ctx && ctx.state === 'closed') { ctx = null; cur = null; lastCtx = ''; }
     if (ctx) return ctx;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    setSession();
     try { ctx = new AC(); } catch (e) { return null; }
     // once sound has played, a phone call, the lock screen or another app can pause it; start it again when allowed
-    ctx.onstatechange = () => { if (ctx.state === 'running') { started = true; showNp(); } else if (started && ctx.state !== 'closed') setTimeout(retry, 500); };
+    const mine = ctx;
+    ctx.onstatechange = () => { if (ctx !== mine) return; if (ctx.state === 'running') { started = true; showNp(); } else if (started && ctx.state !== 'closed' && !silent()) setTimeout(retry, 500); };
     master = ctx.createGain(); master.connect(ctx.destination);
     music = ctx.createGain(); sfx = ctx.createGain(); voiceBus = ctx.createGain();
     const soft = ctx.createBiquadFilter(); soft.type = 'lowpass'; soft.frequency.value = 3200; music.connect(soft); soft.connect(master); try { const verb = ctx.createConvolver(), len = ctx.sampleRate * 2.2, ir = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); } verb.buffer = ir; const wet = ctx.createGain(); wet.gain.value = 0.32; soft.connect(wet); wet.connect(verb); verb.connect(master); } catch (e) {}
@@ -18,7 +33,13 @@ const Sound = (() => {
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     levels(); return ctx;
   }
-  function levels() { if (!ctx) return; const v = cfg.volume ?? 0.7; master.gain.value = v; music.gain.value = cfg.music === false ? 0 : 0.3; sfx.gain.value = cfg.sfx === false ? 0 : 0.55; voiceBus.gain.value = cfg.voices === false ? 0 : 0.5; }
+  function levels() {
+    // the audio session type only takes hold for sound started after it is set, so begin again with a fresh one
+    if (setSession() && ctx) { const old = ctx; ctx = null; cur = null; lastCtx = ''; try { old.close(); } catch (e) {} retry(); return; }
+    if (!ctx) return;
+    if (silent()) { if (ctx.state === 'running') try { ctx.suspend(); } catch (e) {} } else retry();
+    const v = cfg.volume ?? 0.7; master.gain.value = cfg.ownMusic ? v * 0.6 : v; music.gain.value = musicOn() ? 0.3 : 0; sfx.gain.value = cfg.sfx === false ? 0 : 0.55; voiceBus.gain.value = cfg.voices === false ? 0 : 0.5;
+  }
   function tone(freq, t0, dur, o = {}) {
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(freq, t0);
@@ -238,7 +259,7 @@ const Sound = (() => {
   function showNp() {
     try {
       const np = document.getElementById('np'); if (!np) return;
-      np.textContent = cfg.music === false ? '' : ok() ? (npTitle ? `♪ ${npTitle}` : '') : (typeof MODE === 'undefined' || MODE === 'host') && W ? '🔇 Tap anywhere for music' : '';
+      np.textContent = !musicOn() ? '' : ok() ? (npTitle ? `♪ ${npTitle}` : '') : (typeof MODE === 'undefined' || MODE === 'host') && W ? '🔇 Tap anywhere for music' : '';
     } catch (e) {}
   }
   // weather, time of day, season and downtown only change the song once they have held for a while,
@@ -248,9 +269,9 @@ const Sound = (() => {
   function pickContext() {
     const c = contextKey();
     if (!cur) {
+      lastCtx = c; startSong(pickSong(c));
       // on the box, an iPhone plays the music through the silent switch like a music app would
-      if (MODE === 'host') try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
-      lastCtx = c; startSong(pickSong(c)); return;
+      setSession(); return;
     }
     if (c === lastCtx) { wantCtx = ''; return; }
     if (AMBIENT.has(c) && AMBIENT.has(lastCtx)) {
@@ -261,7 +282,7 @@ const Sound = (() => {
     wantCtx = ''; lastCtx = c; startSong(pickSong(c));
   }
   function schedule() {
-    if (!ok() || cfg.music === false || !W) return;
+    if (!ok() || !musicOn() || !W) return;
     try { scheduleNotes(); } catch (e) { console.warn('music', e); cur = null; }
   }
   function scheduleNotes() {
@@ -321,6 +342,7 @@ const Sound = (() => {
   // try to start (or restart) sound. Browsers only let a page make sound after the person has
   // tapped it at least once, so this can quietly fail until then.
   function retry() {
+    if (silent()) return;
     const c = ensure(); if (!c || c.state === 'running') return;
     try { const pr = c.resume(); if (pr && pr.then) pr.then(showNp, () => {}); } catch (e) {}
   }
@@ -338,12 +360,12 @@ const Sound = (() => {
     boot() {
       retry();
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') retry(); });
-      setTimeout(() => { showNp(); if (!ok() && cfg.music !== false && MODE === 'host' && typeof toast === 'function') toast('🎵 Tap the screen once to start the music. Browsers wait for one tap before playing sound.'); }, 6000);
+      setTimeout(() => { showNp(); if (!ok() && musicOn() && MODE === 'host' && typeof toast === 'function') toast('🎵 Tap the screen once to start the music. Browsers wait for one tap before playing sound.'); }, 6000);
     },
     levels() { levels(); showNp(); },
     nowPlaying() { return npTitle; },
-    blocked() { return cfg.music !== false && !ok(); },
-    skip() { if (!ok() || cfg.music === false) return ''; lastCtx = lastCtx || contextKey(); startSong(pickSong(lastCtx)); return npTitle; },
+    blocked() { return musicOn() && !ok(); },
+    skip() { if (!ok() || !musicOn()) return ''; lastCtx = lastCtx || contextKey(); startSong(pickSong(lastCtx)); return npTitle; },
     beatPhase() { if (!ok() || !cur) return (now * 1.5) % 1; return (((ctx.currentTime - beatClock.t0) / beatClock.spb) % 1 + 1) % 1; },
     beatCount() { if (!ok() || !cur) return Math.floor(now * 1.5); return Math.floor((ctx.currentTime - beatClock.t0) / beatClock.spb); },
     ui() { if (!ok()) return; tone(1180, at(), 0.025, { type: 'triangle', vol: 0.06 }); },
@@ -382,7 +404,7 @@ const Sound = (() => {
 function voiceOf(p) {
   if (p.body.voice) return p.body.voice;
   const h = (parseInt(String(p.id).replace(/\D/g, '')) || 1) * 7919;
-  const kid = p.grow < 1 ? 1.35 : 1;
+  const kid = { baby: 1.6, toddler: 1.5, kid: 1.35, teen: 1.12 }[stageOf(p)] || 1;
   p.body.voice = { base: (160 + (h % 220)) * kid / p.body.size, spread: 0.12 + ((h >> 3) % 20) / 100, wave: ['square', 'triangle', 'sawtooth', 'sine'][(h >> 5) % 4], len: 0.055 + ((h >> 7) % 5) / 100 };
   return p.body.voice;
 }

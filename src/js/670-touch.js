@@ -6,6 +6,7 @@ const POSE_GAP = { hug: 0.72, cuddle: 0.6, highfive: 1.0, pat: 0.85, fight: 1.0,
 function freeBoth(a, b) { for (const p of [a, b]) if (p.state === 'talk' && !p.heldByDlg) p.state = 'free'; }
 async function physicalScene(a, b, kind) {
   if (!a || !b || a.inside || b.inside || a === b) return;
+  if (kind === 'fight' && (a.grow < 1 || b.grow < 1) && (a.grow >= 1 || b.grow >= 1 || a.grow < 0.4 || b.grow < 0.4)) return;
   const dur = POSE_DUR[kind] || 2.5, gap = POSE_GAP[kind] || 1;
   a.state = b.state = 'talk';
   const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2; let dx = b.x - a.x, dz = b.z - a.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
@@ -136,7 +137,7 @@ function walkWithStep(p, dt) {
 // room visits in the evening
 function planHangout(p) {
   if (W.t < 0.44 || W.t > 0.56 || p.visitor || p.grow < 1 || rand() > 0.05 || p.room < 0) return false;
-  const pals = W.people.filter((q) => q !== p && !q.inside && q.state === 'free' && !q.visitor && q.room >= 0 && (q.partner === p.id || fscore(p, q) >= 5 && fscore(q, p) >= 4) && (!q.task || ['stroll', 'visit'].includes(q.task.kind)));
+  const pals = W.people.filter((q) => q !== p && !q.inside && q.state === 'free' && !q.visitor && q.room >= 0 && q.grow >= 1 && (q.partner === p.id || fscore(p, q) >= 5 && fscore(q, p) >= 4) && (!q.task || ['stroll', 'visit'].includes(q.task.kind)));
   if (!pals.length) return false;
   const q = pick(pals), door = TOWN[homeKey(p)].spot;
   setTask(p, 'hangout', homeKey(p), door, { host: p.id }); setTask(q, 'hangout', homeKey(p), [door[0] + 0.8, door[1] + 0.3], { host: p.id });

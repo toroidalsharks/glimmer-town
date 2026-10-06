@@ -120,10 +120,11 @@ function textThreadKey(a, b) { return b === 'town' ? 'town' : [a, b].sort().join
 let nextConvoAt = 45, nextGroupAt = 120, lastGoodnightDay = {};
 const convos = [];
 function postText(from, toId, text, tone, T) {
-  text = String(text || '').replace(/^["']|["']$/g, '').trim().slice(0, 180); if (!text) return null;
+  text = String(voiceLine(from, text, toId === 'town' ? 'post' : 'text') || '').replace(/^["']|["']$/g, '').trim(); if (!text) return null;
   W.texts = W.texts || [];
   const msg = { id: uid(), from: from.id, fromName: from.name, to: toId, text, tone, day: W.day, t: W.t };
   W.texts.push(msg); if (W.texts.length > 400) W.texts.splice(0, W.texts.length - 400);
+  archiveText(msg);
   if (!from.inside) emote(from, '📱', 2.5);
   const to = toId !== 'town' && person(toId);
   if (to) {
@@ -133,7 +134,7 @@ function postText(from, toId, text, tone, T) {
     if (tone === 'bully') { remember(to, `${from.name} texted me: "${text}"`, 3, 'bullied', from.name); to.joy = Math.max(0, (to.joy || 0) - 5); if ((to.today || []).filter((m) => m.tag === 'bullied').length >= 2 && rand() < 0.5) fileCase('bully', to, from); }
   }
   markDirty();
-  if (activeTab === 'texts' && !sheet.hidden) refreshPanel(false);
+  textsArrived(msg);
   return msg;
 }
 function toneFor(a, b, T) {
@@ -145,10 +146,10 @@ function toneFor(a, b, T) {
   return f >= 4 ? 'sweet' : 'chat';
 }
 async function aiText(from, to, T, transcript, replying) {
-  if (!(aiReady() && aiBusy < 2)) return null;
-  const topic = T.mem ? `what happened: ${T.mem.text}` : { miss: 'you miss them', plans: 'making plans', crush: 'you have a crush on them and are nervous', beef: 'you are angry at them', bully: 'you want to be mean to them (PG, no slurs)', wonder: 'a big random thought', claude: 'the AI named Claude that keeps changing the island', mili: 'what Mili really is', interest: `something you're into: ${interestOf(from) || 'anything'}`, jealous: 'you felt jealous today' }[T.kind] || T.kind;
+  if (!(aiReady() && aiBusy < 3)) return null;
+  const topic = T.mem ? `what happened: ${T.mem.text}` : { miss: 'you miss them', plans: 'making plans', crush: 'you have a crush on them and are nervous', beef: 'you are angry at them', bully: `you want to be mean to them (${canSwear(from) ? 'no slurs' : 'PG, no slurs'})`, wonder: 'a big random thought', claude: 'the AI named Claude that keeps changing the island', mili: 'what Mili really is', interest: `something you're into: ${interestOf(from) || 'anything'}`, jealous: 'you felt jealous today' }[T.kind] || T.kind;
   try {
-    const l = await aiLine(from, to, [], `You are TEXTING ${to.name} on your phone, not talking in person. ${replying ? 'Reply to their last message.' : `Start a text about ${topic}.`}${transcript.length ? `\nThe texts so far:\n${transcript.map((m) => `${m.fromName}: ${m.text}`).join('\n')}` : ''}\nWrite ONE short text message the way you personally text (lowercase is fine, emoji only if that is you). Say something specific and real, not generic. No quotation marks.`);
+    const l = await aiLine(from, to, [], `You are TEXTING ${to.name} on your phone, not talking in person. ${replying ? 'Reply to their last message.' : `Start a text about ${topic}.`}${transcript.length ? `\nThe texts so far:\n${transcript.map((m) => `${m.fromName}: ${m.text}`).join('\n')}` : ''}\nWrite ONE text message the way you personally text (lowercase is fine, emoji only if that is you). Most texts are short, but when you have a lot to say, say all of it. Say something specific and real, not generic. No quotation marks.`, { long: true });
     return l && l.say ? l.say : null;
   } catch (e) { return null; }
 }
@@ -163,7 +164,7 @@ async function startConvo(a, b, T) {
       const [s, r] = i % 2 ? [b, a] : [a, b];
       if (i) await sleep((5 + rand() * 12) * 1000);
       if (!W || s.away) break;
-      if (s.inside && s.task?.kind === 'home' && (W.t >= 0.68 || W.t < 0.01) && i) break;
+      if (isAsleep(s) && i) break;
       let text = await aiText(s, r, T, transcript, i > 0);
       if (!text) text = i === 0 ? (T.kind === 'bully' ? pickFresh(['nobody likes u btw', 'saw u eating alone again lol', 'why do u even talk', 'ur so weird its embarrassing', 'no one asked']) : opener(s, r, T)) : replyLine(s, r, T, i);
       const msg = postText(s, r.id, text, i === 0 ? toneFor(a, b, T) : (SAD.includes(T.kind) && fscore(s, r) >= 2 ? 'support' : fscore(s, r) <= -3 ? 'beef' : 'chat'), T);
@@ -187,7 +188,7 @@ function sendText(from, to, tone) {
   startConvo(from, to, { kind, who: to && to.name });
 }
 function groupPost(a) {
-  const others = W.people.filter((q) => q !== a && !q.away && !(q.inside && q.task?.kind === 'home' && isNight()));
+  const others = W.people.filter((q) => q !== a && !q.away && !isAsleep(q));
   const latest = (W.updates || []).slice(-1)[0];
   const lines = [
     ...(a.today || []).filter((m) => m.weight >= 2 && !String(m.tag).startsWith('text') && !m.posted).slice(-2).map((m) => { m.posted = true; return `${lc(m.text)} ${pick(['lol', '!!', '😭', '', 'anyway'])}`.trim(); }),
@@ -208,7 +209,7 @@ function textTick() {
   if (W.meeting || MODE !== 'host') return;
   if (now >= nextConvoAt) {
     nextConvoAt = now + 60 + rand() * 70;
-    const awake = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 0.5 && !(p.inside && p.task?.kind === 'home' && (W.t >= 0.68 || W.t < 0.01)));
+    const awake = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 0.5 && !isAsleep(p));
     if (awake.length >= 2) {
       const scored = awake.map((p) => [p, (p.today || []).filter((m) => !m.texted && m.weight >= 2).length + rand() * 1.5]).sort((x, y) => y[1] - x[1]);
       const a = scored[0][0];
@@ -228,7 +229,7 @@ function textTick() {
   }
   if (now >= nextGroupAt) {
     nextGroupAt = now + 150 + rand() * 150;
-    const awake = W.people.filter((p) => !p.away && !p.visitor && !(p.inside && p.task?.kind === 'home' && isNight()));
+    const awake = W.people.filter((p) => !p.away && !p.visitor && !isAsleep(p));
     if (awake.length) groupPost(pick(awake));
   }
   if (W.t > 0.62 && W.t < 0.7) for (const p of W.people) {

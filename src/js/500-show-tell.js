@@ -46,6 +46,7 @@ async function showScene(a, b, C) {
     } else if (C.kind === 'text') {
       r = pick(['Ooh. Okay. That is a lot.', 'They did NOT say that.', "Reply with a heart. Trust me.", 'Hmm. I think they like you.']); emote(b, '👀', 2.5);
       remember(b, `${a.name} showed me a text from ${C.m.fromName}: "${C.m.text.slice(0, 80)}"`, 1, 'gossip', a.name);
+      b.shownTexts = [...(b.shownTexts || []).filter((x) => x.id !== C.m.id), { id: C.m.id, by: a.id }].slice(-30);
       if (rand() < 0.3) { const src = person(C.m.from); if (src) { remember(src, `Heard that ${a.name} showed my text to ${b.name}.`, 2, 'textMean', a.name); feel(src, a, -0.4, true); } }
     } else {
       r = pick(['HAHAHA.', 'Play it again!', 'Why is this so funny?', "I'm going to think about this all day."]); emote(b, '😂', 2.5); emote(a, '😂', 2.5);

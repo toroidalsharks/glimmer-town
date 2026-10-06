@@ -74,7 +74,7 @@ function applyCmd(c) {
     }
     case 'sponsor': return sponsorCmd(c);
     case 'chip': {
-      const n = clamp(Math.floor(c.n) || 0, 1, 999);
+      const n = clamp(Math.floor(c.n) || 0, 1, COIN_MAX);
       if (!W.project) return 'There is no project right now.'; if (C.coins < n) return 'You don\'t have enough coins.';
       C.coins -= n; W.project.raised += n;
       for (const p of W.people) { if (p.cr.score > -2) creatorShift(p, 0.3); remember(p, `Someone said the Creator chipped in ${plural(n, 'coin')} for ${PROJECTS[W.project.id].name}.`, 1, 'creatorHelp'); }
@@ -120,7 +120,7 @@ function applyCmd(c) {
     case 'follow': openDetail = c.id || null; if (MODE === 'host' && c.id) lastTouch = now; return '';
     case 'room': if (c.id) openInterior({ kind: 'room', id: c.id }); else closeInterior(); return '';
     case 'shopview': if (SHOPS[c.shop]) openInterior({ kind: 'shop', shop: c.shop }); return '';
-    case 'set': if (c.key === 'gfx' && GFX_LEVELS[c.value]) { if (MODE === 'host') { gfxSetting(c.value); wireGfxSettings(); } return ''; } if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec', 'cute', 'cutscenes'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); if (c.key === 'cute' && MODE === 'host') setTimeout(() => location.reload(), 800); } return '';
+    case 'set': if (c.key === 'gfx' && GFX_LEVELS[c.value]) { if (MODE === 'host') { gfxSetting(c.value); wireGfxSettings(); } return ''; } if (c.key === 'mood' && MOODS[c.value]) { if (MODE === 'host') { setMood(c.value); wireMoodSettings(); } return ''; } if (['spin', 'follow', 'shadows', 'boxMode', 'mirror', 'daySec', 'cute', 'cutscenes'].includes(c.key)) { cfg[c.key] = c.value; savePrefs(); applyLook(); syncSettingsUI(); if (c.key === 'cute' && MODE === 'host') setTimeout(() => location.reload(), 800); } return '';
     case 'plot': return plotCmd(c);
     case 'lab': if (MODE === 'host' && person(c.pid)) { labAct(c.pid, c.act, c.text).then((r) => { if (r) toast(r); if (labOpen) renderLab(); refreshPanel(false); }); setTimeout(() => { if (labOpen) renderLab(); }, 30); } return '';
     case 'labsview': if (MODE === 'host') openInterior({ kind: 'labs', wing: LAB_WINGS[c.wing] ? c.wing : labWingLast }); return '';
@@ -137,10 +137,12 @@ function applyCmd(c) {
     case 'buybook': { const B = BOOKS[c.id]; if (!B) return ''; if (C.coins < B.price) return `You need ${plural(B.price, 'coin')}.`; C.coins -= B.price; C.items.push(newItem('book', c.id, null, null, 1)); Sound.coin(); markDirty(); return `You bought "${B.title}". It's in Your gifts.`; }
     case 'rule': { const k = (W.cases || []).find((x) => x.id === c.id); if (!k) return 'That case is gone.'; const r = applyRuling(k, c.choice, false); if (k.status === 'closed' && cutsOn()) verdictMini(k); return r; }
     case 'cut': return cutCmd(c);
+    case 'city': return cityCmd(c);
+    case 'tproj': return tpCmd(c);
     case 'crime': return crimeCmd(c);
     case 'hallview': if (MODE === 'host') openInterior({ kind: 'hall' }); return '';
     case 'debate': { const a = person(c.a), b = person(c.b); if (!a || !b) return ''; const k = fileCase('debate', a, b, { topic: String(c.topic || pick(DEBATES)).slice(0, 80), byCreator: true }); return k ? `⚖ ${a.name} and ${b.name} have been summoned to debate: ${k.topic}` : 'They already have a debate waiting.'; }
-    case 'skip': { const t = Sound.skip(); return t ? `♪ Now playing: ${t}` : Sound.blocked() ? 'The box needs one tap on its screen before it can play music.' : 'The box has music turned off.'; }
+    case 'skip': { const t = Sound.skip(); return t ? `♪ Now playing: ${t}` : Sound.blocked() ? 'The box needs one tap on its screen before it can play music.' : cfg.ownMusic ? 'The box is set to keep its own music playing.' : 'The box has music turned off.'; }
     case 'gather': return gatherCmd(c);
     case 'landtap': {
       const M = mats(), key = 'lt' + c.id;
@@ -150,13 +152,14 @@ function applyCmd(c) {
       if (c.kind === 'scrap') { const n = 1 + (rand() < 0.4 ? 1 : 0); M.parts += n; spawnBurst(c.x, 1.2, c.z, ['#c9ccd6', '#9fe3ff'], 14, 1.8, 0.25); Sound.coin(); markDirty(); return `+${n} metal parts ⚙️ (from the recycling bin)`; }
       if (c.kind === 'boulder') { const n = 2 + (rand() < 0.3 ? 1 : 0); M.stone += n; spawnBurst(c.x, 1, c.z, ['#c9c3e0', '#8a84a8'], 16, 2, 0.3); Sound.step(); markDirty(); return `+${n} stone 🪨`; }
       const got = pick(['shells', 'flowers', 'stone', 'parts', 'parts']), n = 2 + Math.floor(rand() * 2); M[got] += n; spawnBurst(c.x, 1.5, c.z, ['#9fd3ff', '#c9b3ff', '#ffb3e6', '#ffffff'], 30, 2.4, 0.3); Sound.sparkle(); markDirty();
-      if (rand() < 0.08) { const n2 = 5; W.creator.coins += n2; return `+${n} ${MATS[got]} and ${n2} coins hidden inside ✨`; }
+      if (rand() < 0.12) { const n2 = 20 + Math.floor(rand() * 31); creatorEarn(n2); return `+${n} ${MATS[got]} and ${n2} coins hidden inside ✨`; }
       return `+${n} ${MATS[got]} ✨`;
     }
     case 'craft': return craftCmd(c);
     case 'donate': { if (!(W.placed || []).some((pl) => pl.type === 'museum')) return 'Build a museum first.'; const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return ''; const it = C.items.splice(i, 1)[0]; W.museum = W.museum || []; W.museum.push({ name: itemName(it), day: W.day }); for (const p of W.people) if (rand() < 0.4) remember(p, `The Creator gave ${a_an(itemName(it))} to the museum.`, 1, 'museum'); diary(`🏛 <span class="cr">Creator</span> donated ${a_an(esc(itemName(it)))} to the museum.`); Sound.sparkle(); markDirty(); return `Donated ${a_an(itemName(it))}. The museum has ${plural(W.museum.length, 'exhibit')} now.`; }
-    case 'sell': { const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return 'That item is gone.'; const it = C.items.splice(i, 1)[0], v = sellValue(it); C.coins = Math.min(9999, C.coins + v); Sound.coin(); markDirty(); return `Sold ${a_an(itemName(it))} for ${plural(v, 'coin')}.`; }
+    case 'sell': { const i = C.items.findIndex((x) => x.uid === c.uid); if (i < 0) return 'That item is gone.'; const it = C.items.splice(i, 1)[0], v = sellValue(it); const v2 = tpIsOpen('market') ? v * 2 : v; creatorEarn(v2); Sound.coin(); markDirty(); return `Sold ${a_an(itemName(it))} for ${plural(v2, 'coin')}${v2 > v ? ' (double, thanks to the Night Market)' : ''}.`; }
     case 'shine': return shineCmd(c.id);
+    case 'groupchat': return creatorGroupPost(c.text);
     case 'catname': W.catName = String(c.name || '').slice(0, 20) || null; markDirty(); return `Her cat is called ${catName()} now.`;
     case 'cam': if (c.home) { openDetail = null; camHome = true; } if (c.place && MODE === 'host') camGo(c.place); return '';
   }

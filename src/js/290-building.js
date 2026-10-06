@@ -45,6 +45,7 @@ function spotProblem(x, z, size = 0) {
   if (Math.abs(x) < 3.2 + size && z > 11) return 'That would block the path to the pier.';
   if (Math.hypot(x - PLOT_AT[0], z - PLOT_AT[1]) < 3.5 + size) return "That's your garden plot.";
   for (const pl of W.placed || []) if (Math.hypot(x - pl.x, z - pl.z) < 3 + size + (BUILDS[pl.type]?.size || 0)) return 'Something is already there.';
+  for (const S of tpSites()) if (Math.hypot(x - S.x, z - S.z) < 2.5 + size + S.size) return 'A big project is there.';
   return null;
 }
 function autoSpot(size = 0) {
@@ -134,7 +135,7 @@ function reactToBuild(name) {
   for (const p of nearby) {
     const s = p.cr.score;
     const line = s >= 4 ? pick([`The Creator made us ${a_an(name)}!`, `${cap(a_an(name))}! It's perfect.`]) : s <= -4 ? pick([`${cap(a_an(name))}? Nobody asked for that.`, "Hmph. Whatever."]) : pick([`Ooh, ${a_an(name)}.`, `Where did that ${name} come from?`, `I might sit by the new ${name} later.`]);
-    bubble(p, line, 3.2); remember(p, `${cap(a_an(name))} appeared in town. ${line}`, 1, 'build');
+    const said = voiceLine(p, line, 'say'); bubbleRaw(p, said, 3.2); remember(p, `${cap(a_an(name))} appeared in town. ${said}`, 1, 'build');
   }
 }
 function placeStrollSpot() {

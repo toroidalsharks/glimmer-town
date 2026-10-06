@@ -254,6 +254,6 @@ function landmarkDone(p) {
 function museumDaily() {
   const n = (W.museum || []).length, tix = W.tickets || 0; W.tickets = 0;
   if (!tix) return;
-  const coins = Math.min(12, Math.floor(tix / 3) + Math.floor(n / 4));
-  if (coins > 0) { W.creator.coins += coins; diary(`🎟 Yesterday's ticket sales brought in ${plural(coins, 'coin')}.`); }
+  const coins = Math.min(400, tix * 6 + n * 4);
+  if (coins > 0) { creatorEarn(coins); diary(`🎟 Yesterday's ticket sales brought in ${plural(coins, 'coin')}.`); }
 }

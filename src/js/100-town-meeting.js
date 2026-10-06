@@ -37,8 +37,10 @@ function voteOn(v, prop, proposer) {
   return s > 0;
 }
 async function townMeeting() {
-  const att = W.people.filter((p) => p.state !== 'talk' && p.task?.kind !== 'away');
+  // whoever is still asleep (the night owls, mostly) sleeps right through it
+  const att = W.people.filter((p) => p.state !== 'talk' && p.task?.kind !== 'away' && !isBaby(p) && !isAsleep(p));
   if (att.length < 2) return;
+  for (const p of W.people) if (isAsleep(p) && !p.away && !isBaby(p) && stageOf(p) !== 'toddler') remember(p, 'Slept right through the town meeting.', 1, 'sleep');
   W.meeting = { day: W.day };
   att.forEach((p, i) => { p.inside = false; setTask(p, 'meeting', 'plaza', meetSpot(i, att.length)); });
   const t0 = performance.now();
@@ -55,7 +57,7 @@ async function townMeeting() {
     const prop = proposalFor(sp, att);
     await say(sp, prop.text, 3400);
     let yes = 1, no = 0; const yesers = [sp];
-    for (const v of att) { if (v === sp) continue; const y = voteOn(v, prop, sp); emote(v, y ? '○' : '✕', 2.6); if (y) { yes++; yesers.push(v); } else { no++; if (v.grow >= 1) feel(sp, v, -0.3, true); } }
+    for (const v of att) { if (v === sp || v.grow < 1) continue; const y = voteOn(v, prop, sp); emote(v, y ? '○' : '✕', 2.6); if (y) { yes++; yesers.push(v); } else { no++; if (v.grow >= 1) feel(sp, v, -0.3, true); } }
     await sleep(1600);
     const passed = yes > no;
     if (prop.kind === 'complaint') {

@@ -5,7 +5,7 @@ let camGoal = null, unfollowId = null, wantPhoto = false, albumVer = 0;
 const keysDown = new Set();
 function shiftView(dx, dz) { controls.target.x += dx; controls.target.z += dz; camera.position.x += dx; camera.position.z += dz; }
 function clampView() {
-  const t = controls.target, cx = clamp(t.x, -90, 90), cz = clamp(t.z, -100, 78);
+  const t = controls.target, cx = clamp(t.x, -90, cityLand() ? 116 : 90), cz = clamp(t.z, -100, 78);
   if (cx !== t.x || cz !== t.z) shiftView(cx - t.x, cz - t.z);
 }
 function slideTo(x, z, k) { const t = controls.target; shiftView((x - t.x) * k, (z - t.z) * k); }
@@ -13,6 +13,7 @@ function userPanned() { camGoal = null; camHome = false; unfollowId = openDetail
 function camSpots() {
   const L = [['town', 'Whole town', 0, -16, null], ['fountain', 'Fountain', 0, 0, 40], ['downtown', 'Downtown', DT.x, DT.z + 4, 52], ['pier', 'Pier', 0, 35, 34], ['park', 'Park', ...TOWN.park.spot, 36], ['beach', 'Seashell Beach', ...BEACH, 36], ['garden', 'Garden', ...TOWN.garden.spot, 36]];
   for (const k of W.lobes || []) L.push([k, LOBES[k].name, ...lobeCenter(k), 44]);
+  if (cityLand()) L.splice(3, 0, ['starline', 'Starline', SL.x, SL.z + 4, 58]);
   return L;
 }
 function camGo(key) {
@@ -82,7 +83,7 @@ function wireCamBar() {
   $('#cbGo').addEventListener('click', () => { const g = $('#goto'); if (g.hidden) renderGoto(); g.hidden = !g.hidden; });
   $('#goto').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (!b) return; camGo(b.dataset.go); $('#goto').hidden = true; });
   $('#cbPhoto').addEventListener('click', () => { wantPhoto = true; });
-  $('#cbSong').addEventListener('click', () => { Sound.unlock(); const t = Sound.skip(); toast(t ? `♪ Now playing: ${t}` : Sound.blocked() ? '♪ Starting the music…' : 'Music is off in Settings.'); });
+  $('#cbSong').addEventListener('click', () => { Sound.unlock(); const t = Sound.skip(); toast(t ? `♪ Now playing: ${t}` : Sound.blocked() ? '♪ Starting the music…' : cfg.ownMusic ? 'The town\'s songs are off so your own music can play.' : 'Music is off in Settings.'); });
   $('#fishReel').addEventListener('click', () => reel());
   $('#fishCast').addEventListener('click', () => openFishing());
   $('#fishClose').addEventListener('click', () => closeFishing());
@@ -116,7 +117,7 @@ const shines = [];
 function shineCmd(id) {
   const i = shines.findIndex((s) => s.id === id); if (i < 0) return '';
   const s = shines.splice(i, 1)[0]; scene.remove(s.g);
-  const v = s.big ? 8 : rand() < 0.62 ? 1 : rand() < 0.9 ? 2 : 3; W.creator.coins = Math.min(9999, W.creator.coins + v);
+  const v = s.big ? 40 + Math.floor(rand() * 41) : rand() < 0.6 ? 2 + Math.floor(rand() * 3) : rand() < 0.9 ? 5 + Math.floor(rand() * 4) : 12; creatorEarn(v);
   spawnBurst(s.x, 1.2, s.z, ['#ffd36b', '#fff6d6'], s.big ? 50 : 18, 2, 0.3); Sound.coin(); if (s.big) Sound.levelup();
   W.shinesFound = (W.shinesFound || 0) + 1; markDirty();
   return s.big ? `A golden star! +${v} coins.` : `+${v} ✦`;
@@ -132,7 +133,7 @@ function shineFrame(dt) {
   for (let k = 0; k < 20; k++) {
     const x = cx + (rand() - 0.5) * 30, z = cz + (rand() - 0.5) * 30;
     if (spotProblem(x, z)) continue;
-    const big = rand() < 0.035, m = toon(big ? '#ffd36b' : '#ffe98a', { emissive: new T3.Color(big ? '#8a6a10' : '#6a5a10') });
+    const big = rand() < (tpIsOpen('lighthouse') ? 0.1 : 0.035), m = toon(big ? '#ffd36b' : '#ffe98a', { emissive: new T3.Color(big ? '#8a6a10' : '#6a5a10') });
     const g = new T3.Group(); const c = mesh(big ? new T3.OctahedronGeometry(0.9, 0) : cyl(0.6, 0.6, 0.14, 18), m, 0, 0, 0, false); if (!big) c.rotation.x = Math.PI / 2; g.add(c);
     g.position.set(x, 1.2, z); const id = uid(); g.traverse((o) => (o.userData.tap = { kind: 'shine', id })); scene.add(g); tappables.push(c);
     shines.push({ id, g, x, z, big }); break;

@@ -17,7 +17,7 @@ function wireTownInput() {
       const tp = h.object.userData.tap;
       if (interior.kind === 'labs' && (tp.kind === 'person' || tp.kind === 'desk')) { openLab(tp.pid); return; }
       if (interior.kind === 'clinic' && tp.kind === 'person') { clinicTap(tp.pid); return; }
-      if (tp.kind === 'person') { const q = person(tp.pid); const asleep = q && q.inside && q.task?.kind === 'home' && (W.t >= 0.6 || W.t < 0.02); openInteract(tp.pid, asleep ? { text: 'Mmm… zzz… Huh? Creator? It\'s the middle of the night…' } : {}); }
+      if (tp.kind === 'person') { const q = person(tp.pid); const asleep = isAsleep(q); openInteract(tp.pid, asleep ? { text: 'Mmm… zzz… Huh? Creator? It\'s the middle of the night…' } : {}); }
       else if (tp.kind === 'buy') openBuy(tp.shop, tp.uid, tp.food);
       else if (tp.kind === 'shelf') { shopTab = 'books'; bookSubj = tp.subj; activeTab = 'shops'; openSheet(); }
       else if (tp.kind === 'judge') { activeTab = 'court'; openSheet(); }
@@ -45,6 +45,8 @@ function wireTownInput() {
     else if (tp.kind === 'hall') openInterior({ kind: 'hall' });
     else if (tp.kind === 'labs') openInterior({ kind: 'labs', wing: labWingLast });
     else if (tp.kind === 'clinic') openInterior({ kind: 'clinic' });
+    else if (tp.kind === 'city') cityTap(tp.place);
+    else if (tp.kind === 'tproj') tpTap(tp.id);
     else if (tp.kind === 'robot') robotTap(tp.id);
     else if (tp.kind === 'tgarden') { const r = applyCmd({ t: 'gather', bed: 'tgarden', x: TOWN.garden.spot[0], z: TOWN.garden.spot[1] }); if (r) toast(r); }
     else if (tp.kind === 'placed') { const pl = (W.placed || []).find((q) => q.id === tp.id); if (pl && ['flowers', 'planter', 'arch', 'tree'].includes(pl.type)) { const r = applyCmd({ t: 'gather', bed: pl.id, wood: pl.type === 'tree', x: pl.x, z: pl.z }); if (r) toast(r); } }

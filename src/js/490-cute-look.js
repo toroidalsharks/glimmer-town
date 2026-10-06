@@ -1,8 +1,8 @@
 // ============================================================
 // CUTE LOOK: hair, faces that react, hands, shoes, grass and flowers
 // ============================================================
-const HAIR_STYLES = { short: 'Short', pixie: 'Pixie', bob: 'Bob', long: 'Long', spiky: 'Spiky', bun: 'Bun', twintails: 'Pigtails', curly: 'Curly', buzz: 'Buzz', none: 'None' };
-const HAIR_COLORS = { cocoa: '#5a3a2e', chestnut: '#8a5a3a', ink: '#2a2230', honey: '#e0b060', ginger: '#c8643a', ash: '#9a98a6', snow: '#f1ede6', bubblegum: '#ff9fc4', ocean: '#7fb3ff', lavender: '#b9a3f0', mint: '#8fdcc0' };
+const HAIR_STYLES = { short: 'Short', pixie: 'Pixie', bob: 'Bob', hime: 'Hime cut', long: 'Long', wavy: 'Wavy', ponytail: 'Ponytail', spiky: 'Spiky', wolf: 'Wolf cut', mohawk: 'Mohawk', bun: 'Bun', spacebuns: 'Space buns', twintails: 'Pigtails', braids: 'Braids', curly: 'Curly', afro: 'Afro', buzz: 'Buzz', none: 'None' };
+const HAIR_COLORS = { cocoa: '#5a3a2e', chestnut: '#8a5a3a', ink: '#2a2230', honey: '#e0b060', ginger: '#c8643a', ash: '#9a98a6', snow: '#f1ede6', bubblegum: '#ff9fc4', ocean: '#7fb3ff', lavender: '#b9a3f0', mint: '#8fdcc0', cherry: '#d8405a', sunset: '#ff9a5a', lemon: '#ffe38a', rosegold: '#e8a8a0', midnight: '#3a3a8a' };
 const SHOE_COLORS = ['#ff6f5e', '#3d4f86', '#fffaf2', '#ffb347', '#8a84a8', '#5a3a2e', '#ff9fbf', '#6fbf6a', '#2e2a36'];
 const cuteOn = () => cfg.cute !== false;
 function hashStr(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0); }
@@ -11,11 +11,13 @@ function hairOf(p) {
   if (!p.body.hair || !HAIR_STYLES[p.body.hair.style]) {
     const h = hashStr(p.id + (p.name || ''));
     const natural = ['cocoa', 'cocoa', 'chestnut', 'ink', 'ink', 'honey', 'ginger', 'ash'], fun = Object.keys(HAIR_COLORS);
-    const styles = ['short', 'short', 'bob', 'long', 'spiky', 'bun', 'twintails', 'curly', 'buzz', 'bob'];
-    p.body.hair = { style: styles[h % styles.length], color: (h >> 8) % 4 === 0 ? fun[(h >> 12) % fun.length] : natural[(h >> 12) % natural.length], shoe: SHOE_COLORS[(h >> 16) % SHOE_COLORS.length] };
+    const styles = ['short', 'short', 'bob', 'long', 'spiky', 'bun', 'twintails', 'curly', 'buzz', 'bob', 'ponytail', 'wavy', 'wolf', 'braids', 'spacebuns', 'hime', 'afro'];
+    p.body.hair = { style: styles[h % styles.length], color: (h >>> 8) % 4 === 0 ? fun[(h >>> 12) % fun.length] : natural[(h >>> 12) % natural.length], shoe: SHOE_COLORS[(h >>> 16) % SHOE_COLORS.length] };
     if (typeof isMili === 'function' && isMili(p)) p.body.hair = { style: 'pixie', color: 'ink', shoe: '#fffaf2' };
     if (p.lovesMili) p.body.hair = { style: 'short', color: 'ink', shoe: '#ff6f5e' };
   }
+  // a sign bug once left some hair without a color; it always drew as cocoa, so keep it cocoa
+  if (!HAIR_COLORS[p.body.hair.color]) p.body.hair.color = 'cocoa';
   return p.body.hair;
 }
 function hairMesh(style, color) {
@@ -42,6 +44,14 @@ function hairMesh(style, color) {
       for (let k = 0; k < 5; k++) lock(0.38, 0.09, -0.3 + k * 0.15, -0.06 - Math.abs(k - 2) * 0.02, -0.52 + Math.abs(k - 2) * 0.05, 0.35, Math.PI + (k - 2) * 0.12);
       break;
     }
+    case 'hime': { cap(0.668, 0.47); const fr = mesh(box(0.9, 0.2, 0.2), c, 0, 0.3, 0.46); fr.rotation.x = 0.35; g.add(fr); for (const s of [-1, 1]) { const sl = mesh(box(0.14, 0.62, 0.2), c, s * 0.54, -0.12, 0.2); g.add(sl); } const bk = mesh(new T3.CapsuleGeometry(0.42, 0.8, 6, 12), c, 0, -0.5, -0.36); bk.scale.set(1.35, 1, 0.45); g.add(bk); break; }
+    case 'wavy': { cap(0.668, 0.47); bangs(1.5); for (let i = 0; i < 7; i++) { const a = -Math.PI * 0.75 + (i / 6) * Math.PI * 1.5, x = Math.sin(a) * 0.55, z = Math.cos(a) * 0.4 - 0.2; for (let j = 0; j < 3; j++) g.add(mesh(sph(0.17 - j * 0.02, 9, 7), c, x * (1 + j * 0.06) + (j % 2 ? 0.05 : -0.05), -0.1 - j * 0.28, z)); } break; }
+    case 'ponytail': { cap(0.668, 0.47); bangs(1.2); g.add(mesh(sph(0.1, 8, 6), toon('#ff9fbf'), 0, 0.46, -0.56)); const pt = mesh(new T3.CapsuleGeometry(0.16, 0.6, 4, 10), c, 0, 0.1, -0.78); pt.rotation.x = 0.35; g.add(pt); break; }
+    case 'wolf': { cap(0.67, 0.46, -0.32); for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2, sp = mesh(new T3.ConeGeometry(0.12, 0.3, 6), c, Math.sin(a) * 0.5, 0.46, Math.cos(a) * 0.5 - 0.05); sp.rotation.set(Math.cos(a) * 1.1, 0, -Math.sin(a) * 1.1); g.add(sp); } for (let k = 0; k < 5; k++) { const l = mesh(new T3.ConeGeometry(0.1, 0.46, 6), c, -0.3 + k * 0.15, -0.2, -0.52); l.rotation.x = Math.PI + 0.3; g.add(l); } bangs(1.2); break; }
+    case 'mohawk': { cap(0.63, 0.4, -0.3); for (let i = 0; i < 5; i++) { const sp = mesh(new T3.ConeGeometry(0.12, 0.42, 6), c, 0, 0.62 - Math.abs(i - 1) * 0.04, 0.36 - i * 0.2); sp.rotation.x = -0.3 + i * 0.25; g.add(sp); } break; }
+    case 'spacebuns': cap(); bangs(); for (const s of [-1, 1]) g.add(mesh(sph(0.21, 12, 10), c, s * 0.42, 0.56, -0.08)); break;
+    case 'braids': { cap(); bangs(); for (const s of [-1, 1]) { for (let j = 0; j < 5; j++) g.add(mesh(sph(0.1 - j * 0.008, 8, 6), c, s * 0.52, -0.1 - j * 0.15, -0.02 + j * 0.03)); g.add(mesh(sph(0.05, 6, 5), toon('#ff9fbf'), s * 0.52, -0.84, 0.13)); } break; }
+    case 'afro': { const af = mesh(sph(0.8, 18, 14), c, 0, 0.44, -0.2); af.scale.set(1.08, 0.95, 1); g.add(af); bangs(1.5); break; }
     case 'curly': for (let i = 0; i < 11; i++) { const a = (i / 11) * Math.PI * 2, y = 0.38 + (i % 2) * 0.12; g.add(mesh(sph(0.2, 10, 8), c, Math.sin(a) * 0.5, y, Math.cos(a) * 0.5 - 0.08)); } g.add(mesh(sph(0.42, 14, 10), c, 0, 0.42, -0.08)); break;
     default: cap();
   }

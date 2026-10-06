@@ -1,22 +1,58 @@
 // ============================================================
 // THE TEXTS TAB
 // ============================================================
-let textThread = null;
+let textThread = null, textsStick = false;
+// what you're typing in the group chat lives here, so a redraw never wipes it
+const CHAT_DRAFT_KEY = 'glimmer-chat-draft';
+let chatDraft = ''; try { chatDraft = localStorage.getItem(CHAT_DRAFT_KEY) || ''; } catch (e) {}
+function setChatDraft(v) { chatDraft = String(v || '').slice(0, CHAT_MAX); try { localStorage.setItem(CHAT_DRAFT_KEY, chatDraft); } catch (e) {} }
+const chatInputFocused = () => document.activeElement?.id === 'groupChatInput';
+function textMsgHtml(m, left) {
+  if (m.from === 'creator') return `<div class="msg r you"><span class="msg-n">You</span><span class="msg-t">${esc(m.text)}</span><span class="msg-d">Day ${m.day} · ${clockAt(m.t)}</span></div>`;
+  const p = person(m.from), side = textThread === 'town' ? 'l' : m.from === left ? 'l' : 'r';
+  return `<div class="msg ${side}${['bully', 'mean'].includes(m.tone) ? ' bad' : ''}"><span class="msg-n" style="color:${p ? skinCss(p) : 'var(--dim)'}">${esc(m.fromName)}</span><span class="msg-t">${esc(m.text)}</span><span class="msg-d">Day ${m.day} · ${clockAt(m.t)}</span></div>`;
+}
 function renderTexts() {
   const T = W.texts || [];
   const pane = $('#pane-texts');
   if (textThread) {
     const msgs = T.filter((m) => textThreadKey(m.from, m.to) === textThread);
-    const title = textThread === 'town' ? `${ISL.name} group chat` : textThread.split('|').map((id) => person(id)?.name || '?').join(' & ');
     const left = textThread === 'town' ? null : textThread.split('|')[0];
-    pane.innerHTML = `<button class="back thread-exit" type="button" data-thread="">&larr; Back to all texts</button><p class="label">${esc(title)}</p><div class="chat">${msgs.slice(-60).map((m) => { const p = person(m.from); const side = textThread === 'town' ? 'l' : m.from === left ? 'l' : 'r'; return `<div class="msg ${side}${['bully', 'mean'].includes(m.tone) ? ' bad' : ''}"><span class="msg-n" style="color:${p ? skinCss(p) : 'var(--dim)'}">${esc(m.fromName)}</span><span class="msg-t">${esc(m.text)}</span><span class="msg-d">Day ${m.day} · ${clockAt(m.t)}</span></div>`; }).join('') || '<p class="hint">No texts yet.</p>'}</div><button class="back thread-exit bottom" type="button" data-thread="">&larr; Exit this chat</button>`;
-    const ch = pane.querySelector('.chat'); if (ch) pane.scrollTop = pane.scrollHeight;
+    const chatHtml = msgs.slice(-60).map((m) => textMsgHtml(m, left)).join('') || '<p class="hint">No texts yet.</p>';
+    const sig = `${textThread}:${msgs.length}:${msgs.length ? msgs[msgs.length - 1].id : ''}`;
+    const ch = pane.dataset.view === textThread && pane.querySelector('.chat');
+    // already showing this chat: only swap the messages, so the box you're typing in stays put
+    if (ch) {
+      if (pane.dataset.sig !== sig) { textsStick = textsStick || pane.scrollHeight - pane.scrollTop - pane.clientHeight < 120; ch.innerHTML = chatHtml; pane.dataset.sig = sig; }
+      return;
+    }
+    const title = textThread === 'town' ? `${ISL.name} group chat` : textThread.split('|').map((id) => person(id)?.name || '?').join(' & ');
+    const box = textThread === 'town' ? `<form class="talk-row chat-send" data-groupchat><textarea id="groupChatInput" rows="2" maxlength="${CHAT_MAX}" autocomplete="off" placeholder="Write to the whole town…"></textarea><button class="btn" type="submit">Send</button></form><p class="hint">Everyone in town can read what you write here. A few of them will answer.</p>` : '';
+    pane.innerHTML = `<button class="back thread-exit" type="button" data-thread="">&larr; Back to all texts</button><p class="label">${esc(title)}</p><div class="chat">${chatHtml}</div>${box}<button class="back thread-exit bottom" type="button" data-thread="">&larr; Exit this chat</button>`;
+    pane.dataset.view = textThread; pane.dataset.sig = sig;
+    const ta = pane.querySelector('#groupChatInput'); if (ta) ta.value = chatDraft;
+    pane.scrollTop = pane.scrollHeight;
     return;
   }
-  const threads = new Map();
+  pane.dataset.view = '';
+  const threads = new Map([['town', null]]);
   for (const m of T) { const k = textThreadKey(m.from, m.to); threads.set(k, m); }
-  const list = [...threads.entries()].sort((x, y) => (y[1].day - x[1].day) || (y[1].t - x[1].t));
-  pane.innerHTML = `<p class="hint">Everyone's phones. They don't know you can read these.</p>` + (list.length ? list.map(([k, m]) => { const names = k === 'town' ? `💬 ${ISL.name} group chat` : k.split('|').map((id) => person(id)?.name || '?').join(' & '); return `<button class="who" type="button" data-thread="${esc(k)}"><span class="dot" style="background:${k === 'town' ? 'var(--gold)' : 'var(--lilac)'}"></span><span><span class="who-name">${esc(names)}</span>${['bully', 'mean'].includes(m.tone) ? ' <span class="chip bad">tense</span>' : ['sweet', 'flirt'].includes(m.tone) ? ' <span class="chip good">sweet</span>' : ''}<br><span class="who-note">${esc(m.fromName)}: ${esc(m.text)}</span></span><span class="who-stats">day ${m.day}<br>${clockAt(m.t)}</span></button>`; }).join('') : '<p class="hint">Nobody has texted yet. Give it a minute.</p>');
+  const at = (m) => (m ? m.day * 10 + m.t : 1e9); // the group chat sits on top until someone posts in it
+  const list = [...threads.entries()].sort((x, y) => at(y[1]) - at(x[1]));
+  pane.innerHTML = `<p class="hint">Everyone's phones. They don't know you can read their private texts. You can write in the group chat.</p>` + list.map(([k, m]) => { const names = k === 'town' ? `${ISL.name} group chat` : k.split('|').map((id) => person(id)?.name || '?').join(' & '); return `<button class="who" type="button" data-thread="${esc(k)}"><span class="dot" style="background:${k === 'town' ? 'var(--gold)' : 'var(--lilac)'}"></span><span><span class="who-name">${esc(names)}</span>${m && ['bully', 'mean'].includes(m.tone) ? ' <span class="chip bad">tense</span>' : m && ['sweet', 'flirt'].includes(m.tone) ? ' <span class="chip good">sweet</span>' : ''}<br><span class="who-note">${m ? `${esc(m.from === 'creator' ? 'You' : m.fromName)}: ${esc(m.text)}` : 'Nobody has posted yet. Say hi.'}</span></span><span class="who-stats">${m ? `day ${m.day}<br>${clockAt(m.t)}` : ''}</span></button>`; }).join('');
+}
+// a new text: redraw the Texts tab if it's open, even while you're typing in the group chat
+function textsArrived(msg) {
+  if (activeTab !== 'texts' || sheet.hidden) return;
+  if (chatInputFocused()) { const pane = $('#pane-texts'), sc = pane.scrollTop; renderTexts(); pane.scrollTop = textsStick ? pane.scrollHeight : sc; textsStick = false; }
+  else refreshPanel(false);
+}
+function sendGroupChat(form) {
+  const ta = form.querySelector('textarea'), text = ta.value.trim();
+  if (!text) return;
+  textsStick = true;
+  send({ t: 'groupchat', text: text.slice(0, CHAT_MAX) });
+  ta.value = ''; setChatDraft('');
 }
 function clockAt(t) { const hr = (6 + t * 24) % 24, hh = Math.floor(hr), mm = Math.floor((hr - hh) * 60); return `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'}`; }
 

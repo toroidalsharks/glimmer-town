@@ -453,7 +453,7 @@ function crimeVerdict(C, T, k, silent) {
   L.push({ who: 'narrator', text: '', fx: guilty ? 'guilty' : 'innocent', hold: 2 });
   if (guilty) {
     const fine = Math.min(A.coins, (C.loss || 0) + K.fine);
-    A.coins -= fine; if (C.victim && person(C.victim)) person(C.victim).coins += Math.min(fine, C.loss || fine); else if (C.victimName === 'the Creator' || C.victimName === 'the town') W.creator.coins = Math.min(999, W.creator.coins + Math.min(fine, C.loss || 0));
+    A.coins -= fine; if (C.victim && person(C.victim)) person(C.victim).coins += Math.min(fine, C.loss || fine); else if (C.victimName === 'the Creator' || C.victimName === 'the town') creatorEarn(Math.min(fine, C.loss || 0));
     for (const id of C.marks || []) { const q = person(id); if (q) q.coins += Math.floor(fine / (C.marks.length || 1)); }
     if (C.stolen && C.victim && person(C.victim)) person(C.victim).decor.push(C.stolen);
     C.restitution = fine;

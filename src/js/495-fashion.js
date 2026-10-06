@@ -58,10 +58,20 @@ const FASHION = {
   egirl:   { name: 'E-girl / e-boy', family: 'dark', tops: ['black', 'hotpink', 'white'], stripes: ['#fbf8f4', '#ff5fa8', '#2e2a36'], bottoms: [['plaid', ['#2e2a36', '#ff5fa8']], ['pants', ['#2e2a36']]], tights: '#2e2a36', shoes: ['#2e2a36'], platform: true, neck: ['choker'], extras: ['chain'], head: [['clips', null, 0.5]], liner: true, marks: ['heart'], blushK: 0.95 },
   grunge:  { name: 'Grunge', family: 'dark', tops: ['charcoal', 'black', 'moss'], layers: [['flannel', ['wine', 'forest', '#4a4652'], 0.85]], bottoms: [['ripped', ['#4a6fa8', '#2e2a36']]], shoes: ['#2e2a36', '#3a2a22'], extras: ['chain'], head: [['beanie', ['#2e2a36', '#7a2e3a', '#4a4652'], 0.5]] },
   witchy:  { name: 'Witchy', family: 'dark', tops: ['black', 'plum', 'forest'], dress: true, bottoms: [['long', null]], layers: [['cape', ['black', 'plum', 'wine'], 0.6]], shoes: ['#2e2a36'], neck: ['choker'], extras: ['pendant'], head: [['witch', ['#2e2a36', '#5e3a6e'], 0.55]], liner: true, lips: '#5e3a6e' },
+  decora:  { name: 'Decora', family: 'kawaii', tops: ['hotpink', 'lemon', 'sky', 'mint'], print: ['heart', 'star', 'rainbow'], layers: [['track', ['hotpink', 'sky', 'lemon'], 0.4]], bottoms: [['layered', ['#ff9fbf', '#9fd3ff', '#ffe98a']], ['shorts', ['#ff5fa8', '#9fd3ff']]], tights: '#ff9fbf', shoes: ['#ff9fbf', '#ffe98a', '#9fd3ff'], platform: true, extras: ['legwarmers', 'plush', 'backpack'], pack: ['#ffe98a', '#9fe3c4', '#ff9fbf'], head: [['clips', null, 1]], lashes: true, freckles: 0.4, marks: ['stars'] },
+  ballet:  { name: 'Balletcore', family: 'soft', tops: ['rose', 'white', 'cream'], layers: [['wrap', ['#ff9fbf', '#fbf8f4', '#c9b3ff'], 0.8]], bottoms: [['tutu', ['#ffd6e0', '#fbf8f4', '#e8dcff']]], tights: '#fbf8f4', shoes: ['#ffc9d6', '#fbf8f4'], neck: ['bow'], bowColor: ['#ff9fbf'], head: [['hairbow', ['#ff9fbf', '#fbf8f4'], 0.8]], lashes: true, blushK: 0.85 },
+  angel:   { name: 'Angelcore', family: 'soft', tops: ['white', 'cream', 'sky'], dress: true, bottoms: [['long', null]], shoes: ['#fbf8f4'], neck: ['pearls'], extras: ['wings'], head: [['halo', null, 0.9]], lashes: true, blushK: 0.8 },
+  mermaid: { name: 'Mermaidcore', family: 'soft', tops: ['mint', 'sky', 'lilac'], dress: true, bottoms: [['long', null]], shoes: ['#9fe3c4', '#fbf8f4'], neck: ['pearls'], extras: ['bangles'], head: [['shellclips', null, 0.85]], lashes: true, freckles: 0.2 },
+  skater:  { name: 'Skater', family: 'everyday', tops: ['white', 'charcoal', 'tomato', 'moss'], layers: [['bomber', ['black', 'moss', 'navy'], 0.4]], bottoms: [['cargo', ['#cdb88f', '#4a4652']], ['shorts', ['#4a4652', '#5b7fb5']]], shoes: ['#2e2a36', '#fffaf2', '#b8323f'], extras: ['skateboard', 'chain'], head: [['beanie', ['#2e2a36', '#b8323f', '#8fae6a'], 0.5]] },
+  beach:   { name: 'Beach day', family: 'everyday', tops: ['lemon', 'sky', 'tomato', 'mint', 'white'], print: ['star'], bottoms: [['shorts', ['#5b7fb5', '#ff6f5e', '#9fe3c4']], ['skirt', ['#9fe3c4', '#ffe98a']]], shoes: ['#ffe98a', '#ff9fbf', '#9fd3ff'], extras: ['tote'], head: [['sunhat', null, 0.7]], glasses: 0.55, glassType: 'shades', freckles: 0.5 },
+  western: { name: 'Western', family: 'everyday', tops: ['white', 'tomato', 'sky', 'khaki'], layers: [['flannel', ['wine', '#8a5a3a', 'forest'], 0.5]], bottoms: [['flare', ['#4a6fa8', '#6b4a3a']], ['pants', ['#4a6fa8']]], shoes: ['#8a5a3a', '#5a3a2e'], neck: ['kerchief'], bowColor: ['#b8323f', '#3d4f86'], extras: ['belt'], head: [['cowboy', ['#a8784e', '#fbf1e2', '#2e2a36'], 0.85]] },
+  tennis:  { name: 'Tennis club', family: 'neat', tops: ['white', 'cream', 'sky'], layers: [['vest', ['cream', 'white', 'sky'], 0.5]], bottoms: [['pleated', ['#fbf8f4']], ['shorts', ['#fbf8f4', '#3d4f86']]], tights: 'skin', shoes: ['#fffaf2'], neck: ['collar'], extras: ['wristbands'], head: [['visor', ['#fbf8f4', '#3d4f86', '#2f5d4a'], 0.7]] },
+  idol:    { name: 'Idol', family: 'kawaii', tops: ['white', 'hotpink', 'sky', 'lilac'], layers: [['sailor', ['navy', 'hotpink', 'sky'], 0.7]], bottoms: [['layered', ['#ff5fa8', '#fbf8f4', '#9fd3ff']], ['pleated', ['#ff5fa8', '#3d4f86']]], tights: '#fbf8f4', shoes: ['#fffaf2', '#ff9fbf'], platform: true, extras: ['lightstick'], head: [['headset', null, 0.6], ['tiara', null, 0.5]], lashes: true, marks: ['stars'], lips: '#ff7fa0', blushK: 0.9 },
+  cyber:   { name: 'Cyber Y2K', family: 'dark', tops: ['black', 'lilac', 'sky'], layers: [['shiny', ['#c8ccd8', '#c9b3ff', '#9fd3ff']]], bottoms: [['flare', ['#2e2a36', '#c8ccd8']], ['skirt', ['#c8ccd8', '#2e2a36']]], tights: '#2e2a36', shoes: ['#c8ccd8', '#2e2a36'], platform: true, neck: ['choker'], extras: ['harness'], glasses: 0.6, glassType: 'visor', liner: true, lips: '#5e3a6e' },
   techwear:{ name: 'Techwear', family: 'dark', tops: ['black', 'charcoal'], layers: [['shell', ['black', 'charcoal', '#3a4a5a']]], bottoms: [['cargo', ['#2e2a36', '#3a3a44']]], shoes: ['#2e2a36'], extras: ['harness', 'backpack'], pack: ['#2e2a36'], head: [['cap', ['#2e2a36'], 0.3]] },
 };
-const KID_FASHION = ['casual', 'sporty', 'y2k', 'cottage', 'preppy', 'comfy', 'fairy', 'kidcore', 'neko'];
-const FASHION_ORDER = ['casual', 'comfy', 'sporty', 'street', 'dad', 'preppy', 'business', 'academia', 'classic', 'cottage', 'coquette', 'boho', 'mom', 'jirai', 'gyaru', 'lolita', 'fairy', 'kidcore', 'neko', 'y2k', 'emo', 'goth', 'alt', 'egirl', 'grunge', 'witchy', 'techwear'];
+const KID_FASHION = ['casual', 'sporty', 'y2k', 'cottage', 'preppy', 'comfy', 'fairy', 'kidcore', 'neko', 'decora', 'ballet', 'mermaid', 'beach'];
+const FASHION_ORDER = ['casual', 'comfy', 'sporty', 'street', 'skater', 'beach', 'western', 'dad', 'preppy', 'tennis', 'business', 'academia', 'classic', 'cottage', 'coquette', 'ballet', 'angel', 'mermaid', 'boho', 'mom', 'jirai', 'gyaru', 'lolita', 'fairy', 'kidcore', 'decora', 'idol', 'neko', 'y2k', 'emo', 'goth', 'alt', 'egirl', 'grunge', 'witchy', 'cyber', 'techwear'];
 const FASHION_FAMILIES = { everyday: 'Everyday', neat: 'Neat', soft: 'Soft', kawaii: 'Kawaii', dark: 'Dark' };
 const isParent = (p) => W.people.some((q) => q !== p && (q.parents || []).includes(p.name));
 function fashionWeights(p) {
@@ -77,6 +87,10 @@ function fashionWeights(p) {
     fairy: 0.08 + P.cute * 0.8 + P.energy * 0.3 - P.edge * 0.4 - P.age * 0.5, kidcore: 0.08 + P.energy * 0.6 + P.cute * 0.5 - P.age * 0.9, neko: 0.1 + P.cute * 0.6 + P.edge * 0.25 - P.warmth * 0.15,
     egirl: 0.08 + P.edge * 0.6 + P.cute * 0.4 - P.age * 0.9, grunge: 0.1 + P.edge * 0.7 - P.order * 0.6, witchy: 0.1 + P.edge * 0.6 - P.energy * 0.3 + P.age * 0.2 - P.cute * 0.2,
     techwear: 0.08 + P.edge * 0.5 + P.order * 0.5 - P.warmth * 0.4 - P.cute * 0.4,
+    decora: 0.06 + P.cute * 0.7 + P.energy * 0.5 - P.age * 0.9, ballet: 0.08 + P.cute * 0.4 + P.order * 0.4 - P.edge * 0.4, angel: 0.06 + P.warmth * 0.5 + P.cute * 0.3 - P.edge * 0.5,
+    mermaid: 0.08 + P.warmth * 0.3 + P.cute * 0.4 - P.order * 0.2, skater: 0.1 + P.energy * 0.4 + P.edge * 0.4 - P.order * 0.3 - P.age * 0.5, beach: 0.12 + P.energy * 0.4 + P.warmth * 0.3 - P.order * 0.3,
+    western: 0.06 + P.warmth * 0.3 - P.cute * 0.3 + P.age * 0.3, tennis: 0.08 + P.order * 0.5 + P.energy * 0.4 - P.edge * 0.4, idol: 0.06 + P.energy * 0.6 + P.cute * 0.5 - P.age * 0.8,
+    cyber: 0.06 + P.edge * 0.5 + P.energy * 0.3 - P.age * 0.6,
   };
   if (p.grow < 1) for (const k of Object.keys(w)) if (!KID_FASHION.includes(k)) w[k] = 0;
   for (const k of Object.keys(w)) w[k] = Math.max(k === 'casual' ? 0.3 : 0, w[k]);
@@ -103,6 +117,7 @@ function dressFor(p, fashion) {
   d.bowColor = F.bowColor ? pk(F.bowColor) : null;
   d.head = null; for (const [k, cols, ch] of F.head || []) if (r() < ch) { d.head = k; d.headColor = cols ? pk(cols) : null; }
   d.glasses = r() < (F.glasses || 0) + Math.max(0, personaOf(p).order - 0.6) * 0.5;
+  if (d.glasses && F.glassType) d.glasses = F.glassType;
   d.tieColor = F.tie ? pk(F.tie) : null;
   d.pack = F.pack ? pk(F.pack) : null;
   d.print = F.print && r() < 0.75 ? pk(F.print) : null;
@@ -176,10 +191,11 @@ const lawOutfit = (p) => (typeof jailed === 'function' && jailed(p) ? 'jumpsuit'
 const workOutfit = (p) => (lawOutfit(p) ? LAW_OUTFITS[lawOutfit(p)] : inUniform(p) ? UNIFORMS[p.job] : null);
 
 // ---- words, for the minds and the panels ----
-const BOTTOM_WORDS = { pants: 'pants', shorts: 'shorts', skirt: 'a mini skirt', pleated: 'a pleated skirt', long: 'a long skirt', bell: 'a frilly bell skirt', cargo: 'cargo pants', ripped: 'ripped jeans', tutu: 'a puffy tutu skirt', plaid: 'a plaid skirt' };
-const LAYER_WORDS = { vest: 'a sweater vest', cardigan: 'a cardigan', track: 'a track jacket', hoodie: 'a hoodie', blazer: 'a blazer', flannel: 'an open flannel shirt', puffer: 'a puffy jacket', shell: 'a black tech jacket', corset: 'a laced corset top', cape: 'a long cape', overalls: 'overalls' };
-const HEAD_WORDS = { beret: 'a beret', cap: 'a cap', flatcap: 'a flat cap', straw: 'a straw hat', bucket: 'a bucket hat', beanie: 'a beanie', witch: 'a pointy witch hat', catears: 'cat ears', flowers: 'a flower crown', headbow: 'a big lace bow', hairbow: 'a ribbon bow in their hair', sidebow: 'a bow clip', clips: 'hair clips', starclips: 'star clips', headphones: 'headphones' };
-const EXTRA_WORDS = { tail: 'a cat tail', backpack: 'a backpack', satchel: 'a leather satchel', heartbag: 'a heart-shaped purse', briefcase: 'a briefcase', bangles: 'bangles', harness: 'a strap harness', legwarmers: 'leg warmers', neckphones: 'headphones around their neck', hoops: 'hoop earrings' };
+const BOTTOM_WORDS = { pants: 'pants', shorts: 'shorts', skirt: 'a mini skirt', pleated: 'a pleated skirt', long: 'a long skirt', bell: 'a frilly bell skirt', cargo: 'cargo pants', ripped: 'ripped jeans', tutu: 'a puffy tutu skirt', plaid: 'a plaid skirt', flare: 'flared jeans', layered: 'a layered ruffle skirt' };
+const LAYER_WORDS = { vest: 'a sweater vest', cardigan: 'a cardigan', track: 'a track jacket', hoodie: 'a hoodie', blazer: 'a blazer', flannel: 'an open flannel shirt', puffer: 'a puffy jacket', shell: 'a black tech jacket', corset: 'a laced corset top', cape: 'a long cape', overalls: 'overalls', bomber: 'a bomber jacket', sailor: 'a sailor-collar top', shiny: 'a shiny metallic jacket', wrap: 'a ballet wrap top' };
+const HEAD_WORDS = { beret: 'a beret', cap: 'a cap', flatcap: 'a flat cap', straw: 'a straw hat', bucket: 'a bucket hat', beanie: 'a beanie', witch: 'a pointy witch hat', catears: 'cat ears', flowers: 'a flower crown', headbow: 'a big lace bow', hairbow: 'a ribbon bow in their hair', sidebow: 'a bow clip', clips: 'hair clips', starclips: 'star clips', headphones: 'headphones', sunhat: 'a big floppy sun hat', cowboy: 'a cowboy hat', tiara: 'a little tiara', headset: 'a stage headset', shellclips: 'seashell clips', bunnyears: 'bunny ears', halo: 'a glowing halo', bandana: 'a bandana', visor: 'a sun visor' };
+const EXTRA_WORDS = { tail: 'a cat tail', backpack: 'a backpack', satchel: 'a leather satchel', heartbag: 'a heart-shaped purse', briefcase: 'a briefcase', bangles: 'bangles', harness: 'a strap harness', legwarmers: 'leg warmers', neckphones: 'headphones around their neck', hoops: 'hoop earrings', wings: 'little wings', skateboard: 'a skateboard', plush: 'a plush bear', lightstick: 'a glowing light stick' };
+const GLASSES_WORDS = { shades: 'sunglasses', hearts: 'heart-shaped sunglasses', visor: 'a shiny visor over their eyes' };
 function lookText(p) {
   const L = lookOf(p), F = FASHION[L.fashion];
   const law = lawOutfit(p); if (law) return `an ${LAW_OUTFITS[law].label}${typeof onProbation === 'function' && onProbation(p) ? ' and an ankle monitor' : ''}`;
@@ -190,7 +206,7 @@ function lookText(p) {
   if (L.platform) bits.push('platform shoes');
   if (L.head && HEAD_WORDS[L.head] && !p.outfit.hat) bits.push(HEAD_WORDS[L.head]);
   for (const e of L.extras || []) if (EXTRA_WORDS[e]) bits.push(EXTRA_WORDS[e]);
-  if (L.glasses) bits.push(L.glasses === 'shades' ? 'sunglasses' : 'glasses');
+  if (L.glasses) bits.push(GLASSES_WORDS[L.glasses] || 'glasses');
   if (typeof onProbation === 'function' && onProbation(p)) bits.push('an ankle monitor');
   return `a ${F.name.replace(/ \(.*\)/, '').toLowerCase()} look: ${bits.join(', ')}`;
 }
@@ -228,12 +244,14 @@ function dressLook(p, f) {
   const bottom = U && ['overalls', 'coverall'].includes(U.layer?.[0]) ? 'pants' : L.bottom;
   const bColor = U && ['overalls', 'coverall'].includes(U.layer?.[0]) ? U.layer[1] : F.dress ? shirtC : L.bottomColor || '#4a4652';
   const tights = L.tights === 'skin' || !L.tights ? skin : lookMat(L.tights);
-  const pantsLike = ['pants', 'cargo', 'ripped'].includes(bottom);
+  const pantsLike = ['pants', 'cargo', 'ripped', 'flare'].includes(bottom);
   const legMat = pantsLike ? lookMat(bColor) : bottom === 'shorts' ? skin : tights;
   f.legs.forEach((l) => (l.material = legMat));
   const bm = lookMat(bColor);
   if (bottom === 'cargo') f.legs.forEach((l, i) => add(l, mesh(box(0.07, 0.14, 0.15), bm, (i ? 1 : -1) * 0.12, 0.02, 0)));
   else if (bottom === 'ripped') f.legs.forEach((l, i) => { const rip = add(l, mesh(box(0.11, 0.045, 0.02), skin, 0, -0.02 + i * 0.05, 0.118, false)); rip.rotation.z = i ? 0.2 : -0.15; });
+  else if (bottom === 'flare') f.legs.forEach((l) => add(l, mesh(cyl(0.13, 0.2, 0.16, 12), bm, 0, -0.13, 0)));
+  else if (bottom === 'layered') { add(f.fig, mesh(cyl(0.37, 0.48, 0.18, 18), bm, 0, 0.44, 0)); add(f.fig, mesh(cyl(0.45, 0.6, 0.2, 18), bm, 0, 0.29, 0)); for (const [y, r] of [[0.35, 0.48], [0.19, 0.6]]) { const t = mesh(new T3.TorusGeometry(r, 0.025, 4, 22), toon('#fbf8f4'), 0, y, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); } }
   else if (bottom === 'tutu') { add(f.fig, mesh(cyl(0.38, 0.6, 0.14, 18), bm, 0, 0.4, 0)); add(f.fig, mesh(cyl(0.42, 0.66, 0.12, 18), lookMat('#fbf8f4'), 0, 0.3, 0)); }
   else if (bottom === 'plaid') { add(f.fig, mesh(cyl(0.37, 0.52, 0.3, 12), bm, 0, 0.34, 0)); for (const [y, r, c] of [[0.27, 0.49, '#fbf8f4'], [0.39, 0.43, '#1e1a24']]) { const t = mesh(new T3.TorusGeometry(r, 0.014, 4, 18), toon(c), 0, y, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); } }
   else if (bottom === 'shorts') for (const l of f.legs) add(l, mesh(cyl(0.145, 0.16, 0.2, 12), bm, 0, 0.1, 0));
@@ -287,6 +305,26 @@ function dressLook(p, f) {
     case 'puffer': { shell(0.45); sleeves = lm; const dk = toon(new T3.Color(COLORS[lc] || lc).multiplyScalar(0.8).getStyle()); for (const y of [0.56, 0.76, 0.96]) { const t = mesh(new T3.TorusGeometry(0.45, 0.022, 4, 22), dk, 0, y, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); } add(f.fig, mesh(cyl(0.3, 0.33, 0.14, 16), lm, 0, 1.06, 0)); break; }
     case 'shell': { shell(0.415); sleeves = lm; add(f.fig, mesh(cyl(0.27, 0.3, 0.16, 16), lm, 0, 1.05, 0)); add(f.fig, mesh(box(0.025, 0.6, 0.02), toon('#9aa0ac'), 0, 0.72, 0.42, false)); break; }
     case 'corset': { add(f.fig, mesh(cyl(0.395, 0.39, 0.3, 18), lm, 0, 0.6, 0)); const lace = toon(lc === '#fbf8f4' ? '#ff9fbf' : '#fbf8f4'); for (let i = 0; i < 3; i++) for (const s of [-1, 1]) { const x = mesh(box(0.1, 0.018, 0.02), lace, 0, 0.5 + i * 0.09, 0.4, false); x.rotation.z = s * 0.5; add(f.fig, x); } break; }
+    case 'bomber': {
+      shell(0.415); sleeves = lm; const dk = toon(new T3.Color(COLORS[lc] || lc).multiplyScalar(0.6).getStyle());
+      for (const [y, r] of [[0.5, 0.42], [1.02, 0.26]]) { const t = mesh(new T3.TorusGeometry(r, 0.045, 5, 20), dk, 0, y, 0, false); t.rotation.x = Math.PI / 2; add(f.fig, t); }
+      for (const a of f.arms) add(a, mesh(cyl(0.11, 0.11, 0.06, 10), dk, 0, -0.15, 0, false));
+      add(f.fig, mesh(box(0.025, 0.5, 0.02), toon('#d9dde6'), 0, 0.76, 0.42, false)); add(f.fig, mesh(box(0.1, 0.06, 0.02), toon('#ff9f5a'), -0.16, 0.9, 0.41, false));
+      break;
+    }
+    case 'sailor': {
+      const back = mesh(box(0.6, 0.04, 0.36), lm, 0, 1.0, -0.26); back.rotation.x = -0.35; add(f.fig, back);
+      for (const s of [-1, 1]) { const fl = mesh(box(0.08, 0.36, 0.03), lm, s * 0.12, 0.88, 0.4); fl.rotation.z = s * 0.45; add(f.fig, fl); const ln = mesh(box(0.02, 0.36, 0.035), toon('#fbf8f4'), s * 0.15, 0.88, 0.405, false); ln.rotation.z = s * 0.45; add(f.fig, ln); }
+      const rb = toon('#ff5f7a'); for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.06, 0.13, 8), rb, s * 0.06, 0.74, 0.42, false); w.rotation.z = s * Math.PI / 2; add(f.fig, w); } add(f.fig, mesh(sph(0.035, 6, 5), rb, 0, 0.74, 0.43, false));
+      break;
+    }
+    case 'shiny': { const sm = vinyl(COLORS[lc] || lc); add(f.fig, mesh(new T3.CapsuleGeometry(0.415, 0.3, 6, 14), sm, 0, 0.78, 0)); sleeves = sm; add(f.fig, mesh(cyl(0.28, 0.31, 0.14, 16), sm, 0, 1.05, 0)); frontStrip(0.07, vinyl(shirtC, { kind: 'cloth' })); break; }
+    case 'wrap': {
+      shell(0.405); sleeves = lm;
+      for (const s of [-1, 1]) { const b = mesh(box(0.1, 0.5, 0.03), vinyl(shirtC, { kind: 'cloth' }), s * 0.06, 0.86, 0.405, false); b.rotation.z = s * 0.5; add(f.fig, b); }
+      const tie = mesh(new T3.TorusGeometry(0.405, 0.03, 4, 22), lm, 0, 0.6, 0, false); tie.rotation.x = Math.PI / 2; add(f.fig, tie); add(f.fig, mesh(sph(0.05, 6, 5), lm, 0.36, 0.6, 0.2, false));
+      break;
+    }
     case 'cape': {
       const cm = cachedMat('cape:' + lc, () => makeToon({ color: COLORS[lc] || lc, gradientMap: gradMap, side: T3.DoubleSide }));
       add(f.fig, mesh(new T3.CylinderGeometry(0.42, 0.66, 0.78, 18, 1, true, Math.PI / 2, Math.PI), cm, 0, 0.6, -0.02));
@@ -315,6 +353,9 @@ function dressLook(p, f) {
     if (n === 'lanyard') { const ly = mesh(new T3.TorusGeometry(0.16, 0.012, 4, 12, Math.PI), toon('#5a7fd8'), 0, 0.92, 0.37, false); ly.rotation.z = Math.PI; add(f.fig, ly); add(f.fig, mesh(box(0.1, 0.13, 0.02), toon('#fbf8f4'), 0, 0.72, 0.41, false)); }
     if (n === 'stetho') { const st = mesh(new T3.TorusGeometry(0.17, 0.02, 5, 14, Math.PI), toon('#4a4652'), 0, 0.94, 0.37, false); st.rotation.z = Math.PI; add(f.fig, st); add(f.fig, mesh(cyl(0.045, 0.045, 0.02, 10), toon('#cfd3dc'), 0.12, 0.72, 0.41, false)).rotation.x = Math.PI / 2; }
     if (n === 'bell') { const c = mesh(new T3.TorusGeometry(0.2, 0.03, 5, 16, Math.PI), toon('#ff5f8f'), 0, 1.0, 0.24, false); c.rotation.z = Math.PI; c.rotation.x = 0.55; add(f.fig, c); add(f.fig, mesh(sph(0.045, 8, 6), toon('#ffd36b', { emissive: new T3.Color('#6a4a10') }), 0, 0.9, 0.4, false)); }
+    if (n === 'pearls') for (let i = 0; i < 9; i++) { const a = Math.PI * (0.15 + (i / 8) * 0.7); add(f.fig, mesh(sph(0.032, 6, 5), toon('#fffaf0', { emissive: new T3.Color('#2a2630') }), Math.cos(a) * 0.24, 1.02 - Math.sin(a) * 0.12, 0.22 + Math.sin(a) * 0.12, false)); }
+    if (n === 'scarf') { const sc = lookMat(L.bowColor || '#ff6f5e'); const t = mesh(new T3.TorusGeometry(0.28, 0.1, 6, 16), sc, 0, 1.03, 0.02); t.rotation.x = Math.PI / 2; add(f.fig, t); add(f.fig, mesh(box(0.14, 0.4, 0.06), sc, 0.14, 0.8, 0.38)); }
+    if (n === 'kerchief') { const kc = toon(L.bowColor || '#b8323f'); const k = mesh(new T3.ConeGeometry(0.16, 0.24, 3), kc, 0, 0.9, 0.36, false); k.rotation.z = Math.PI; k.scale.z = 0.3; add(f.fig, k); const t = mesh(new T3.TorusGeometry(0.25, 0.03, 4, 16), kc, 0, 1.02, 0.04, false); t.rotation.x = Math.PI / 2; add(f.fig, t); }
     if (n === 'tape') for (const s of [-1, 1]) add(f.fig, mesh(box(0.05, 0.4, 0.02), toon('#ffd23f'), s * 0.12, 0.8, 0.41, false));
   }
   const extras = U ? [] : L.extras || [];
@@ -333,6 +374,10 @@ function dressLook(p, f) {
     if (e === 'harness') { for (const s of [-1, 1]) { const st = mesh(box(0.045, 0.6, 0.03), toon('#1e1a24'), 0, 0.76, 0.41, false); st.rotation.z = s * 0.5; add(f.fig, st); } add(f.fig, mesh(box(0.1, 0.1, 0.04), toon('#9aa0ac'), 0, 0.76, 0.43, false)); }
     if (e === 'legwarmers') for (const l of f.legs) add(l, mesh(cyl(0.155, 0.17, 0.17, 12), lookMat(L.pack || '#ff9fbf'), 0, -0.08, 0));
     if (e === 'neckphones') { const ph = mesh(new T3.TorusGeometry(0.28, 0.035, 5, 16, Math.PI), toon('#2e2a36'), 0, 1.02, 0.02, false); ph.rotation.x = Math.PI / 2 + 0.25; ph.rotation.z = Math.PI; add(f.fig, ph); for (const s of [-1, 1]) add(f.fig, mesh(cyl(0.09, 0.09, 0.07, 12), toon('#ff9fbf'), s * 0.27, 0.99, 0.1, false)).rotation.z = Math.PI / 2; }
+    if (e === 'wings') { const wm = cachedMat('wings:' + (L.pack || ''), () => makeToon({ color: L.pack || '#dff0ff', emissive: new T3.Color('#302a50'), transparent: true, opacity: 0.8, side: T3.DoubleSide })); for (const s of [-1, 1]) for (const [y, k, r] of [[1.0, 1, 0.5], [0.72, 0.65, 0.9]]) { const w = mesh(sph(0.3 * k, 10, 8), wm, s * 0.3 * (1 + (1 - k)), y, -0.44, false); w.scale.set(1.3, 0.8, 0.12); w.rotation.set(0, s * 0.5, s * r); add(f.fig, w); } }
+    if (e === 'skateboard') { const sb = new T3.Group(); sb.add(mesh(box(0.22, 0.04, 0.8), lookMat(L.pack || '#ff6f5e'), 0, 0, 0, false)); for (const z of [-0.26, 0.26]) for (const x of [-0.08, 0.08]) sb.add(mesh(sph(0.04, 6, 5), toon('#fbf8f4'), x, -0.05, z, false)); sb.position.set(0.14, -0.32, 0); sb.rotation.set(Math.PI / 2 - 0.2, 0, 0.1); add(f.arms[1], sb); }
+    if (e === 'plush') { const pl = new T3.Group(), pc = toon(L.pack || '#e8b88a'); pl.add(mesh(sph(0.1, 8, 6), pc, 0, 0, 0, false)); pl.add(mesh(sph(0.08, 8, 6), pc, 0, 0.13, 0.01, false)); for (const s of [-1, 1]) pl.add(mesh(sph(0.035, 6, 5), pc, s * 0.06, 0.2, 0, false)); pl.add(mesh(sph(0.02, 5, 4), toon('#2a2230'), 0, 0.13, 0.085, false)); pl.position.set(0.05, -0.32, 0.12); add(f.arms[1], pl); }
+    if (e === 'lightstick') { const ls = new T3.Group(); ls.add(mesh(cyl(0.025, 0.03, 0.3, 6), toon('#fbf8f4'), 0, 0, 0, false)); const st = starMesh(L.pack || '#ff9fd8', 0.09); st.position.y = 0.2; ls.add(st); ls.position.set(0.06, -0.3, 0.12); ls.rotation.x = -0.4; add(f.arms[1], ls); }
     if (e === 'tail') {
       const tc = lookMat(L.headColor || HAIR_COLORS[hairOf(p).color] || '#2e2a36');
       [[0, 0.42, -0.4, 0.09], [0.05, 0.5, -0.56, 0.085], [0.12, 0.64, -0.68, 0.08], [0.18, 0.8, -0.72, 0.075], [0.2, 0.95, -0.66, 0.07]].forEach(([x, y, z, r]) => add(f.fig, mesh(sph(r, 8, 6), tc, x, y, z)));
@@ -351,7 +396,7 @@ function dressLook(p, f) {
   faceLook(p, f, add);
   return f;
 }
-const HAIR_ACCESSORIES = ['clips', 'sidebow', 'starclips', 'hairbow', 'catears'];
+const HAIR_ACCESSORIES = ['clips', 'sidebow', 'starclips', 'hairbow', 'catears', 'shellclips', 'bunnyears', 'halo', 'tiara'];
 function heartMesh(color, k = 1, x = 0, y = 0, z = 0) {
   const g = new T3.Group(), m = toon(color);
   for (const s of [-1, 1]) g.add(mesh(sph(0.045, 8, 6), m, s * 0.035, 0.02, 0, false));
@@ -386,10 +431,18 @@ function headMeshFor(k, color, F, p) {
       for (const s of [-1, 1]) { const e = mesh(new T3.ConeGeometry(0.2, 0.42, 4), c(ec), s * 0.37, 0.72, 0.02); e.rotation.z = -s * 0.42; e.rotation.y = Math.PI / 4; e.scale.z = 0.6; g.add(e); const inner = mesh(new T3.ConeGeometry(0.1, 0.24, 4), c('#ffb3c7'), s * 0.355, 0.69, 0.09, false); inner.rotation.z = -s * 0.42; inner.rotation.y = Math.PI / 4; inner.scale.z = 0.5; g.add(inner); }
       break;
     }
-    case 'flowers': { const big = p && ['curly', 'spiky', 'bun'].includes(hairOf(p).style), R = big ? 0.66 : 0.56, Y = big ? 0.56 : 0.44; for (let i = 0; i < 9; i++) { const a = -Math.PI * 0.55 + (i / 8) * Math.PI * 1.1, x = Math.sin(a) * R, z = Math.cos(a) * R - 0.04; g.add(mesh(sph(0.095, 8, 6), c(['#ffffff', '#ffe98a', '#ff9fbf', '#c9b3ff', '#ffb38a'][i % 5]), x, Y, z)); if (i % 2) g.add(mesh(sph(0.055, 6, 5), c('#7cc86a'), x * 1.04, Y - 0.07, z * 1.04, false)); } break; }
+    case 'flowers': { const big = p && ['curly', 'spiky', 'bun', 'afro', 'spacebuns', 'wolf', 'mohawk'].includes(hairOf(p).style), R = big ? 0.66 : 0.56, Y = big ? 0.56 : 0.44; for (let i = 0; i < 9; i++) { const a = -Math.PI * 0.55 + (i / 8) * Math.PI * 1.1, x = Math.sin(a) * R, z = Math.cos(a) * R - 0.04; g.add(mesh(sph(0.095, 8, 6), c(['#ffffff', '#ffe98a', '#ff9fbf', '#c9b3ff', '#ffb38a'][i % 5]), x, Y, z)); if (i % 2) g.add(mesh(sph(0.055, 6, 5), c('#7cc86a'), x * 1.04, Y - 0.07, z * 1.04, false)); } break; }
     case 'hairbow': { const bc = color || '#ff9fbf'; for (const s of [-1, 1]) { const w = mesh(new T3.ConeGeometry(0.15, 0.28, 10), c(bc), s * 0.15, 0.28, -0.6); w.rotation.z = s * Math.PI / 2; g.add(w); const t = mesh(box(0.06, 0.3, 0.03), c(bc), s * 0.07, 0.06, -0.62, false); t.rotation.z = s * 0.25; g.add(t); } g.add(mesh(sph(0.07, 8, 6), c(bc), 0, 0.28, -0.62)); break; }
     case 'starclips': [[0.3, 0.42, 0.42, '#ffd36b'], [0.42, 0.3, 0.38, '#c9b3ff'], [-0.34, 0.4, 0.4, '#9fd3ff']].forEach(([x, y, z, col]) => { const s = starMesh(col, 0.07); s.position.set(x, y, z); g.add(s); }); break;
     case 'headphones': { const hc = color || '#2e2a36'; g.add(mesh(new T3.TorusGeometry(0.67, 0.05, 6, 20, Math.PI), c(hc), 0, 0.05, 0)); for (const s of [-1, 1]) { const e = mesh(cyl(0.19, 0.19, 0.14, 14), c('#ff9fbf'), s * 0.66, 0.02, 0); e.rotation.z = Math.PI / 2; g.add(e); } break; }
+    case 'sunhat': { const hc = color || '#f4e2b8'; g.add(mesh(cyl(1.08, 1.08, 0.035, 24), c(hc), 0, 0.44, 0)); g.add(mesh(cyl(0.48, 0.56, 0.3, 18), c(hc), 0, 0.6, 0)); g.add(mesh(cyl(0.565, 0.565, 0.09, 18), c('#ff9fbf'), 0, 0.5, 0)); g.add(mesh(sph(0.1, 8, 6), c('#fbf8f4'), 0.5, 0.52, 0.2)); break; }
+    case 'cowboy': { const hc = color || '#a8784e'; const br = mesh(cyl(0.95, 0.95, 0.04, 22), c(hc), 0, 0.42, 0); br.scale.set(1, 1, 0.82); g.add(br); for (const s of [-1, 1]) { const up = mesh(cyl(0.3, 0.3, 0.04, 12, 1), c(hc), s * 0.82, 0.52, 0); up.rotation.z = s * 0.9; up.scale.set(0.5, 1, 1.6); g.add(up); } const cr = mesh(cyl(0.4, 0.5, 0.42, 16), c(hc), 0, 0.64, 0); cr.scale.z = 0.85; g.add(cr); g.add(mesh(cyl(0.505, 0.505, 0.07, 16), c('#4a3040'), 0, 0.47, 0)); break; }
+    case 'tiara': { const gold = toon('#ffd36b', { emissive: new T3.Color('#5a3a10') }); const band = mesh(new T3.TorusGeometry(0.5, 0.025, 5, 20, Math.PI), gold, 0, 0.42, 0.06); band.rotation.x = -Math.PI / 2 + 0.25; g.add(band); for (const [x, h, col] of [[-0.2, 0.1, '#9fd3ff'], [0, 0.16, '#ff9fd8'], [0.2, 0.1, '#9fd3ff']]) { const gm = mesh(new T3.OctahedronGeometry(0.06, 0), toon(col, { emissive: new T3.Color(col).multiplyScalar(0.3) }), x, 0.48 + h, 0.4 - Math.abs(x) * 0.3, false); gm.scale.y = 1.4; g.add(gm); } break; }
+    case 'headset': { const hc = color || '#2e2a36'; g.add(mesh(new T3.TorusGeometry(0.66, 0.025, 5, 20, Math.PI), c(hc), 0, 0.05, 0)); g.add(mesh(cyl(0.12, 0.12, 0.08, 12), c(hc), -0.65, 0.0, 0)).rotation.z = Math.PI / 2; const boom = mesh(cyl(0.015, 0.015, 0.5, 5), c(hc), -0.48, -0.16, 0.34, false); boom.rotation.set(0.3, 0.9, 1.2); g.add(boom); g.add(mesh(sph(0.045, 8, 6), c('#ff9fbf'), -0.26, -0.24, 0.52, false)); break; }
+    case 'shellclips': [[0.36, 0.38, 0.42, '#ffd6e0'], [0.48, 0.24, 0.36, '#fff4dc']].forEach(([x, y, z, col]) => { const sh = mesh(new T3.CylinderGeometry(0.1, 0.1, 0.03, 10, 1, false, -Math.PI / 2, Math.PI), c(col), x, y, z, false); sh.rotation.set(Math.PI / 2, 0.5, 0); g.add(sh); g.add(mesh(sph(0.03, 6, 5), toon('#fffaf0', { emissive: new T3.Color('#302830') }), x - 0.02, y - 0.06, z + 0.03, false)); }); g.add(mesh(sph(0.035, 6, 5), toon('#fffaf0', { emissive: new T3.Color('#302830') }), -0.4, 0.34, 0.4, false)); break;
+    case 'bunnyears': { const ec = color || '#fbf8f4'; for (const s of [-1, 1]) { const e = mesh(new T3.CapsuleGeometry(0.11, 0.5, 4, 10), c(ec), s * 0.24, 0.9, -0.05); e.rotation.z = -s * 0.18; e.scale.z = 0.55; g.add(e); const inner = mesh(new T3.CapsuleGeometry(0.055, 0.38, 4, 8), c('#ffb3c7'), s * 0.235, 0.9, 0.01, false); inner.rotation.z = -s * 0.18; inner.scale.z = 0.4; g.add(inner); } g.add(mesh(new T3.TorusGeometry(0.66, 0.024, 5, 20, Math.PI), c(ec), 0, 0.04, 0.02)); break; }
+    case 'halo': { const hm = toon('#ffe9a0', { emissive: new T3.Color('#c89a30') }); const h = mesh(new T3.TorusGeometry(0.36, 0.04, 6, 24), hm, 0, 0.98, -0.05, false); h.rotation.x = Math.PI / 2 - 0.25; g.add(h); break; }
+    case 'bandana': { const bc = color || '#b8323f'; g.add(mesh(new T3.SphereGeometry(0.655, 18, 9, 0, Math.PI * 2, 0, Math.PI * 0.42), c(bc), 0, 0.14, -0.04)); const knot = mesh(new T3.ConeGeometry(0.1, 0.24, 4), c(bc), 0, 0.02, -0.68); knot.rotation.x = -1.9; g.add(knot); for (let i = 0; i < 4; i++) g.add(mesh(sph(0.025, 5, 4), c('#fbf8f4'), Math.sin(i * 1.4) * 0.5, 0.42 + (i % 2) * 0.1, Math.cos(i * 1.4) * 0.45, false)); break; }
     case 'clips': for (let i = 0; i < 3; i++) g.add(mesh(box(0.1, 0.04, 0.04), c(['#ff9fbf', '#9fd3ff', '#ffe98a'][i]), 0.24 + i * 0.07, 0.5 - i * 0.07, 0.4 - i * 0.04, false)); break;
   }
   return g;
@@ -398,6 +451,8 @@ function glassesMesh(p, style) {
   const g = new T3.Group(), gap = 0.12 + p.body.eyeGap * 0.45, m = toon('#3a3040');
   const surf = (x, y, r = 0.62) => Math.sqrt(Math.max(0.01, r * r - x * x - y * y));
   for (const s of [-1, 1]) { const ring = mesh(new T3.TorusGeometry(0.105, 0.016, 5, 16), m, s * gap, 0.05, surf(s * gap, 0.05) + 0.05, false); ring.rotation.y = s * 0.15; g.add(ring); }
+  if (style === 'visor') { const v = mesh(box(Math.max(0.5, gap * 2 + 0.3), 0.14, 0.05), cachedMat('visorLens', () => new T3.MeshBasicMaterial({ color: 0x7ff0ff, transparent: true, opacity: 0.7 })), 0, 0.05, surf(0, 0.05) + 0.04, false); g.add(v); return g; }
+  if (style === 'hearts') { for (const s of [-1, 1]) { const h = heartMesh('#ff5f9a', 1.9, s * gap, 0.06, surf(s * gap, 0.05) + 0.05); h.rotation.y = s * 0.15; g.add(h); } g.add(mesh(box(Math.max(0.04, gap * 2 - 0.2), 0.02, 0.02), toon('#ff5f9a'), 0, 0.08, surf(0, 0.08) + 0.03, false)); return g; }
   if (style === 'shades') for (const s of [-1, 1]) { const lens = mesh(new T3.CircleGeometry(0.1, 14), cachedMat('shadesLens', () => new T3.MeshBasicMaterial({ color: 0x1e1a24, transparent: true, opacity: 0.85 })), s * gap, 0.05, surf(s * gap, 0.05) + 0.048, false); lens.rotation.y = s * 0.15; g.add(lens); }
   g.add(mesh(box(Math.max(0.04, gap * 2 - 0.2), 0.02, 0.02), m, 0, 0.08, surf(0, 0.08) + 0.03, false));
   return g;

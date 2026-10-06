@@ -21,5 +21,19 @@ const t0 = Date.now();
   } finally { await browser.close(); }
 }
 
+// "Keep my own music playing": the town's songs stay off and turning it off brings them back
+{
+  const { browser, page, E, errors } = await openGame({ args: ['--autoplay-policy=no-user-gesture-required'], prefs: { ownMusic: true } });
+  try {
+    await page.waitForTimeout(3000);
+    ok((await page.textContent('#np')) === '' && (await E(`Sound.nowPlaying()`)) === '', 'no town song plays while she keeps her own music');
+    ok(/own music/.test(await E(`applyCmd({ t: 'skip' })`)), 'skipping a song explains why the music is off');
+    await E(`(() => { cfg.ownMusic = false; Sound.levels(); })()`);
+    await page.waitForTimeout(3000);
+    ok(/^♪ /.test(await page.textContent('#np')), 'the town music comes back when the switch is off');
+    ok(errors.length === 0, 'no errors on the page' + (errors.length ? ': ' + errors.join(' / ') : ''));
+  } finally { await browser.close(); }
+}
+
 console.log(failed ? `\n${failed} failed` : `\nall good (${Math.round((Date.now() - t0) / 1000)} s)`);
 process.exit(failed ? 1 : 0);

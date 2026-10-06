@@ -28,7 +28,9 @@ function goTo(p, dest, spot) {
   const cur = TOWN[p.at] || TOWN.plaza, d = TOWN[dest];
   const E = (x) => (!x || !x.length ? [] : Array.isArray(x[0]) ? x : [x]);
   if (dest !== p.at) {
-    if (cur.zone === 'dt' && d.zone === 'dt') pts.push(...E(cur.local).slice().reverse(), ...E(d.local));
+    if (cur.zone && cur.zone === d.zone) pts.push(...E(cur.local).slice().reverse(), ...E(d.local));
+    else if (cur.zone === 'dt' && d.fromDT) pts.push(...E(cur.local).slice().reverse(), ...d.fromDT);
+    else if (cur.fromDT && d.zone === 'dt') pts.push(...cur.fromDT.slice().reverse(), ...E(d.local));
     else pts.push(...E(cur.entry).slice().reverse(), ...E(d.entry));
   }
   if (toIsle0 && toIsle0 !== fromIsle) pts.push(...bridgeVia(toIsle0, false));
@@ -50,8 +52,9 @@ function workSpot(job) {
   if (job === 'cafe') return jitter(polar(212, 16.4), 0.8);
   return jitter(TOWN[JOBS[job].place].spot, 1.2);
 }
-function setTask(p, kind, dest, spot, extra = {}) { p.task = { kind, phase: 'go', ...extra }; goTo(p, dest, spot); }
+function setTask(p, kind, dest, spot, extra = {}) { if (babyHold(p, kind)) return; p.task = { kind, phase: 'go', ...extra }; goTo(p, dest, spot); }
 function strollSpot() {
+  { const c = cityStroll(); if (c) return c; }
   if ((W.placed || []).length && rand() < 0.35) { const ps = placeStrollSpot(); if (ps) return ['plaza', ps.spot]; }
   const r = rand();
   if (r < 0.18) { const a = rand() * Math.PI * 2, rr = 4.5 + rand() * 5; return ['downtown', [DT.x + Math.cos(a) * rr, DT.z + Math.sin(a) * rr]]; }
@@ -62,6 +65,7 @@ function strollSpot() {
   return ['garden', jitter(TOWN.garden.spot, 5)];
 }
 function planEat(p) {
+  if (cityEatPlan(p)) return true;
   if (purse(p) >= 1) { const r2 = rand(); setTask(p, 'eat', purse(p) < 2 || p.saving || r2 < 0.45 ? 'mart' : r2 < 0.65 ? 'cafe' : r2 < 0.85 ? 'bakery' : 'icecream'); return true; }
   const i = W.bushes.findIndex((n) => n > 0);
   if (i >= 0) { setTask(p, 'forage', 'plaza', [BUSHES[i][0] * 0.86, BUSHES[i][1] * 0.86], { bush: i }); return true; }
@@ -71,24 +75,37 @@ function plan(p) {
   const t = W.t;
   const ev = W.event && W.event.day === W.day ? EVENTS[W.event.id] : null;
   const going = ev && W.event.going.includes(p.id);
-  if (t >= 0.6 && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
+  if (isBaby(p)) { babyNap(p); return; }
+  if (t >= homeByT(p) && !(going && t < ev.t1)) { setTask(p, 'home', homeKey(p)); return; }
+  if (t >= 0.6 && !(going && t < ev.t1) && nightPlan(p)) return;
   if (healthPlan(p)) return;
+  if (sleepPlan(p)) return;
   if (going && t >= ev.t0 - 0.015 && t < ev.t1) { const cp = W.event.couple ? W.event.couple.indexOf(p.id) : -1; const spot = cp >= 0 ? [cp ? 0.8 : -0.8, FOUNTAIN_R + 1.3] : ev.place === 'plaza' ? (() => { const a = rand() * 6.28, rr = FOUNTAIN_R + 1.5 + rand() * 5.5; return [Math.cos(a) * rr, Math.sin(a) * rr]; })() : ev.place === 'pier' ? [(rand() - 0.5) * 1.8, 31 + rand() * 8] : ev.place === 'cafe' ? jitter(polar(212, 15), 3) : jitter(TOWN[ev.place].spot, 5); setTask(p, 'event', ev.place, spot, { until: ev.t1 }); return; }
+  if (kidPlan(p)) return;
   // really hungry comes before work, goals and books
   if (p.hunger > 0.7 && planEat(p)) return;
+  if (parentPlan(p)) return;
   if (planPicket(p)) return;
   if (planBuyLaptop(p)) return;
+  if (cityCrewPlan(p)) return;
+  if (tpCrewPlan(p)) return;
+  dayOffPlan(p);
   if (p.job && p.grow >= 1 && !p.workedToday && !p.visitor && t < 0.24) { setTask(p, 'work', JOBS[p.job].place, workSpot(p.job)); return; }
   if (goalPlan(p)) return;
   const seek = p.makeup || p.befriend || p.confessTo || p.proposeTo || p.breakWith || p.confront;
   if (seek) { const t = person(seek); if (!t) { p.makeup = p.befriend = p.confessTo = p.proposeTo = p.breakWith = p.confront = null; } else if (!t.inside) { setTask(p, 'visit', t.path.length ? t.dest : t.at, jitter([t.x, t.z], 1.5), { who: t.id }); return; } }
   if (t > 0.26 && t < 0.56 && p.hunger < 0.6 && planDate(p)) return;
+  // free time: wander somewhere they haven't been lately, and sometimes keep going
+  if (p.keepGoing) { p.keepGoing = false; if (explorePlan(p)) return; }
+  if (rand() < 0.3 && explorePlan(p)) return;
   if (planHangout(p)) return;
   if (planLandmark(p)) return;
+  if (tpVisitPlan(p)) return;
   if (planRead(p)) return;
   if (planBrowse(p)) return;
   if (planSurf(p)) return;
   if (p.hunger > 0.45 && planEat(p)) return;
+  if (cityPlan(p)) return;
   if (!p.saving && purse(p) >= (sharing() && !p.visitor ? 15 : 7) && rand() < 0.3) { setTask(p, 'shop', pick(['clothes', 'nook', 'nook', 'books'])); return; }
   if (!p.saving && purse(p) >= 2 && rand() < (/game|League/i.test(p.interests || '') ? 0.3 : 0.08)) { setTask(p, 'arcade', 'arcade'); return; }
   if (W.project && p.coins >= 9 && (!p.saving || W.project.id === 'computer') && rand() < 0.2) { setTask(p, 'donate', 'plaza', jitter([0, 4.6], 1)); return; }
@@ -137,15 +154,21 @@ function startDo(p) {
   if (k === 'browse') { browseStart(p); return; }
   if (k === 'write') { writeStart(p); return; }
   if (k === 'crowd') { p.busyUntil = Infinity; if (W.scene) faceCenter(p, W.scene); return; }
+  if (cityStart(p, k)) return;
+  if (tpStart(p, k)) return;
+  if (growStart(p, k)) return;
+  if (k === 'stroll' && p.task.explore) { exploreArrive(p); return; }
   p.busyUntil = now + (2 + rand() * 4) * ts();
 }
 function finishDo(p) {
   const k = p.task.kind;
   if (['rest', 'doctor', 'therapy', 'ritual'].includes(k)) return healthFinish(p, k);
   if (k === 'buylaptop') { buyLaptopDone(p); return true; }
+  if (SL_TASKS.includes(k)) { cityFinish(p, k); return true; }
+  if (TP_TASKS.includes(k)) { tpFinish(p, k); return true; }
   if (k === 'browse') { browseDone(p); return true; }
   if (k === 'write') { writeDone(p); return true; }
-  if (k === 'work') { if (W.t < workUntil(p.job)) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
+  if (k === 'work') { if (W.t < workShiftEnd(p)) { p.busyUntil = now + 1; return false; } if (JOBS[p.job]?.indoor) p.inside = false; endWork(p); }
   else if (k === 'event') { if (W.t < (p.task.until || 0) && W.t < 0.67) { p.busyUntil = now + 1; if (rand() < 0.02) { const ev = EVENTS[W.event?.id]; if (ev) bubble(p, pick(['This is so fun!', 'Best day ever.', W.event.id === 'snowball' ? 'Got you!' : W.event.id === 'bday' ? 'Happy birthday!' : W.event.id === 'beach' ? 'The water is perfect!' : W.event.id === 'blossoms' ? 'The petals are falling on my head!' : W.event.id === 'harvest' ? 'Pass the pumpkin soup?' : W.event.id === 'wedding' ? "I'm not crying, you're crying." : W.event.id === 'stars' ? 'Look, a shooting star!' : W.event.id === 'fishing' ? 'I got a bite!' : 'Yay!']), 2); } return false; } if (W.event?.id === 'fishing' && W.event.host === p.id) { const winner = pick(W.people.filter((q) => W.event.going.includes(q.id))); if (winner) { winner.coins += 4; remember(winner, 'I won the fishing contest!', 3, 'won'); diary(`<b>${esc(winner.name)}</b> won the fishing contest and 4 coins.`); } } remember(p, `Went to ${EVENTS[W.event?.id]?.name || 'the event'}.`, 2, 'event'); addJoy(p, 10); }
   else if (k === 'hangout') hangoutEnd(p);
   else if (k === 'read') readProgress(p, 0.5);
@@ -170,6 +193,7 @@ function endWork(p) {
   let pay = payOf(p) + (p.saving ? 1 : 0);
   if (p.job === 'pier') pay += Math.floor(rand() * 3);
   if (p.job === 'garden') pay += rand() < 0.4 ? 2 : 0;
+  pay = sleepLateWork(p, pay);
   earn(p, pay); p.workedToday = true;
   craft(p); workInjury(p);
   const joy = p.body.jobAff[p.job] * 0.8 + (rand() - 0.5) * 0.6;
@@ -177,7 +201,7 @@ function endWork(p) {
   remember(p, `Worked as a ${J.short} and earned ${pay} coins.`, 1, 'work', null, { joy });
   bubble(p, sharing() ? pick([`${pay} coins for the pantry!`, 'Done! That goes to everyone.']) : joy > 0.3 ? pick(['Good day at work!', 'I love this job.', `+${pay} coins!`]) : joy < -0.3 ? pick(['Finally done…', 'Work was so long.']) : `+${pay} coins.`, 2.4);
   if (p.jobMood < -1.4 && p.jobDays > 2 && rand() < 0.5) {
-    const next = Object.keys(JOBS).filter((j) => j !== p.job && qualifies(p, j)).sort((x, y) => p.body.jobAff[y] - p.body.jobAff[x] + (rand() - 0.5))[0];
+    const next = Object.keys(JOBS).filter((j) => j !== p.job && jobOpen(j) && qualifies(p, j)).sort((x, y) => p.body.jobAff[y] - p.body.jobAff[x] + (rand() - 0.5))[0];
     diary(`<b>${esc(p.name)}</b> quit being a ${JOBS[p.job].short} and became a ${JOBS[next].short}.`);
     remember(p, `I quit my job as a ${J.short}. Tomorrow I start as a ${JOBS[next].short}.`, 3, 'quit');
     p.job = next; p.jobDays = 0; p.jobMood = 0; dressMesh(p);

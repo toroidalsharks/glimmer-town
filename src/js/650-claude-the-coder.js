@@ -84,7 +84,7 @@ function claudeUpdate(live) {
     return true;
   }
   if (rand() < 0.5) { mats().parts += 3; logUpdate('parts', 'Found 3 spare parts in an old function and left them in your workshop.', 'spare parts'); return true; }
-  const n = 3 + Math.floor(rand() * 5); W.creator.coins += n;
+  const n = 20 + Math.floor(rand() * 41); creatorEarn(n);
   logUpdate('coins', `Found ${plural(n, 'coin')} in an unused variable. They're yours.`, 'some coins for you');
   return true;
 }
