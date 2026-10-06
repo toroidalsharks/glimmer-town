@@ -74,7 +74,7 @@ function applySentence(C, A, key) {
 }
 function exileResident(p, C) {
   if (!W.people.includes(p)) return;
-  crimeState().exiled = [...(crimeState().exiled || []), { id: p.id, name: p.name, day: W.day, crime: CRIME_TYPES[C.type].label }];
+  crimeState().exiled = [...(crimeState().exiled || []), { id: p.id, name: p.name, day: W.day, crime: CRIME_TYPES[C.type].label, keep: keepsakeOf(p) }];
   if (typeof depart === 'function' && RT.db && typeof OTHER !== 'undefined') { depart(p, 'I was banished.'); return; }
   W.people.splice(W.people.indexOf(p), 1);
   const m = meshes.get(p.id); if (m) { scene.remove(m.root); m.tag.remove(); meshes.delete(p.id); }

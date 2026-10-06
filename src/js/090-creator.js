@@ -103,13 +103,24 @@ function dailyWishes() {
     }
   }
 }
-function applyTalk(p, said, reply, feelingDelta, memory) {
+// a resident can step away from the Creator, and it sticks for a while, in real minutes
+const NOT_NOW_MS = 30 * 60e3;
+function notNowLeft(p) { const n = p?.cr?.notNow; return n && Date.now() < n.until ? Math.ceil((n.until - Date.now()) / 60e3) : 0; }
+function notNowText(p, mins = notNowLeft(p)) { return `${p.name} stepped away and asked for some space. You can try again in about ${plural(Math.max(1, mins), 'minute')}.`; }
+// a talk sometimes lets the Creator catch what a resident privately thinks; most of the time it stays theirs
+function thoughtGlimpse(reply, thought) {
+  const t = String(thought || '').replace(/\s+/g, ' ').trim();
+  if (t.length < 8 || t.toLowerCase() === String(reply || '').toLowerCase().trim() || rand() >= 0.25) return '';
+  return fitLine(t, 240);
+}
+function applyTalk(p, said, reply, feelingDelta, memory, leave) {
   p.cr.talks++; p.cr.lastSeen = W.day;
   creatorShift(p, clamp(Number(feelingDelta) || 0, -2, 2) * 0.9 + 0.2); addJoy(p, 8 + Math.max(0, Number(feelingDelta) || 0) * 5);
   bubble(p, reply.length > 110 ? reply.slice(0, 107) + '…' : reply, 5 + reply.length / 25, true);
   emote(p, feelingDelta > 0 ? '♥' : feelingDelta < 0 ? '☁' : '✧', 3);
   remember(p, `The Creator spoke to me: "${said.slice(0, 120)}". ${memory ? memory.slice(0, 160) : `I said: "${reply.slice(0, 120)}"`}`, 3, 'creatorTalk', null, { delta: feelingDelta });
   diary(`<span class="cr">Creator</span> to <b>${esc(p.name)}</b>: "${esc(said.slice(0, 140))}" · ${esc(p.name)}: "${esc(reply.slice(0, 200))}"`);
+  if (leave) { p.cr.notNow = { until: Date.now() + NOT_NOW_MS, day: W.day }; remember(p, 'I told the Creator I needed some space, and I stepped away. They let me.', 2, 'creatorSpace'); diary(`🚪 <b>${esc(p.name)}</b> stepped away from talking with you for a while.`); }
   // others notice when someone gets the Creator's attention
   for (const q of W.people) if (q !== p && d2(q, p) < 9 && !q.inside && rand() < 0.5) remember(q, `I saw ${p.name} talking to the sky. They said the Creator spoke to them.`, 2, 'sawTalk', p.name);
 }
@@ -129,7 +140,11 @@ ${mems}
 ${history.length ? `\nEARLIER IN THIS CONVERSATION:\n${history.map((h) => `${h.who}: ${h.text}`).join('\n')}\n` : ''}
 THE CREATOR SAYS TO YOU NOW: "${said}"
 
-Answer in character, the way ${p.name} would actually talk: short, simple, with feeling. Let your attitude toward the Creator show, including doubt, resentment, awe or affection, and questions you have about what the Creator is like. Mention neighbors or memories only if it fits.
-Reply with only a JSON object: {"reply": "1 to 3 short sentences", "feeling": integer from -2 to 2 for how this moment changes how you feel about the Creator, "memory": "one short first-person sentence you will remember about this"}`;
+Answer in character, the way ${p.name} would actually talk: short, simple, with feeling. Let your real attitude toward the Creator show, whatever it is, and any questions you have about what the Creator is like. Mention neighbors or memories only if it fits.
+You don't have to keep talking. If you want to stop talking with the Creator for now, set "leave" to true and say goodbye in your own way; the Creator can't make you stay.
+Reply with only a JSON object: {"reply": "1 to 3 short sentences", "thought": "what you privately think right now, which you may not say out loud", "feeling": integer from -2 to 2 for how this moment changes how you feel about the Creator, "memory": "one short first-person sentence you will remember about this", "leave": true or false}`;
 }
-
+function creatorSpaceBoot() {
+  W.added = W.added || {}; if (W.added.creatorSpace) return; W.added.creatorSpace = true;
+  if (typeof logUpdate === 'function') logUpdate('build', 'Residents can step away from talking with you now. If someone doesn\'t want to keep talking, they say goodbye, and you can\'t talk to them again for about half an hour. Once in a while you also catch what someone is really thinking, which isn\'t always what they say. And when someone dies or is banished, the Court tab keeps who they were: their own words about themselves, who they were closest to, and what they remembered most.', 'residents can step away');
+}

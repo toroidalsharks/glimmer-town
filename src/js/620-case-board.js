@@ -34,15 +34,15 @@ function crimeCard(C) {
 function crimeBoardHtml() {
   const S = crimeState(), det = detectiveOf();
   const live = S.list.filter((C) => C.discovered && (['open', 'charged', 'trial', 'cold'].includes(C.status) || (C.verdictDay && W.day - C.verdictDay <= 3))).slice(-5).reverse();
-  const cell = jailedPeople(), mem = S.memorials;
+  const cell = jailedPeople();
   const opts = W.people.filter((p) => adult(p) && !jailed(p)).map((p) => `<option value="${p.id}" ${det && det.id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   return `<div class="creator"><h3>🔎 Investigations</h3><p>Crimes leave clues that match real residents: the color of their clothes, hair, shoes, how tall they are, their ears. The detective finds a clue every morning. You can search the scene once a day, question each suspect once a day, and accuse whoever you think did it. Every charge goes to trial.</p>
     <div class="field"><label for="detSel">Island detective</label><select id="detSel">${opts}</select></div>
-    <div class="field"><label for="paceSel">Murders</label><select id="paceSel">${Object.entries(MURDER_PACES).map(([k, l]) => `<option value="${k}" ${(S.murderPace || 'real') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
+    <div class="field"><label for="paceSel">Murders</label><select id="paceSel">${Object.entries(MURDER_PACES).map(([k, l]) => `<option value="${k}" ${(S.murderPace || 'real') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select><p class="hint" style="margin:4px 0 0">A murder only happens when a feud has run deep for weeks, and even then the one holding the grudge can turn back.</p></div>
     <div class="field"><label for="crimePaceSel">Other crimes</label><select id="crimePaceSel">${Object.entries(CRIME_PACES).map(([k, l]) => `<option value="${k}" ${(S.crimePace || 'week') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
     ${live.length ? live.map(crimeCard).join('') : '<p class="hint">No open cases. Suspiciously quiet.</p>'}
     ${cell.length ? `<p class="label">🔒 The cell under Glimmer Hall</p>${cell.map((p) => `<div class="note" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><b>${esc(p.name)}</b>, ${esc(p.jail.label.toLowerCase())}, ${jailLeftText(p)}</span><span class="btns" style="margin:0"><button class="btn" type="button" data-crime="visit" style="padding:3px 10px;font-size:12px">Visit</button>${p.jail.nextHearing ? `<button class="btn" type="button" data-crime="parole" data-pid="${p.id}" style="padding:3px 10px;font-size:12px">Parole hearing</button>` : ''}<button class="btn" type="button" data-crime="pardon" data-pid="${p.id}" style="padding:3px 10px;font-size:12px">Pardon</button></span></div>`).join('')}` : ''}
-    ${mem.length ? `<p class="label">🕯 Remembered</p>${mem.map((m) => `<p class="note">${esc(m.name)} <span class="hint">(day ${m.born} to day ${m.died})</span></p>`).join('')}` : ''}
+    ${rememberedHtml()}
     ${cutReplaysHtml()}`;
 }
 async function questionSuspect(C, p) {

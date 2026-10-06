@@ -253,7 +253,9 @@ function crimeNight() {
   const yr = Math.floor((W.day - 1) / YEAR);
   if (!S.murderYear[yr]) S.murderYear[yr] = { day: yr * YEAR + 9 + Math.floor(rand() * 14), done: false };
   const MY = S.murderYear[yr];
-  if (murderDue(S, MY) && W.people.filter(crimeAble).length >= 6 && !openCrimes().some((C) => C.type === 'murder')) { if (commitMurder()) murderCommitted(S, MY); }
+  // a murder only grows out of a deep, long feud, and the one holding it can turn back (637)
+  grudgeScan();
+  if (murderDue(S, MY) && W.people.filter(crimeAble).length >= 6 && !openCrimes().some((C) => C.type === 'murder')) { if (darkNight() === 'murder') murderCommitted(S, MY); }
   const ppl = W.people.filter(adult).length; if (ppl < 5) return;
   // everyday crimes run on the real calendar too (crimeDue, 635)
   if (crimeDue(S)) {
@@ -298,8 +300,8 @@ const MURDER_WAYS = [
   { key: 'garden', where: 'the town garden', how: 'face-down between the garden rows', staged: 'looked like they fainted' },
   { key: 'beach', where: 'Seashell Beach', how: 'on the sand at the tide line', staged: 'looked like they were swept in by the tide' },
 ];
-function commitMurder() {
-  const x = pickCulprit('murder'); if (!x || !x.m.victim) return false;
+function commitMurder(forced) {
+  const x = forced || pickCulprit('murder'); if (!x || !x.m.victim) return false;
   const cul = x.p, V = x.m.victim, way = pick(MURDER_WAYS);
   const C = newCrime('murder', x);
   const [sx, sz] = way.key === 'pier' ? [0.4, 39] : way.key === 'downtown' ? [DT.x + 2.5, DT.z + 3.5] : way.key === 'beach' ? [BEACH[0] + 2, BEACH[1] + 1] : spotOf(way.key);
@@ -315,7 +317,7 @@ function commitMurder() {
 }
 function killResident(V, C) {
   const S = crimeState();
-  S.deceased.push({ id: V.id, name: V.name, hue: V.body.hue, born: V.bornDay || 1, died: W.day + 1, cause: C ? 'murder' : 'died', crime: C?.id || null, partner: V.partner || null, x: 0, z: 0 });
+  S.deceased.push({ id: V.id, name: V.name, hue: V.body.hue, born: V.bornDay || 1, died: W.day + 1, cause: C ? 'murder' : 'died', crime: C?.id || null, partner: V.partner || null, x: 0, z: 0, keep: keepsakeOf(V) });
   const i = W.people.indexOf(V); if (i >= 0) W.people.splice(i, 1);
   const m = meshes.get(V.id); if (m) { scene.remove(m.root); m.tag.remove(); meshes.delete(V.id); }
   if (V.partner) { const pr = person(V.partner); if (pr) { pr.partner = null; pr.married = false; pr.widowed = V.name; } }

@@ -91,7 +91,7 @@ function renderDlg(retype) {
       <button class="btn" data-d="page">Their page</button></div>`;
   } else if (dlg.mode === 'talk') {
     const st = talkState[p.id] || (talkState[p.id] = { log: [], busy: false });
-    html = RT.sample ? `<form class="talk-row" data-dtalk="${p.id}"><input id="dlgInput" type="text" maxlength="240" autocomplete="off" placeholder="Say something to ${esc(p.name)}…" ${st.busy ? 'disabled' : ''}><button class="btn gold" type="submit" ${st.busy ? 'disabled' : ''}>Speak</button></form>${st.err ? `<p class="hint" style="color:#8a4a4a">${esc(st.err)}</p>` : ''}<div class="dlg-choices"><button class="btn" data-d="menu">Back</button></div>`
+    html = RT.sample ? `<form class="talk-row" data-dtalk="${p.id}"><input id="dlgInput" type="text" maxlength="240" autocomplete="off" placeholder="Say something to ${esc(p.name)}…" ${st.busy || notNowLeft(p) ? 'disabled' : ''}><button class="btn gold" type="submit" ${st.busy || notNowLeft(p) ? 'disabled' : ''}>Speak</button></form>${st.glimpse ? `<p class="hint" style="font-style:italic">💭 For a second you caught what ${esc(p.name)} was really thinking: “${esc(st.glimpse)}”</p>` : ''}${st.err || notNowLeft(p) ? `<p class="hint" style="color:#8a4a4a">${esc(st.err || notNowText(p))}</p>` : ''}<div class="dlg-choices"><button class="btn" data-d="menu">Back</button></div>`
       : `<p class="hint" style="color:#6d6488">Add an OpenRouter key in Settings to talk to them.</p><div class="dlg-choices"><button class="btn" data-d="menu">Back</button></div>`;
   } else if (dlg.mode === 'gift') {
     html = C.items.length ? `<div class="items">${C.items.map((it) => itemCard(it, `<div class="item-row"><span class="item-by">${wishMatch(p, it) ? '✨ their wish' : ''}</span><button class="btn gold" data-d="give" data-u="${it.uid}">Give</button></div>`)).join('')}</div>` : `<p class="hint" style="color:#6d6488">You don't have anything yet. Tap a shop in town to go inside and buy something.</p>`;
@@ -131,14 +131,17 @@ dlgEl.addEventListener('submit', async (e) => {
   e.preventDefault();
   const p = person(f.dataset.dtalk), said = $('#dlgInput').value.trim(); if (!p || !said || !RT.sample) return;
   const st = talkState[p.id] || (talkState[p.id] = { log: [], busy: false });
-  st.log.push({ me: true, text: said }); st.busy = true; st.err = '';
+  if (notNowLeft(p)) { st.err = notNowText(p); renderDlg(true); return; }
+  st.log.push({ me: true, text: said }); st.busy = true; st.err = ''; st.glimpse = '';
   dlg.text = '…'; renderDlg(true);
   const history = st.log.slice(-7, -1).map((l) => ({ who: l.me ? 'Creator' : p.name, text: l.text }));
   try {
     const r = await RT.sample.json(talkPrompt(p, said, history), { model: modelOf(p), fallbackKey: 'reply', cache: false });
     const reply = fitLine(r?.reply || '…', 500);
     st.log.push({ me: false, text: reply });
-    applyCmd({ t: 'talked', to: p.id, said, reply, feeling: clamp(Math.round(Number(r?.feeling) || 0), -2, 2), memory: String(r?.memory || '').slice(0, 200) });
+    const leave = r?.leave === true;
+    applyCmd({ t: 'talked', to: p.id, said, reply, feeling: clamp(Math.round(Number(r?.feeling) || 0), -2, 2), memory: String(r?.memory || '').slice(0, 200), leave });
+    st.glimpse = thoughtGlimpse(reply, r?.thought); if (leave) st.err = notNowText(p, NOT_NOW_MS / 60e3);
     if (dlg && dlg.pid === p.id) { dlg.text = reply; }
   } catch (err) {
     st.log.pop();

@@ -4,7 +4,7 @@
 // labels that say how much to trust each clue, and a briefing scene
 // ============================================================
 const YEAR_MS = 365 * 864e5;
-const MURDER_PACES = { real: 'About once a real year', game: 'Once a game year (every couple of hours)', never: 'Never' };
+const MURDER_PACES = { real: 'At most once a real year', game: 'At most once a game year (every couple of hours)', never: 'Never' };
 function murderDue(S, MY) {
   const pace = S.murderPace || 'real';
   if (pace === 'never') return false;
