@@ -105,6 +105,7 @@ function surfDone(p) {
     const c = pick((W.chirps || []).slice(-15)); if (c && c.by !== p.id && !c.likes.includes(p.id) && fscore(p, person(c.by) || p) > -2) c.likes.push(p.id);
     return;
   }
+  if (lookOn() && !lookBusy && (aiReady() || (p.toLookUp || []).length || (p.curious || []).length) && rand() < 0.5) { lookUp(p); return; }
   if (!canReachOutside(p)) return phoneSurf(p);
   if (cfg.outside === false || !items.length || rand() < 0.3) { const c = pick((W.chirps || []).slice(-15)); if (c && c.by !== p.id && !c.likes.includes(p.id)) c.likes.push(p.id); return; }
   seeItem(p, pickOutsideFor(p));
@@ -113,7 +114,7 @@ function surfDone(p) {
 let nextChirp = 60;
 async function chirpReplyLine(q, p, c, mean) {
   if (aiReady() && aiBusy < 3 && voiceOn() && rand() < 0.6) {
-    const l = await aiLine(q, p, [], `You're scrolling Chirp, the island's social feed, and ${p.name} just posted: "${c.text}". Write ONE short reply under their post, the way you personally post${mean ? ". You can't stand them, so it's snide (PG, no slurs)" : ''}. React to what they actually said. No quotation marks.`);
+    const l = await aiLine(q, p, [], `You're scrolling Chirp, the island's social feed, and ${p.name} just posted: "${c.text}". Write ONE short reply under their post, the way you personally post${mean ? `. You can't stand them, so it's snide (${canSwear(q) ? 'no slurs' : 'PG, no slurs'})` : ''}. React to what they actually said. No quotation marks.`);
     if (l && l.say) return fitLine(l.say, 200);
   }
   return voiceLine(q, mean ? pick(['nobody asked', 'ratio', 'ok and?', 'this is so embarrassing lol']) : pick(['LOL', 'real', 'omg same', 'this!!', '🥺', 'wait what']), 'post');

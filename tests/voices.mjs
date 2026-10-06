@@ -55,7 +55,7 @@ try {
   ok(await E(`(() => { const p = ${P}; voiceTrust('Model wrote this exact sentence.'); bubble(p, 'Model wrote this exact sentence.', 2); return p.bubble.text === 'Model wrote this exact sentence.'; })()`), 'lines a model already wrote pass through untouched');
   ok(await E(`(() => { const p = ${P}, o = person(window.__o); const m = postText(p, o.id, 'whats up', 'chat'); postText(p, o.id, 'whats up', 'chat'); const m2 = postText(p, o.id, 'whats up', 'chat'); return !!m && m2.text !== m.text && W.texts.slice(-1)[0].text === m2.text; })()`), 'texts are voiced too, and the saved text is what was sent');
   ok(await E(`(() => { const p = ${P}; const out = voiceLine(p, 'I think someone did it.', 'say', { safe: (t) => !/Fresh/.test(t) }); return !/Fresh/.test(out); })()`), 'crime gossip only uses lines that pass the fact check');
-  ok(await E(`(() => { aiLine(${P}, person(window.__o), [], 'test'); return window.__calls.slice(-1)[0].includes('THINGS YOU SAID LATELY'); })()`), 'live conversations are told what the speaker said lately');
+  ok(await E(`(async () => { await aiLine(${P}, person(window.__o), [], 'test'); return window.__calls.slice(-1)[0].includes('THINGS YOU SAID LATELY'); })()`), 'live conversations are told what the speaker said lately');
 
   // surprise moments
   ok(await E(`(async () => {

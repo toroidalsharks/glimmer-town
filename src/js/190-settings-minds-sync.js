@@ -24,6 +24,7 @@ function renderBrainSettings() {
     <p class="status">${aiDown ? esc(aiDown) : lastAiError ? esc(lastAiError) + ' · ' + aiStats.n + ' calls today' : brainCfg.key ? `${aiStats.n} calls today, ${Math.max(0, left)} left · about $${aiStats.cost.toFixed(3)} spent today` : 'No key yet, so residents run on rules.'}</p>
     <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="voicesOn" ${brainCfg.voices !== false ? 'checked' : ''}> Residents write all their own lines (never the same twice)</label>
     <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="wildOn" ${brainCfg.wild !== false ? 'checked' : ''}> Surprise moments (confessions, outbursts, songs, hot takes)</label>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="swearOn" ${brainCfg.swear !== false ? 'checked' : ''}> Grown-ups can swear (kids and teens never do)</label>
     <p class="hint">${voiceStatus()}</p>
     <div id="orList"></div></div>
     <hr>
