@@ -74,6 +74,8 @@
   .tabs { display: flex; gap: 2px; flex: 1; background: none; border-radius: 0; padding: 0 0 0 0; border-bottom: 1px solid var(--line); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; scroll-snap-type: x proximity; }
   .tabs::-webkit-scrollbar { display: none; }
   .tabs .tab { white-space: nowrap; flex: none; scroll-snap-align: start; }
+  /* a mouse can't scroll a row sideways, so on a computer every tab stays in view on wrapped lines */
+  @media (hover: hover) and (pointer: fine) { .tabs { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; } }
   .sheet.tall { max-height: 92%; }
   .grow { font: 700 13px var(--body); color: var(--ink); background: var(--raise2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; flex: none; }
   .remote .grow { display: none; }
