@@ -9,7 +9,7 @@ function strandedHome(p) {
 }
 function step(dt) {
   if (!W.meeting) W.t += dt / cfg.daySec;
-  if (W.t >= 0.018 && W.meetingDay !== W.day && !W.meeting && W.t < 0.2) { W.meetingDay = W.day; townMeeting().catch((e) => { console.error(e); W.meeting = null; }); }
+  if (W.t >= 0.075 && W.meetingDay !== W.day && !W.meeting && W.t < 0.2) { W.meetingDay = W.day; townMeeting().catch((e) => { console.error(e); W.meeting = null; }); }
   if (W.t >= 0.7 && W.reflectedDay !== W.day) nightfall();
   if (W.t >= 1) newDay();
   const dDay = dt / cfg.daySec;
@@ -25,12 +25,12 @@ function step(dt) {
     if (p.state === 'talk') continue;
     if (p.task?.kind === 'carried') { carryStep(p, dt); continue; }
     if (asleep) {
-      if (W.t >= 0.008 + (p.room % 9) * 0.0012 && W.t < 0.6) { p.inside = false; p.task = null; p.at = homeKey(p); p.hunger = Math.max(0, p.hunger - 0.25); /* breakfast at home */ p.x = TOWN[homeKey(p)].spot[0] + (rand() - 0.5) * 2; p.z = TOWN[homeKey(p)].spot[1] + 0.3; }
+      if (!asleepTime(p) && W.t < homeByT(p)) { p.inside = false; p.task = null; p.at = homeKey(p); p.hunger = Math.max(0, p.hunger - 0.25); /* breakfast at home */ p.x = TOWN[homeKey(p)].spot[0] + (rand() - 0.5) * 2; p.z = TOWN[homeKey(p)].spot[1] + 0.3; }
       else continue;
     }
     if (!p.task && p.inside) { p.task = { kind: 'home', phase: 'do' }; p.busyUntil = Infinity; continue; }
     const k = p.task?.kind;
-    if (W.t >= 0.6 && k !== 'home' && !p.inside && k !== 'meeting' && !(k === 'event' && W.event && EVENTS[W.event.id] && W.t < EVENTS[W.event.id].t1)) setTask(p, 'home', homeKey(p));
+    if (W.t >= homeByT(p) && k !== 'home' && !p.inside && k !== 'meeting' && !(k === 'event' && W.event && EVENTS[W.event.id] && W.t < EVENTS[W.event.id].t1)) setTask(p, 'home', homeKey(p));
     if (!p.task) { if (!W.meeting) plan(p); continue; }
     if (p.task?.kind === 'walkwith') { walkWithStep(p, dt); continue; }
     if (p.path.length) {
@@ -38,7 +38,7 @@ function step(dt) {
       const tgt = p.path[0], dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
       const achy = p.body.ailments?.length && W.t < 0.15 && !(p.healedUntil >= W.day) ? 0.75 : 1;
       if (achy < 1 && p.sickDay !== W.day && /sick/.test(p.body.ailments.join(' ')) && rand() < 0.01) { p.sickDay = W.day; bubble(p, pick(['Ugh. Sick again.', 'Mornings are the worst.', 'My joints. Man.']), 2.6); remember(p, 'Felt sick this morning, like always.', 1, 'sick'); }
-      const sp = achy * healthSpeed(p) * 3.1 * p.body.speed * (p.hunger > 0.9 ? 0.65 : 1) * (0.7 + 0.3 * p.grow) * (W.weather === 'storm' ? 0.85 : 1) * (W.meeting ? 1.6 : 1);
+      const sp = achy * healthSpeed(p) * 3.1 * p.body.speed * (p.hunger > 0.9 ? 0.65 : 1) * (0.7 + 0.3 * p.grow) * (W.weather === 'storm' ? 0.85 : 1) * (W.meeting ? 1.6 : 1) * sleepPace(p);
       if (d < 0.2) { p.x = tgt.x; p.z = tgt.z; p.path.shift(); p.stuckT = 0; p.lastD = Infinity; if (!p.path.length) { p.at = p.dest; startDo(p); } continue; }
       const mv = Math.min(d, sp * dt);
       p.x += (dx / d) * mv; p.z += (dz / d) * mv; p.moving = true;
@@ -53,10 +53,12 @@ function step(dt) {
     if (p.task.phase === 'go') { p.at = p.dest || p.at; startDo(p); continue; }
     if (p.task.phase === 'do' && now >= p.busyUntil) { if (finishDo(p) !== false) p.task = null; }
   }
-  personalSpace(dt); textTick(); voiceTick(); chirpTick(); lookTick(); innerTick(); healthTick(dt); dramaTick(); showTick(); clubTick(); socialTick(); lifeTick(); kidTick(); notifyTick(); if (Math.floor(now) % 5 === 0 && Math.floor(now - dt) % 5 !== 0) laptopTick(); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
+  personalSpace(dt); textTick(); voiceTick(); chirpTick(); lookTick(); innerTick(); sleepTick(); healthTick(dt); dramaTick(); showTick(); clubTick(); socialTick(); lifeTick(); kidTick(); notifyTick(); if (Math.floor(now) % 5 === 0 && Math.floor(now - dt) % 5 !== 0) laptopTick(); if (Math.floor(now) % 20 === 0 && Math.floor(now - dt) % 20 !== 0) agentDaily();
   const festNight = W.event?.id === 'festival' && W.event.day === W.day && W.t < 0.665;
-  if ((!isNight() || festNight) && !W.meeting) {
-    const ok = W.people.filter(canChat);
+  if (!W.meeting) {
+    // after dark only the people still out (night owls, teens who snuck out) run into each other
+    const nightNow = isNight() && !festNight;
+    const ok = W.people.filter((p) => canChat(p) && (!nightNow || nightOut(p)));
     for (let i = 0; i < ok.length; i++) for (let j = i + 1; j < ok.length; j++) {
       const a = ok[i], b = ok[j];
       if (a.state !== 'free' || b.state !== 'free') continue;
@@ -75,7 +77,7 @@ function step(dt) {
         encounter(x, y).catch(() => {});
       }
     }
-    romanceTick();
+    if (!nightNow) romanceTick();
   }
 }
 

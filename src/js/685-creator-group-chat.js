@@ -26,7 +26,7 @@ function chatRepliers(text) {
   const low = ` ${String(text).toLowerCase()} `;
   const can = W.people.filter(chatCanReply);
   const named = can.filter((q) => q.name && new RegExp(`(^|[^\\p{L}])${voiceEscRe(q.name.toLowerCase())}(?![\\p{L}])`, 'u').test(low)).slice(0, 3);
-  const asleep = (q) => q.inside && q.task?.kind === 'home' && isNight();
+  const asleep = isAsleep;
   // people with strong feelings about the Creator are quicker to answer
   const awake = can.filter((q) => !named.includes(q) && !asleep(q)).map((q) => [q, rand() * (1 + Math.abs(q.cr?.score || 0) / 4)]).sort((a, b) => b[1] - a[1]).map(([q]) => q);
   const out = [...named, ...awake.slice(0, 1 + Math.floor(rand() * 3))].slice(0, 4);

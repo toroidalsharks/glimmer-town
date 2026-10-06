@@ -38,7 +38,7 @@ function romanceTick() {
   }
 }
 async function romLine(me, them, situation, fallback) {
-  if (aiReady()) { const l = await aiLine(me, them, [], situation); if (l && l.say) return l.say; }
+  if (aiReady()) { const l = await within(aiLine(me, them, [], situation), 25000); if (l && l.say) return l.say; }
   return fallback;
 }
 function spawnBurst(cx, cy, cz, colors, n = 60, speed = 4, size = 0.45) {

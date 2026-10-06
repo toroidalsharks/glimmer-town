@@ -141,7 +141,7 @@ function chirpTick() {
   if (MODE !== 'host' || W.meeting || now < nextChirp) return;
   nextChirp = now + 80 + rand() * 80;
   fetchOutside(false);
-  const awake = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 0.8 && !(p.inside && p.task?.kind === 'home' && isNight()));
+  const awake = W.people.filter((p) => !p.away && !p.visitor && p.grow >= 0.8 && !isAsleep(p));
   if (!awake.length) return;
   const p = pick(awake);
   const enemy = W.people.find((q) => q !== p && fscore(p, q) <= -5);

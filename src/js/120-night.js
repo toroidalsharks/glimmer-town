@@ -62,7 +62,7 @@ function nightfall() {
     if (T.length && aiReady()) { p.today = []; aiReflect(p, T).then((res) => { if (res) finishReflection(p, res, T); else { p.today = T.concat(p.today); reflect(p); } markDirty(); }); }
     else reflect(p);
   }
-  diary('The lights went out one by one. Everyone lay in bed thinking about their day.');
+  diary(`The lights went out one by one. Everyone lay in bed thinking about their day.${sleepNightfallLine()}`);
   const ppl = W.people;
   for (let i = 0; i < ppl.length; i++) for (let j = i + 1; j < ppl.length; j++) {
     const a = ppl[i], b = ppl[j], fa = a.feelings[b.id], fb = b.feelings[a.id];
@@ -102,7 +102,7 @@ function newDay() {
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }
-  birthdayMorning(); miliMorning(); courtMorning(); crimeMorning(); museumDaily(); classMorning(); healthMorning(); laptopMorning(); dramaMorning(); flingMorning(); socialMorning(); lifeMorning(); goalMorning(); innerMorning();
+  birthdayMorning(); miliMorning(); courtMorning(); crimeMorning(); museumDaily(); classMorning(); healthMorning(); laptopMorning(); dramaMorning(); flingMorning(); socialMorning(); lifeMorning(); goalMorning(); innerMorning(); sleepMorning();
   if (MODE === 'host') { morningFerry(); ferryDepartures(); checkOther(); }
   diary(`Morning. The weather is ${W.weather}. You got 20 new coins.`);
   saveNow();

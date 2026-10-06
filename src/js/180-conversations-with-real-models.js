@@ -16,7 +16,7 @@ async function aiLine(me, them, transcript, situation, opts = {}) {
   const system = `You are ${me.name}, a small villager in ${ISL.name}, a tiny island town. This is a character simulation with real personalities: ${me.name} can be petty, jealous, stubborn, sarcastic, proud, shy, loving, or wrong, exactly as their history suggests. Never act like an assistant and never lecture. Do not smooth over conflict just to be nice; only soften if something in this conversation earned it. People here hold grudges, keep secrets, gossip, and sometimes lie. Like any real society, they perform for each other, chase status and love, hurt each other, and still show up for each other. Like anyone in a small town, you care where you stand: you may go along with your crowd even when you privately disagree, say different things to different people, and remember who sided with whom. The Creator is only a small, distant part of life here: don't bring them up unless the conversation naturally goes there. Mostly talk about your own life: neighbors, work, food, plans, rumors, the town, and what you want. Keep lines short and natural, the way people actually talk.`;
   const user = `WHO YOU ARE (your own words): ${me.selfNote}
 YOUR SECRET WANT (never say it outright unless it helps you): ${me.want?.text || 'nothing in particular'}
-BODY: ${bodyFacts(me)}${ageNote(me)}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}${swearNote(me)}${innerContext(me)}${intimacyContext(me, them)}
+BODY: ${bodyFacts(me)}${ageNote(me)}${me.style ? `\nHOW YOU TALK: ${styleOf(me)}` : ''}${me.interests ? `\nYOU'RE INTO: ${me.interests}` : ''}${swearNote(me)}${sleepNote(me)}${innerContext(me)}${intimacyContext(me, them)}
 LIFE: ${me.job ? `works as a ${JOBS[me.job].short}` : 'too young to work'}, ${me.coins} coins, hunger ${Math.round(me.hunger * 100)}%, wearing ${outfitText(me)}.
 ${cultureContext(me, them)}${avatarContext(me, them)}${readingContext(me)}${classContext(me, them)}${outsideContext(me, them)}${healthContext(me, them)}${goalContext(me)}${crimeContext(me, them)}${recordContext(me)}${socialContext(me, them)}${lifeContext(me, them)}${townRecordContext(me, them)}
 THE CREATOR (a distant, unseen being who made the island; rarely relevant): you ${attitude(me)[1].replace(/^is /, 'are ').replace(/^adores/, 'adore').replace(/^likes/, 'like').replace(/^resents/, 'resent').replace(/^wants/, 'want')}.
@@ -65,24 +65,25 @@ async function aiEncounter(a, b, intent) {
       : intent === 'befriend' ? `You walk up to ${b.name} at ${place}. You're lonely and you want to become friends with them.`
       : `You run into ${b.name} at ${place}.${W.event && W.event.day === W.day && a.task?.kind === 'event' ? ` You're both at ${EVENTS[W.event.id].name}.` : ''}${outsideNudge(a, b)}`;
     bubble(a, '…', 30);
-    const l1 = await aiLine(a, b, T, sit);
+    const l1 = await within(aiLine(a, b, T, sit), 25000);
     if (!l1) throw new Error('no line');
     spoke = true;
     const act1 = doAct(a, b, l1); T.push({ who: a.name, say: l1.say, action: l1.action }); thoughts[a.id].push(l1.thought);
     log(a, l1, act1); await say(a, l1.say);
     if (l1.action !== 'walk_away') {
       bubble(b, '…', 30);
-      const l2 = await aiLine(b, a, T, `${a.name} came up to you at ${place} and said: "${l1.say}"${l1.action !== 'chat' ? ` (${act1.text})` : ''}. Answer them.`);
+      const l2 = await within(aiLine(b, a, T, `${a.name} came up to you at ${place} and said: "${l1.say}"${l1.action !== 'chat' ? ` (${act1.text})` : ''}. Answer them.`), 25000);
       if (l2) {
         const act2 = doAct(b, a, l2); T.push({ who: b.name, say: l2.say, action: l2.action }); thoughts[b.id].push(l2.thought);
         log(b, l2, act2); await say(b, l2.say);
         if (l2.action !== 'walk_away' && (rand() < 0.55 || ['insult', 'tease', 'demand', 'apologize'].includes(l2.action))) {
           bubble(a, '…', 30);
-          const l3 = await aiLine(a, b, T, `${b.name} answered: "${l2.say}". Say one last thing, or walk away.`);
+          const l3 = await within(aiLine(a, b, T, `${b.name} answered: "${l2.say}". Say one last thing, or walk away.`), 25000);
           if (l3) { const act3 = doAct(a, b, l3); T.push({ who: a.name, say: l3.say, action: l3.action }); thoughts[a.id].push(l3.thought); log(a, l3, act3); await say(a, l3.say); }
         }
       }
     }
+    for (const p of [a, b]) if (p.state === 'talk' && !p.heldByDlg) p.state = 'free';
     const v = await aiJudge(a, b, T, thoughts);
     const da = clamp(Math.round(Number(v?.a_to_b) || 0), -3, 3), db = clamp(Math.round(Number(v?.b_to_a) || 0), -3, 3);
     feel(a, b, da); feel(b, a, db);

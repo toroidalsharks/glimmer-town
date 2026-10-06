@@ -41,23 +41,31 @@ function closeCutJson(s) {
   return s.slice(0, keep + 1) + keepStack.reverse().join('');
 }
 const badModels = new Set();
+// A model that never answers used to leave residents standing still mid-scene. Every request now
+// gives up after LLM_TIMEOUT, and in-person scenes use within() so nobody waits on a slow model.
+const LLM_TIMEOUT = 40000;
+const within = (promise, ms) => Promise.race([promise, sleep(ms).then(() => null)]);
 async function llmOnce(model, messages, opts) {
   let res;
+  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), opts.timeout || LLM_TIMEOUT);
   try {
     res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      signal: ac.signal,
       method: 'POST',
       headers: { Authorization: `Bearer ${brainCfg.key}`, 'Content-Type': 'application/json', 'X-Title': 'Glimmer Town' },
       body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.95, max_tokens: Math.max(1600, (opts.max || 450) * 4), reasoning: { effort: 'low', exclude: true }, usage: { include: true } }),
     });
-  } catch (e) { throw { code: 'upstream_error' }; }
+  } catch (e) { clearTimeout(timer); throw { code: ac.signal.aborted ? 'timeout' : 'upstream_error' }; }
   if (!res.ok) {
+    clearTimeout(timer);
     let msg = ''; try { msg = (await res.json())?.error?.message || ''; } catch (e) {}
     if (res.status === 401) { aiDown = 'OpenRouter rejected the key. Check it in Settings.'; throw { code: 'no_key' }; }
     if (res.status === 402) { aiDown = 'Your OpenRouter credits ran out, so residents went back to their own rules.'; throw { code: 'no_credit' }; }
     if (res.status === 400 || res.status === 404) { if (/model|not a valid|not found|no endpoints/i.test(msg)) { badModels.add(model); lastAiError = `${shortModel(model)} isn't available on OpenRouter, so I'm skipping it.`; } throw { code: 'bad_model' }; }
     throw { code: res.status === 429 ? 'rate_limited' : 'upstream_error' };
   }
-  const d = await res.json();
+  let d;
+  try { d = await res.json(); } catch (e) { throw { code: ac.signal.aborted ? 'timeout' : 'upstream_error' }; } finally { clearTimeout(timer); }
   if (d.usage?.cost) aiStats.cost += d.usage.cost;
   const text = (d.choices?.[0]?.message?.content || '').trim();
   if (!text) throw { code: 'empty' };
@@ -72,7 +80,9 @@ async function llm(input, opts = {}) {
   const order = [first, ...brainCfg.models.filter((m) => m !== first)].filter((m) => m && !badModels.has(m));
   if (!order.length) { lastAiError = 'None of your models are available on OpenRouter. Tap "Find cheap roleplay models" in Settings.'; throw { code: 'bad_model' }; }
   let err = { code: 'upstream_error' };
+  const t0 = Date.now();
   for (const model of order.slice(0, 3)) {
+    if (Date.now() - t0 > (opts.patience || 60000)) break;
     try {
       const text = await llmOnce(model, messages, opts);
       if (opts.raw) { voiceTrust(text); return text; }

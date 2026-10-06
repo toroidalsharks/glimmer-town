@@ -149,7 +149,7 @@ function voiceCard(p) {
   const ptn = p.partner && person(p.partner);
   const mood = (p.mood || 0) > 0.35 ? 'in a good mood' : (p.mood || 0) < -0.35 ? 'in a bad mood' : 'in an ordinary mood';
   const said = (VOICE.mine[p.id] || []).slice(-8).map((s) => `"${s}"`).join(' ');
-  return `${p.name}${ageNote(p) ? ` (${stageOf(p)})` : ''}: ${String(p.selfNote || '').slice(0, 220)}${p.style ? ` Talks: ${String(styleOf(p)).slice(0, 200)}.` : ''}${p.interests ? ` Into: ${String(p.interests).slice(0, 120)}.` : ''}${p.job && JOBS[p.job] ? ` Works as a ${JOBS[p.job].short}.` : ''}${ptn ? ` ${p.married ? 'Married to' : 'Dating'} ${ptn.name}.` : ''} Right now ${mood}, ${typeof doing === 'function' ? doing(p) : 'out and about'}${TOWN[p.at]?.name ? ` near ${TOWN[p.at].name}` : ''}.${ageNote(p)}${innerCard(p)}${swearOn() ? (canSwear(p) ? ' Swears when they feel like it.' : ' Never swears (too young).') : ''}${mem ? ` Lately: ${mem}.` : ''}${said ? ` Already said lately (never repeat or echo these): ${said}` : ''}`;
+  return `${p.name}${ageNote(p) ? ` (${stageOf(p)})` : ''}: ${String(p.selfNote || '').slice(0, 220)}${p.style ? ` Talks: ${String(styleOf(p)).slice(0, 200)}.` : ''}${p.interests ? ` Into: ${String(p.interests).slice(0, 120)}.` : ''}${p.job && JOBS[p.job] ? ` Works as a ${JOBS[p.job].short}.` : ''}${ptn ? ` ${p.married ? 'Married to' : 'Dating'} ${ptn.name}.` : ''} Right now ${mood}, ${typeof doing === 'function' ? doing(p) : 'out and about'}${TOWN[p.at]?.name ? ` near ${TOWN[p.at].name}` : ''}.${ageNote(p)}${innerCard(p)}${sleepCard(p)}${swearOn() ? (canSwear(p) ? ' Swears when they feel like it.' : ' Never swears (too young).') : ''}${mem ? ` Lately: ${mem}.` : ''}${said ? ` Already said lately (never repeat or echo these): ${said}` : ''}`;
 }
 const VOICE_RULES = `Rules that always hold:
 - Mili, Red, Tim and anyone the player invited are real people. Treat them warmly and with respect: they never cheat, never commit crimes, are never mocked for who they are, and are never the target of a freeze-out.
@@ -283,7 +283,7 @@ Reply with only JSON: {"move": "...", "say": "what ${p.name} says out loud, 1-2 
   voiceToday(); VOICE.calls++; VOICE.wild++; voiceDirty = true;
   p.state = 'talk'; emote(p, '…', 6);
   let v = null;
-  try { v = await llm(prompt, { model: modelOf(p), temperature: 1.05, max: 380 }); } catch (e) { v = null; }
+  try { v = await within(llm(prompt, { model: modelOf(p), temperature: 1.05, max: 380, patience: 25000 }), 30000); } catch (e) { v = null; }
   finally { if (p.state === 'talk' && !p.heldByDlg) p.state = 'free'; }
   if (!v || !v.say || !WILD_MOVES[v.move] || (kid && !WILD_MOVES[v.move].kid)) return false;
   return wildPlay(p, v, near);
