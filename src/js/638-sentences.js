@@ -62,8 +62,8 @@ function applySentence(C, A, key) {
   A.record.push({ day: W.day, crime: K.label, sentence: key });
   A.remorse = A.remorse ?? (C.culprit === A.id ? clamp(0.25 + personaOf(A).warmth * 0.3 + rand() * 0.3, 0, 1) : 0);
   L.push(jline(`${A.name}, the court sentences you to ${text}. Hoo.`, 'gavel'));
-  if (key === 'apology' && V) { L.push(pline(A.id, C.culprit === A.id ? `${V.name}… I'm sorry. I really am.` : `I'm sorry for what happened to you, ${V.name}. But I didn't do it.`)); L.push(pline(V.id, pick(['…Okay.', 'I heard you.', "Words are easy. We'll see."]))); if (C.culprit === A.id) feel(V, A, 1, true); }
-  L.push(pline(A.id, C.culprit === A.id ? pick(['…I deserve this.', 'This is not over.', 'I just wanted…', '…']) : pick(['I DIDN\'T DO IT! You are making a mistake!', 'Somebody help me. Please. I didn\'t do this.', 'You got the wrong person!']), null, { emote: C.culprit === A.id ? '💧' : '💢' }));
+  if (key === 'apology' && V) { L.push(pline(A.id, C.culprit === A.id ? `${V.name}… I'm sorry. I really am.` : `I'm sorry for what happened to you, ${V.name}. But I didn't do it.`)); L.push(pline(V.id, linePick(['…Okay.', 'I heard you.', "Words are easy. We'll see."]))); if (C.culprit === A.id) feel(V, A, 1, true); }
+  L.push(pline(A.id, C.culprit === A.id ? linePick(['…I deserve this.', 'This is not over.', 'I just wanted…', '…']) : linePick(['I DIDN\'T DO IT! You are making a mistake!', 'Somebody help me. Please. I didn\'t do this.', 'You got the wrong person!']), null, { emote: C.culprit === A.id ? '💧' : '💢' }));
   for (const q of W.people) if (q !== A && adult(q)) { remember(q, `${A.name} was found guilty of ${K.label.toLowerCase()} and got ${text}.`, 2, 'verdict', A.name); if (fscore(q, A) > 2 && rand() < 0.5) feel(q, A, -1.5, true); }
   remember(A, `I was found guilty of ${K.label.toLowerCase()} and got ${text}. ${C.wrong ? "I DIDN'T DO IT." : 'It is over.'}`, 4, 'convicted');
   diary(`⚖ <b>${esc(A.name)}</b>'s sentence for ${esc(K.label.toLowerCase())}: ${esc(text)}.`);
@@ -74,7 +74,7 @@ function applySentence(C, A, key) {
 }
 function exileResident(p, C) {
   if (!W.people.includes(p)) return;
-  crimeState().exiled = [...(crimeState().exiled || []), { id: p.id, name: p.name, day: W.day, crime: CRIME_TYPES[C.type].label }];
+  crimeState().exiled = [...(crimeState().exiled || []), { id: p.id, name: p.name, day: W.day, crime: CRIME_TYPES[C.type].label, keep: keepsakeOf(p) }];
   if (typeof depart === 'function' && RT.db && typeof OTHER !== 'undefined') { depart(p, 'I was banished.'); return; }
   W.people.splice(W.people.indexOf(p), 1);
   const m = meshes.get(p.id); if (m) { scene.remove(m.root); m.tag.remove(); meshes.delete(p.id); }
@@ -96,7 +96,7 @@ function sentenceMorning() {
     if (p.service && W.day > p.service.until) { remember(p, 'I finished my community service.', 2, 'served'); p.service = null; }
     if (p.program?.left > 0 && !jailed(p) && rand() < 0.7) {
       p.program.left--;
-      remember(p, pick(['Went to anger management. We practiced breathing. It helped a little.', 'Anger management again. I talked about that night. It was hard.', 'At anger management they asked what I would do differently. I had an answer this time.']), 2, 'program');
+      remember(p, linePick(['Went to anger management. We practiced breathing. It helped a little.', 'Anger management again. I talked about that night. It was hard.', 'At anger management they asked what I would do differently. I had an answer this time.']), 2, 'program');
       p.remorse = clamp((p.remorse || 0) + 0.12, 0, 1);
       if (!p.program.left) { diary(`🌱 <b>${esc(p.name)}</b> finished anger management.`); p.program = null; }
     }
@@ -116,8 +116,8 @@ function paroleCut(p) {
   p.jail.nextHearing = Date.now() + (p.jail.hearingGap || PAROLE_GAP);
   const rem = p.remorse || 0, L = [];
   L.push(jline(`Order. Hoo. This is the parole hearing of ${p.name}, serving time for ${K.label.toLowerCase()}${C?.victimName ? ` in the death of ${C.victimName}` : ''}.`, 'gavel'));
-  L.push(pline(p.id, !guilty ? pick(["I'll say it again. I didn't do it. I've lost all this time for nothing.", "I don't know what you want me to say. I'm innocent."]) : rem > 0.6 ? pick([`I think about ${C?.victimName || 'what I did'} every single day. I'm so sorry.`, "I'm not the same person who did that. I know sorry doesn't bring anyone back."]) : rem > 0.35 ? pick(["I made a mistake. A huge one. I'm trying to be better in here.", "I want to go home. I know I don't deserve it yet."]) : pick(['I did my time. Let me out.', "Everyone makes mistakes. Mine was just bigger."]), null, { emote: rem > 0.6 ? '💧' : null }));
-  if (lo) { const warm = personaOf(lo).warmth; L.push(pline(lo.id, warm > 0.4 && rem > 0.5 ? pick([`I don't know if I can forgive you. But I don't want to carry this forever either.`, `${C?.victimName} wouldn't want me to hate you. I'm trying.`]) : pick([`${C?.victimName} is gone. Why should you get to walk around?`, `Keep ${p.name} away from us. Please.`, 'Every time I see that fountain I think of them. No.']), null, { emote: '💧' })); }
+  L.push(pline(p.id, !guilty ? linePick(["I'll say it again. I didn't do it. I've lost all this time for nothing.", "I don't know what you want me to say. I'm innocent."]) : rem > 0.6 ? linePick([`I think about ${C?.victimName || 'what I did'} every single day. I'm so sorry.`, "I'm not the same person who did that. I know sorry doesn't bring anyone back."]) : rem > 0.35 ? linePick(["I made a mistake. A huge one. I'm trying to be better in here.", "I want to go home. I know I don't deserve it yet."]) : linePick(['I did my time. Let me out.', "Everyone makes mistakes. Mine was just bigger."]), null, { emote: rem > 0.6 ? '💧' : null }));
+  if (lo) { const warm = personaOf(lo).warmth; L.push(pline(lo.id, warm > 0.4 && rem > 0.5 ? linePick([`I don't know if I can forgive you. But I don't want to carry this forever either.`, `${C?.victimName} wouldn't want me to hate you. I'm trying.`]) : linePick([`${C?.victimName} is gone. Why should you get to walk around?`, `Keep ${p.name} away from us. Please.`, 'Every time I see that fountain I think of them. No.']), null, { emote: '💧' })); }
   const det = detectiveOf(); if (det && det.id !== p.id) L.push(pline(det.id, rem > 0.5 ? `For the record, ${p.name} has kept their head down in there. No trouble.` : `${p.name} hasn't shown much remorse, if you ask me.`));
   const odds = (guilty ? rem : 0.55) - (lo && personaOf(lo).warmth < 0.2 ? 0.2 : 0) - (p.jail.life ? 0.25 : 0);
   L.push(jline('Creator, the board needs your decision. Hoo.'));
@@ -131,12 +131,12 @@ function paroleResult(p, C, yes, lo) {
   if (yes) {
     L.push(jline(`Parole granted. ${p.name} will go home on probation, with an ankle monitor. Hoo.`, 'gavel'));
     releaseFromJail(p, 'parole'); p.probation = { until: W.day + 60, crime: C?.id }; if (lo) { W.apart = W.apart || {}; W.apart[[p.id, lo.id].sort().join('|')] = W.day + 30; }
-    L.push(pline(p.id, pick(['Thank you. I won\'t waste it.', '…I get to go home?', 'I don\'t know how to face everyone.']), null, { emote: '💧' }));
-    if (lo) L.push(pline(lo.id, pick(['…', 'I hope you meant every word.', "I can't watch this."])));
+    L.push(pline(p.id, linePick(['Thank you. I won\'t waste it.', '…I get to go home?', 'I don\'t know how to face everyone.']), null, { emote: '💧' }));
+    if (lo) L.push(pline(lo.id, linePick(['…', 'I hope you meant every word.', "I can't watch this."])));
     for (const q of W.people) if (q !== p && adult(q)) remember(q, `${p.name} got parole and came home.`, 2, 'parole', p.name);
   } else {
     L.push(jline(`Parole denied. ${p.name} stays in the cell. The board will hear the case again later. Hoo.`, 'gavel'));
-    L.push(pline(p.id, pick(['…Okay.', 'Of course.', 'I understand.']), null, { emote: '💧' }));
+    L.push(pline(p.id, linePick(['…Okay.', 'Of course.', 'I understand.']), null, { emote: '💧' }));
     remember(p, 'My parole was denied.', 3, 'paroleDenied');
   }
   markDirty();

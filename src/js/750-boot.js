@@ -36,6 +36,7 @@ async function boot() {
   W.people.forEach(buildKin); buildProjects(); addRedIfMissing(); addPresetIfMissing('tim'); addMiliAndClaude(); fixJobsAff(); jobsMigration(); healthMigration(); laptopMigration(); dramaBoot(); v23Boot(); if (gfxOn()) v24Boot(); v25Boot(); voicesBoot(); groupChatBoot(); lookupsBoot(); innerBoot(); sleepBoot(); txaSeed(); miliHairFix(); fashionBoot(); looksBoot(); crimeClarityBoot(); custodyBoot(); sentencesBoot(); wishBoardBoot(); creatorTreatsBoot(); townRecordBoot(); townRecordDiaryBoot(); loveRepairBoot(); growUpBoot(); socialBoot(); lifeBoot(); awayOnBoot(); buildLand(); cityBoot(); buildPlaced(); buildRobots(); buildCuteWorld(); if (gfxOn()) { gfxMeadow(); gfxCritters(); } crimeProps(); gfxStart(); wireGfxSettings(); W.plot = W.plot || Array(PLOT_N).fill(null); ensureBdays(); buildDrift(); applySeason(true); buildPlot(); if (brainCfg.key) checkModels(false);
   if (!brainCfg.key) setTimeout(() => toast('Add an OpenRouter key in Settings to give everyone their own mind.'), 2500);
   coinsBoot(); tpBoot();
+  laptopReturnBoot(); darkNightsBoot(); creatorSpaceBoot();
   $('#hudName').textContent = ISL.name; document.title = ISL.name;
   ferry = buildFerry(); if (RT.db) { checkOther(); listenFerry(); setInterval(checkOther, 60000); }
   moodBoot();

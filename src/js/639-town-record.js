@@ -136,3 +136,20 @@ function townRecordDiaryBoot() {
   const n = W.records.length - before;
   if (typeof logUpdate === 'function') logUpdate('build', `The town record keeps a lot more now: births, people moving in, new jobs, people leaving jail or getting banished, big achievements, new friendships, making up, fights, parties, clubs, uproars, strikes and what the town meeting decided. Residents read more of their own history before they talk, and the big moments always come first.${n ? ` I went back through the diary and added ${n} older ${n === 1 ? 'moment' : 'moments'} too.` : ''}`, 'a longer town record');
 }
+
+// who someone was, kept when they die or are banished, so they aren't simply erased from the town
+function keepsakeOf(p) {
+  const mem = [...(p.past || [])].sort((a, b) => b.weight - a.weight || b.day - a.day).slice(0, 4).map((m) => m.text);
+  const friends = Object.values(p.feelings || {}).filter((f) => f.score >= 5).sort((a, b) => b.score - a.score).slice(0, 3).map((f) => f.name);
+  return { self: String(p.selfNote || '').slice(0, 320), mem, friends, job: p.job && JOBS[p.job] ? JOBS[p.job].title : null, born: p.bornDay || 1 };
+}
+function keepsakeHtml(k) {
+  if (!k) return '';
+  return `${k.self ? `<p class="note"><i>In their own words:</i> ${esc(k.self)}</p>` : ''}${k.friends?.length ? `<p class="note"><i>Closest to:</i> ${esc(k.friends.join(', '))}</p>` : ''}${k.job ? `<p class="note"><i>Worked as</i> ${esc(k.job.toLowerCase())}</p>` : ''}${k.mem?.length ? `<p class="note"><i>What they remembered most:</i></p>${k.mem.map((m) => `<p class="note" style="margin-left:10px">“${esc(m)}”</p>`).join('')}` : ''}`;
+}
+function rememberedHtml() {
+  const S = crimeState(), dead = S.deceased || [], gone = S.exiled || [];
+  if (!dead.length && !gone.length) return '';
+  const row = (icon, name, sub, k) => `<details class="note"><summary>${icon} <b>${esc(name)}</b> <span class="hint">${esc(sub)}</span></summary>${keepsakeHtml(k) || '<p class="hint">Nothing more was written down about them.</p>'}</details>`;
+  return `<p class="label">🕯 Remembered</p>${dead.slice().reverse().map((d) => row('🕯', d.name, `(day ${d.born} to day ${d.died})`, d.keep)).join('')}${gone.slice().reverse().map((e) => row('⛴', e.name, `(banished on day ${e.day})`, e.keep)).join('')}`;
+}

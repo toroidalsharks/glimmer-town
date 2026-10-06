@@ -114,7 +114,7 @@ function applyCmd(c) {
     case 'paper': { if (c.paper && c.paper.headline) { W.paper = { day: W.day, headline: String(c.paper.headline).slice(0, 120), stories: (c.paper.stories || []).slice(0, 3).map((x) => ({ title: String(x.title || '').slice(0, 100), text: String(x.text || '').slice(0, 600) })) }; markDirty(); } return ''; }
     case 'talked': {
       const p = person(c.to); if (!p) return '';
-      applyTalk(p, String(c.said || ''), String(c.reply || '…'), Number(c.feeling) || 0, String(c.memory || ''));
+      applyTalk(p, String(c.said || ''), String(c.reply || '…'), Number(c.feeling) || 0, String(c.memory || ''), c.leave === true);
       markDirty(); return '';
     }
     case 'follow': openDetail = c.id || null; if (MODE === 'host' && c.id) lastTouch = now; return '';

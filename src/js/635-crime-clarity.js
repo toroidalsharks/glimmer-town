@@ -4,7 +4,7 @@
 // labels that say how much to trust each clue, and a briefing scene
 // ============================================================
 const YEAR_MS = 365 * 864e5;
-const MURDER_PACES = { real: 'About once a real year', game: 'Once a game year (every couple of hours)', never: 'Never' };
+const MURDER_PACES = { real: 'At most once a real year', game: 'At most once a game year (every couple of hours)', never: 'Never' };
 function murderDue(S, MY) {
   const pace = S.murderPace || 'real';
   if (pace === 'never') return false;
@@ -85,9 +85,9 @@ function briefingCut(C, auto) {
   for (const c of found) {
     if (c.kind === 'debunk') continue;
     L.push(pline(det.id, c.text, c.kind === 'alibi' ? 'takethat' : null));
-    if (c.ruledOut) { L.push(pline(det.id, pick(['Forget that one. It turned out to mean nothing.', "That one was a dead end. Cross it off."]))); continue; }
+    if (c.ruledOut) { L.push(pline(det.id, linePick(['Forget that one. It turned out to mean nothing.', "That one was a dead end. Cross it off."]))); continue; }
     const fits = fitsClue(C, c).map(nameOf);
-    L.push(pline(det.id, c.clears ? `That clears ${nameOf(c.pid)}.` : c.kind === 'motive' ? pick(['That\'s just talk around town, though. A reason, not proof.', 'A reason to do it. Not proof they did.']) : c.kind === 'witness' ? (fits.length ? `A witness can be wrong, but it fits ${listNames(fits)}.` : 'Nobody on our list fits that. Strange.') : fits.length ? `That fits ${listNames(fits)}.` : "That doesn't fit anyone on our list."));
+    L.push(pline(det.id, c.clears ? `That clears ${nameOf(c.pid)}.` : c.kind === 'motive' ? linePick(['That\'s just talk around town, though. A reason, not proof.', 'A reason to do it. Not proof they did.']) : c.kind === 'witness' ? (fits.length ? `A witness can be wrong, but it fits ${listNames(fits)}.` : 'Nobody on our list fits that. Strange.') : fits.length ? `That fits ${listNames(fits)}.` : "That doesn't fit anyone on our list."));
   }
   const ranked = C.suspects.map((id) => [id, evidenceAgainst(C, id)]).sort((a, b) => b[1] - a[1]);
   const [top, second] = ranked;

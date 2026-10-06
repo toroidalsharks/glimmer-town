@@ -103,8 +103,9 @@ function renderDetail(id) {
       ${giftPick === p.id ? giftChooser(p) : ''}
       <div class="talk">
         <div class="talk-log">${ts_.log.map((l) => `<div class="${l.me ? 'me' : 'them'}">${esc(l.text)}</div>`).join('')}${ts_.busy ? `<div class="them">…</div>` : ''}</div>
-        ${canTalk ? `<form class="talk-row" data-talk="${p.id}"><input id="talk-${p.id}" type="text" maxlength="240" autocomplete="off" placeholder="Say something to ${esc(p.name)}…" ${ts_.busy ? 'disabled' : ''}><button class="btn" type="submit" ${ts_.busy ? 'disabled' : ''}>Speak</button></form>` : '<p class="hint">Add an OpenRouter key in Settings to talk to them.</p>'}
-        ${ts_.err ? `<p class="hint">${esc(ts_.err)}</p>` : ''}
+        ${canTalk ? `<form class="talk-row" data-talk="${p.id}"><input id="talk-${p.id}" type="text" maxlength="240" autocomplete="off" placeholder="Say something to ${esc(p.name)}…" ${ts_.busy || notNowLeft(p) ? 'disabled' : ''}><button class="btn" type="submit" ${ts_.busy || notNowLeft(p) ? 'disabled' : ''}>Speak</button></form>` : '<p class="hint">Add an OpenRouter key in Settings to talk to them.</p>'}
+        ${ts_.glimpse ? `<p class="hint" style="font-style:italic">💭 For a second you caught what ${esc(p.name)} was really thinking: “${esc(ts_.glimpse)}”</p>` : ''}
+        ${ts_.err || notNowLeft(p) ? `<p class="hint">${esc(ts_.err || notNowText(p))}</p>` : ''}
       </div>
     </div>
     <dl class="facts">
@@ -386,14 +387,17 @@ sheet.addEventListener('submit', async (e) => {
   const id = f.dataset.talk, p = person(id), input = f.querySelector('input'), said = input.value.trim();
   if (!p || !said || !RT.sample) return;
   const st = talkState[id] || (talkState[id] = { log: [], busy: false });
-  st.log.push({ me: true, text: said }); st.busy = true; st.err = '';
+  if (notNowLeft(p)) { st.err = notNowText(p); refreshPanel(true); return; }
+  st.log.push({ me: true, text: said }); st.busy = true; st.err = ''; st.glimpse = '';
   const history = st.log.slice(-7, -1).map((l) => ({ who: l.me ? 'Creator' : p.name, text: l.text }));
   panelBusy = true; refreshPanel(true);
   try {
     const r = await RT.sample.json(talkPrompt(p, said, history), { model: modelOf(p), fallbackKey: 'reply', cache: false });
     const reply = fitLine(r?.reply || '…', 500);
     st.log.push({ me: false, text: reply });
-    send({ t: 'talked', to: id, said, reply, feeling: clamp(Math.round(Number(r?.feeling) || 0), -2, 2), memory: String(r?.memory || '').slice(0, 200) });
+    const leave = r?.leave === true;
+    send({ t: 'talked', to: id, said, reply, feeling: clamp(Math.round(Number(r?.feeling) || 0), -2, 2), memory: String(r?.memory || '').slice(0, 200), leave });
+    st.glimpse = thoughtGlimpse(reply, r?.thought); if (leave) st.err = notNowText(p, NOT_NOW_MS / 60e3);
   } catch (err) {
     st.log.pop();
     st.err = err?.code === 'no_key' || err?.code === 'no_credit' ? 'Add an OpenRouter key in Settings on the box to talk.' : err?.code === 'rate_limited' ? "You've been talking a lot. Try again in a bit." : err?.code === 'refused' ? `${p.name} didn't answer that.` : (err?.code === 'bad_model' ? 'Their model is missing on OpenRouter. Pick another in Settings.' : err?.code === 'rate_limited' ? 'OpenRouter is busy. Try again in a moment.' : 'They got distracted. Try saying it again.');

@@ -135,6 +135,7 @@ function cutLine(i) {
   const S = CUT.live, el = cutEl(), L = S.lines[i];
   CUT.i = i; CUT.typed = 0; CUT.lineT = 0; CUT.waiting = null;
   if (!L) return cutEnd(false);
+  if (L.text && !L.fresh && !S.replay) { L.text = freshLine(L); L.fresh = true; } // never the same line twice
   S.played.push(L);
   const sp = cutSpeaker(L), nm = el.querySelector('.cname'), tx = el.querySelector('.ctext');
   nm.textContent = sp.name; nm.style.background = sp.color;
@@ -236,6 +237,7 @@ function cutFrame(dt) {
   const L = S.lines[CUT.i]; if (!L) return cutEnd(false);
   const txt = L.text || '';
   if (CUT.typed < txt.length) { CUT.typed = Math.min(txt.length, CUT.typed + dt * 42); el.querySelector('.ctext').textContent = txt.slice(0, Math.floor(CUT.typed)); return; }
+  { const tx = el.querySelector('.ctext'); if (tx.textContent !== txt) tx.textContent = txt; } // a tap skips the typing: show the whole line
   el.querySelector('.cnext').classList.toggle('show', !CUT.waiting);
   if (CUT.waiting) {
     const left = Math.ceil(CUT.waiting.until - now); const tm = el.querySelector('.cchoice .tmr'); if (tm) tm.textContent = `${CUT.waiting.L.choice.prompt || 'Your call.'} ${left > 0 ? `(${CUT.waiting.L.choice.auto || 'the jury decides'} in ${left}s)` : ''}`;

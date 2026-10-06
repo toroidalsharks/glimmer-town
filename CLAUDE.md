@@ -41,7 +41,7 @@ Mili (the player's stand-in), Red, Tim, and anyone added as a custom or invited 
 
 ## Crime pacing
 
-- Milo asked for one murder a year and means a real year. A game year (28 game days) is only about two and a half hours, so murders run on the real calendar (`S.nextMurderAt`, `635-crime-clarity.js`), with a picker in the Court tab. Don't tie murders back to game days.
+- Murders are never scheduled and the killer is never picked at random. Milo changed this on 2026-10-06: a murder can only grow out of the town's own history (a feud of 21+ game days kept raw by real hurts), and the one holding the grudge gets a night to turn back, which most do (`637-dark-nights.js`). The Court tab picker is a cap, not a schedule: at most once a real year by default (`S.nextMurderAt`, `635-crime-clarity.js`). A game year (28 game days) is only about two and a half hours, so don't tie the cap back to game days. A quiet year is fine.
 - Every misleading clue gets a follow-up clue that rules it out, so a case is always solvable from the board.
 - AI models get facts wrong, so in crime scenes the AI only writes feelings and arguments. Every fact (clues, alibis, exhibits) comes from the game's own data, and `factSafe()` in `638-sentences.js` drops AI lines that mention times, places, colors, objects or people outside the case. Keep it that way when adding crime dialogue.
 
