@@ -52,6 +52,17 @@ try {
   ok(await E(`(() => { const m = W.texts.find((x) => x.to === 'town' && x.from === window.__named && x.text.includes('here.')); return m.text.length > 600 || m.text.length; })()`), 'the resident you named answers, and their long reply is not cut');
   ok(await E(`window.__calls.some((c) => /next message in the group chat/.test(c) && c.includes('THE OUTSIDE CLOCK') && c.includes('how was your day') && c.includes('never cheat'))`), 'their prompt has the chat, the Outside clock and the safety rules');
   ok(await E(`(person(window.__named).today || []).some((m) => m.tag === 'creatorChat')`), 'they remember the Creator wrote to them');
+  ok(await E(`window.__calls.some((c) => /next message in the group chat/.test(c) && c.includes('HOW TO TALK TO THE CREATOR') && c.includes('No worship') && c.includes('Match their length'))`), 'they are told to text you like a person in the chat: short, casual, no worship');
+  ok(await E(`(() => { let most = 0; for (let i = 0; i < 30; i++) most = Math.max(most, chatRepliers('hi ' + person(window.__named).name + ', i ate soup').length); return most <= 2 || most; })()`), 'when you talk to one person, they answer and at most one other joins in');
+  ok(await E(`(async () => {
+    const was = llm; llm = async (input) => { const t = typeof input === 'string' ? input : input.map((m) => m.content).join('\\n'); window.__calls.push(t); return /starts a conversation with the Creator/.test(t) ? { text: 'how was the soup btw' } : { lines: {} }; };
+    W.creatorChatAt = Date.now(); W.chatAskOpen = false; nextChatAskAt = 0; const n = W.texts.length;
+    await creatorChatTick(); const first = W.texts.slice(-1)[0];
+    nextChatAskAt = 0; await creatorChatTick(); const again = W.texts.slice(-1)[0];
+    llm = was;
+    return (first.to === 'town' && first.text === 'how was the soup btw' && again === first && W.chatAskOpen) || JSON.stringify(first);
+  })()`), 'someone starts a conversation with you, and waits for your answer before starting another');
+  ok(await E(`(() => { W.creatorChatAt = Date.now() - 48 * 3600e3; W.chatAskOpen = false; nextChatAskAt = 0; const n = W.texts.length; creatorChatTick(); return W.texts.length === n; })()`), "nobody starts one when you haven't been around for a while");
   await page.waitForTimeout(800);
   await page.screenshot({ path: join(OUT, 'group-chat.png') });
 

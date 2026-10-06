@@ -12,7 +12,7 @@ function creatorGroupPost(text) {
   const msg = { id: uid(), from: 'creator', fromName: 'The Creator', to: 'town', text, tone: 'creator', day: W.day, t: W.t };
   W.texts.push(msg); if (W.texts.length > 400) W.texts.splice(0, W.texts.length - 400);
   archiveText(msg);
-  W.creatorChats = (W.creatorChats || 0) + 1;
+  W.creatorChats = (W.creatorChats || 0) + 1; W.creatorChatAt = Date.now(); W.chatAskOpen = false;
   diary(`<span class="cr">Creator</span> wrote in the group chat: "${esc(fitLine(text, 120))}"`);
   markDirty();
   textsArrived(msg);
@@ -29,7 +29,9 @@ function chatRepliers(text) {
   const asleep = isAsleep;
   // people with strong feelings about the Creator are quicker to answer
   const awake = can.filter((q) => !named.includes(q) && !asleep(q)).map((q) => [q, rand() * (1 + Math.abs(q.cr?.score || 0) / 4)]).sort((a, b) => b[1] - a[1]).map(([q]) => q);
-  const out = [...named, ...awake.slice(0, 1 + Math.floor(rand() * 3))].slice(0, 4);
+  // talking to someone by name: mostly they answer, and now and then one other person chimes in
+  const extra = named.length ? (rand() < 0.4 ? 1 : 0) : 1 + Math.floor(rand() * 3);
+  const out = [...named, ...awake.slice(0, extra)].slice(0, 4);
   if (!out.length && can.length) out.push(pick(can)); // everyone's asleep, but someone checks their phone
   return out;
 }
@@ -49,20 +51,38 @@ async function creatorChatReplies(text) {
     postText(q, 'town', line, 'group');
     if (gen !== chatRound) return;
   }
+  // the chat keeps going a little on its own: someone answers one of the others, or asks you something back
+  if (!aiReady() || !who.length || rand() > 0.55) return;
+  await sleep((6 + rand() * 12) * 1000);
+  if (gen !== chatRound || !W) return;
+  const q = rand() < 0.5 ? pick(who) : pick(W.people.filter((x) => chatCanReply(x) && !isAsleep(x) && !who.includes(x))) || pick(who);
+  const line = q && await chatReplyLine(q, { followup: true });
+  if (W && line && gen === chatRound) postText(q, 'town', line, 'group');
 }
-async function chatReplyLine(q) {
+// how residents should sound when they talk to you: a person in the chat, not a god
+function creatorTalkRules(q) {
+  const s = q.cr?.score || 0;
+  const feel = s >= 6 ? 'You really like the Creator, the way you like a close friend. Show it in small ways, never in declarations.' : s >= 2 ? 'You like the Creator.' : s > -2 ? 'You are not sure what to make of the Creator.' : s > -6 ? 'You resent the Creator a bit and it shows.' : 'You want nothing to do with the Creator and keep it short.';
+  return `HOW TO TALK TO THE CREATOR: they made the island, but in this chat they are just another person texting. ${feel}
+- Text like a real group chat. Usually one short line, sometimes two or three. Match their length and energy: a short casual message gets a short casual reply.
+- No worship, no speeches, no big feelings out of nowhere. Never say things like "I adore you" or "I'll always ask". Don't comment on how they write ("that's a real sentence", "you said something true").
+- Talk about the actual thing they said, and your own day, the way a friend would. Questions back are good.
+- Don't repeat what someone else in the chat just said or copy their angle. If your old messages to the Creator were over the top, don't keep that up.`;
+}
+async function chatReplyLine(q, opts = {}) {
   const first = (W.creatorChats || 0) <= 1;
   if (aiReady()) {
     const log = (W.texts || []).filter((m) => m.to === 'town').slice(-14).map((m) => `${m.from === 'creator' ? 'THE CREATOR' : m.fromName}: ${m.text}`).join('\n');
     const mem = await textRecall(q, null, (W.texts || []).filter((m) => m.from === 'creator').slice(-2).map((m) => m.text).join(' '), { noTown: true });
     const prompt = `${voiceCard(q)}${outsideClockContext()}${mem}
 ${voiceRules()}
-THE CREATOR: the being who made ${ISL.name}. They live in The Outside and nobody here has ever seen them. ${q.name} ${attitude(q)[1]}.
-${first ? `The Creator just wrote in the ${ISL.name} group chat for the very first time. Nobody knew they could.` : `The Creator writes in the ${ISL.name} group chat sometimes, and just did again.`} The whole town can see it.
+THE CREATOR: the one who made ${ISL.name}. They live in The Outside and nobody here has ever seen them. ${q.name} ${attitude(q)[1]}.
+${first ? `The Creator just wrote in the ${ISL.name} group chat for the very first time. Nobody knew they could.` : `The Creator is in the ${ISL.name} group chat again.`} The whole town can see it.
+${creatorTalkRules(q)}
 THE GROUP CHAT (oldest first):
 ${log}
 
-Write ${q.name}'s next message in the group chat. Answer the Creator the way ${q.name} really feels about them: ask, tease, argue, gush, confess or react to the others, whatever is true to you. If the Creator asked you something, answer it. Write as much or as little as you would really send. No quotation marks, no name in front.
+${opts.followup ? `Write ${q.name}'s next message: answer something one of the others just said, or ask the Creator a quick question about what they said. Keep it short and casual.` : `Write ${q.name}'s next message in the group chat. React the way ${q.name} really would: ask, tease, joke, disagree, share something. If the Creator asked you something, answer it.`} No quotation marks, no name in front.
 Reply with only JSON: {"text": "the message", "thought": "what you privately think about the Creator writing here"}`;
     try {
       const r = await llm(prompt, { model: modelOf(q), temperature: 1.0, max: 500, fallbackKey: 'text' });
@@ -77,6 +97,35 @@ Reply with only JSON: {"text": "the message", "thought": "what you privately thi
     : first
       ? ['wait. is that the Creator??', 'everyone act normal', 'HELLO??', 'omg hi', 'is this real', 'who added the Creator to the chat', 'i am shaking']
       : s >= 6 ? ['HI!! 🥺', 'missed u', 'ur back!!', 'hi creator!!!'] : ['oh hey', 'lol hi', '👀', 'noted', 'we see u', 'hi creator']);
+}
+// now and then, while you've been around lately, someone in town starts a conversation with you
+let nextChatAskAt = Date.now() + 4 * 60e3;
+async function creatorChatTick() {
+  if (MODE !== 'host' || !W || W.meeting || Date.now() < nextChatAskAt) return;
+  nextChatAskAt = Date.now() + (7 + rand() * 9) * 60e3;
+  // only while you're around (wrote in the last day and a half), and never twice before you answer
+  if (!W.creatorChatAt || Date.now() - W.creatorChatAt > 36 * 3600e3 || W.chatAskOpen || !aiReady() || !voiceRoom()) return;
+  const q = pick(W.people.filter((x) => chatCanReply(x) && !isAsleep(x) && (x.cr?.score || 0) > -6));
+  if (!q) return;
+  const yours = (W.texts || []).filter((m) => m.from === 'creator').slice(-3).map((m) => `"${fitLine(m.text, 200)}"`).join(', ');
+  const log = (W.texts || []).filter((m) => m.to === 'town').slice(-8).map((m) => `${m.from === 'creator' ? 'THE CREATOR' : m.fromName}: ${m.text}`).join('\n');
+  const prompt = `${voiceCard(q)}${outsideClockContext()}${sleepNote(q)}
+${voiceRules()}
+THE CREATOR: the one who made ${ISL.name}. They live in The Outside. They've been chatting in the group chat lately. Their last messages: ${yours || 'none'}.
+${creatorTalkRules(q)}
+THE GROUP CHAT LATELY (oldest first):
+${log}
+
+${q.name} picks up their phone and starts a conversation with the Creator in the group chat. Something a friend would text: follow up on something they said, ask how their day in The Outside is going, tell them something from your day and ask what they think. One or two short lines, and end on something they can answer. No quotation marks, no name in front.
+Reply with only JSON: {"text": "the message"}`;
+  voiceToday(); VOICE.calls++; voiceDirty = true;
+  try {
+    const r = await within(llm(prompt, { model: modelOf(q), temperature: 1.0, max: 300, fallbackKey: 'text', patience: 25000 }), 30000);
+    const t = String(r?.text || '').replace(new RegExp(`^\\s*${voiceEscRe(q.name)}\\s*:\\s*`, 'i'), '').replace(/^["'\s]+|["'\s]+$/g, '');
+    if (!t || !W) return;
+    voiceTrust(t); postText(q, 'town', t, 'group'); W.chatAskOpen = true;
+    remember(q, `Started a conversation with the Creator in the group chat: "${fitLine(t, 140)}"`, 1, 'creatorChat');
+  } catch (e) {}
 }
 function groupChatBoot() {
   W.added = W.added || {}; if (W.added.groupChat1) return; W.added.groupChat1 = true;
