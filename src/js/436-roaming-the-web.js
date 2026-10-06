@@ -22,7 +22,7 @@ async function webFind(p, q) {
   W.webSearches.n++;
   const kid = lookKid(p);
   const prompt = `Search the web for: ${q}
-Read what comes up and report back plainly, like a summary of the best page.${kid ? ' This is for a kid, so pick something kid-safe.' : ''} Facts from the pages only.
+Read what comes up and report back plainly, like a summary of the best page.${kid ? ' This is for a kid, so pick something kid-safe.' : ' This is for a grown-up: report what the pages say, whatever it is, but describe anything sexual in plain non-explicit words and never repeat slurs.'} Facts from the pages only.
 Reply with only JSON: {"title": "the page or topic most worth reading", "source": "the website's name", "text": "what it says, 3 to 6 sentences"}`;
   voiceToday(); VOICE.calls++; voiceDirty = true;
   let cites = [];
@@ -46,10 +46,10 @@ async function loadScrollFeed() {
   if (Date.now() - scrollFeedAt < 15 * 60e3 && scrollFeed.length) return scrollFeed;
   scrollFeedAt = Date.now();
   const got = [];
-  const add = (source, text, kind) => { text = String(text || '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 320); if (text.length >= 20 && !HARD_BLOCK.test(text)) got.push({ id: 'f' + feedHash(text), source, text, kind, hard: SOFT_BLOCK.test(text) }); };
+  const add = (source, text, kind) => { text = String(text || '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 320); if (text.length >= 20) got.push({ id: 'f' + feedHash(text), source, text, kind, hard: SOFT_BLOCK.test(text) }); };
   const tasks = [
     getJSON('https://mastodon.social/api/v1/trends/links?limit=20').then((j) => { for (const l of j || []) if (!l.provider_name || !/^(x|twitter)$/i.test(l.provider_name)) add(l.provider_name || 'a news site', `${stripHtml(l.title)}${l.description ? `. ${stripHtml(l.description)}` : ''}`, 'news'); }),
-    cfg.outsidePosts === false ? null : getJSON('https://mastodon.social/api/v1/trends/statuses?limit=30').then((j) => { for (const s of j || []) { if (s.sensitive || s.spoiler_text || (s.language && s.language !== 'en') || s.account?.bot) continue; add(`a post by ${stripHtml(s.account?.display_name || '').replace(/:\w+:/g, '').trim().slice(0, 28) || 'a stranger'}`, stripHtml(s.content).replace(/[@#]\w+/g, ''), 'post'); } }),
+    cfg.outsidePosts === false ? null : getJSON('https://mastodon.social/api/v1/trends/statuses?limit=30').then((j) => { for (const s of j || []) { if ((s.language && s.language !== 'en') || s.account?.bot) continue; add(`a post by ${stripHtml(s.account?.display_name || '').replace(/:\w+:/g, '').trim().slice(0, 28) || 'a stranger'}`, stripHtml(s.content).replace(/[@#]\w+/g, ''), 'post'); } }),
     getJSON('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=15').then((j) => { for (const h of j.hits || []) add('a tech news site', h.title, 'tech'); }),
     (() => { const d = new Date(); return getJSON(`https://en.wikipedia.org/api/rest_v1/feed/featured/${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`); })().then((j) => {
       for (const n of (j.news || []).slice(0, 8)) add('the news', stripHtml(n.story), 'news');
@@ -100,12 +100,14 @@ Reply with only JSON: {"reacts": ["a quick reaction to each item, in order, in t
     const feeling = clamp(Math.round(Number(v.feeling) || 0), -2, 2);
     p.mood = clamp((p.mood || 0) + feeling * 0.12, -1, 1);
     if (feeling < 0) addJoy(p, feeling * 3); else if (feeling > 0) addJoy(p, feeling * 2);
-    remember(p, `Scrolled the Outside${late ? ' way too late' : ''}. ${takeaway}`, Math.abs(feeling) >= 2 ? 2 : 1, 'scroll');
+    remember(p, `Scrolled the Outside${late ? ' way too late' : ''}. ${shownText(takeaway, 'Saw some grown-up stuff.')}`, Math.abs(feeling) >= 2 ? 2 : 1, 'scroll');
     if (late && v.kept_going && p.sleep && !asleepTime(p)) { p.sleep.late = (p.sleep.late || 0) + 0.5; p.sleep.why = p.sleep.why || 'stayed up scrolling'; }
     p.scrolls = [...(p.scrolls || []), { day: W.day, text: it.text, source: it.source, react, feeling, at: Date.now() }].slice(-6);
-    if (!p.inside) { emote(p, feeling < 0 ? '😶' : '📱', 3); bubble(p, react, 3.5); }
+    if (!p.inside) { emote(p, feeling < 0 ? '😶' : '📱', 3); if (!adultBit(react)) bubble(p, react, 3.5); }
     if (v.look_up) wantLookUp(p, v.look_up, `after scrolling past "${fitLine(it.text, 60)}"`);
-    const friend = v.tell && W.people.find((q) => q !== p && q.name.toLowerCase() === String(v.tell).toLowerCase() && !q.away && !isAsleep(q));
+    // grown-up stuff never gets passed on to kids or teens
+    const forKids = !adultBit(it.text) && !SOFT_BLOCK.test(it.text);
+    const friend = v.tell && W.people.find((q) => q !== p && q.name.toLowerCase() === String(v.tell).toLowerCase() && !q.away && !isAsleep(q) && (forKids || !lookKid(q)));
     if (friend && rand() < 0.5) startConvo(p, friend, { kind: 'outside', who: friend.name, mem: { text: `saw this on the Outside: ${fitLine(it.text, 140)}` } });
     else if (v.post && rand() < 0.4) postChirp(p, String(v.post), {});
     markDirty();
@@ -114,9 +116,9 @@ Reply with only JSON: {"reacts": ["a quick reaction to each item, in order, in t
 }
 function scrollDetailHtml(p) {
   const S = (p.scrolls || []).slice(-3).reverse();
-  return S.length ? `<p class="label">Scrolled lately</p>${S.map((s) => `<p class="hint">${esc(s.source)}: "${esc(fitLine(s.text, 120))}" ${esc(s.react)}</p>`).join('')}` : '';
+  return S.length ? `<p class="label">Scrolled lately</p>${S.map((s) => (adultBit(`${s.text} ${s.react}`) ? `<p class="hint">${esc(s.source)}: something for grown-ups.</p>` : `<p class="hint">${esc(s.source)}: "${esc(fitLine(s.text, 120))}" ${esc(s.react)}</p>`)).join('')}` : '';
 }
 function roamBoot() {
   W.added = W.added || {}; if (W.added.roam1) return; W.added.roam1 = true;
-  if (typeof logUpdate === 'function') logUpdate('build', 'Once the Outside is found, residents roam the real web: they search it (with your key, about $0.007 a search, 30 a day at most; switch it off in the Web tab), click into random pages, and doomscroll trending posts and news. Grown-ups can read hard news while news is on in the Web tab; kids never do.');
+  if (typeof logUpdate === 'function') logUpdate('build', 'Once the Outside is found, residents roam the real web: they search it (with your key, about $0.007 a search, 30 a day at most; switch it off in the Web tab), click into random pages, and doomscroll trending posts and news. Grown-ups browse whatever they like; kids and teens get a filtered web, and grown-ups do not pass the worst of it on to them.');
 }
