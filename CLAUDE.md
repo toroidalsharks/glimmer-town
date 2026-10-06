@@ -28,7 +28,7 @@ Read README.md first for the folder map and the build. This file covers what isn
 - The OpenRouter key, Firebase URL and town code are typed into Settings at runtime and stay on the box phone. Never put a key, URL, code or token into any file in this repo. Treat the repo as public, since GitHub Pages usually needs it to be.
 - The remote never holds the OpenRouter key. It asks the box, and the box calls the model. Remote links never carry the key.
 - ntfy notification settings live only on the box (`glimmer-notify` in localStorage) and are never synced.
-- Real internet content (Wikipedia, news) goes through the existing filters. The player can switch it off in the Web tab.
+- Real internet content (Wikipedia, news, feeds, web search): grown-up residents browse whatever they like (Miliana's call, 2026-10-06). Kids and teens get it through `HARD_BLOCK` and `SOFT_BLOCK` (`lookTextOk` in `435-looking-things-up.js`), and grown-ups never pass hard or nsfw things on to them. Whatever the game shows on screen (pages, memories, the diary, bubbles) still never shows explicit text or slurs (`shownText`/`adultBit`). The player can switch the Outside off in the Web tab, and web search on its own (about $0.007 a search on her key, capped by `WEB_SEARCHES_A_DAY`).
 
 ## Real people in the town
 
