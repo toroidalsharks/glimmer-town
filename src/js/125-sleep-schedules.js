@@ -37,7 +37,8 @@ const wakeT = (p) => sleepHourT(wakeHour(p));
 // when they head home for the night: most people by 8:30 pm, night owls (and a teen sneaking out) later
 function homeByT(p) {
   const S = sleepOf(p), st = stageOf(p);
-  const late = (S.type === 'owl' && st === 'adult' && !p.visitor) || (S.sneak === W.day && st === 'teen');
+  // night owls with a baby or toddler at home stay in
+  const late = (S.type === 'owl' && st === 'adult' && !p.visitor && !kidsOf(p).some((k) => ['baby', 'toddler'].includes(stageOf(k)))) || (S.sneak === W.day && st === 'teen');
   return Math.min(bedT(p) - 0.02, late ? 0.76 : 0.6);
 }
 const napping = (p) => !!(p.sleep?.napUntil && W.t < p.sleep.napUntil && p.sleep.napDay === W.day);
