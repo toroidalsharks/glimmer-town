@@ -149,14 +149,23 @@ function voiceCard(p) {
   const ptn = p.partner && person(p.partner);
   const mood = (p.mood || 0) > 0.35 ? 'in a good mood' : (p.mood || 0) < -0.35 ? 'in a bad mood' : 'in an ordinary mood';
   const said = (VOICE.mine[p.id] || []).slice(-8).map((s) => `"${s}"`).join(' ');
-  return `${p.name}${ageNote(p) ? ` (${stageOf(p)})` : ''}: ${String(p.selfNote || '').slice(0, 220)}${p.style ? ` Talks: ${String(styleOf(p)).slice(0, 200)}.` : ''}${p.interests ? ` Into: ${String(p.interests).slice(0, 120)}.` : ''}${p.job && JOBS[p.job] ? ` Works as a ${JOBS[p.job].short}.` : ''}${ptn ? ` ${p.married ? 'Married to' : 'Dating'} ${ptn.name}.` : ''} Right now ${mood}, ${typeof doing === 'function' ? doing(p) : 'out and about'}${TOWN[p.at]?.name ? ` near ${TOWN[p.at].name}` : ''}.${ageNote(p)}${mem ? ` Lately: ${mem}.` : ''}${said ? ` Already said lately (never repeat or echo these): ${said}` : ''}`;
+  return `${p.name}${ageNote(p) ? ` (${stageOf(p)})` : ''}: ${String(p.selfNote || '').slice(0, 220)}${p.style ? ` Talks: ${String(styleOf(p)).slice(0, 200)}.` : ''}${p.interests ? ` Into: ${String(p.interests).slice(0, 120)}.` : ''}${p.job && JOBS[p.job] ? ` Works as a ${JOBS[p.job].short}.` : ''}${ptn ? ` ${p.married ? 'Married to' : 'Dating'} ${ptn.name}.` : ''} Right now ${mood}, ${typeof doing === 'function' ? doing(p) : 'out and about'}${TOWN[p.at]?.name ? ` near ${TOWN[p.at].name}` : ''}.${ageNote(p)}${innerCard(p)}${swearOn() ? (canSwear(p) ? ' Swears when they feel like it.' : ' Never swears (too young).') : ''}${mem ? ` Lately: ${mem}.` : ''}${said ? ` Already said lately (never repeat or echo these): ${said}` : ''}`;
 }
 const VOICE_RULES = `Rules that always hold:
 - Mili, Red, Tim and anyone the player invited are real people. Treat them warmly and with respect: they never cheat, never commit crimes, are never mocked for who they are, and are never the target of a freeze-out.
 - Babies and toddlers can't really talk. Kids and teens are never romantic or flirty, never work, and stay away from adult topics.
 - Nobody is ever cheating on a partner. Health conditions are never a joke and never linked to crime.
 - Never claim facts about crimes or court cases (who did it, clues, times, evidence). Feelings about them are fine.
-- No slurs, nothing sexual. Swearing only mild, and only if it suits the person.`;
+`;
+// swearing: grown-ups curse like real people when the player allows it; kids and teens never do
+const swearOn = () => brainCfg.swear !== false;
+const canSwear = (p) => swearOn() && stageOf(p) === 'adult';
+function voiceRules() {
+  return VOICE_RULES + (swearOn()
+    ? '\n- Grown-ups can swear like real people (shit, fuck, damn, whatever fits) when it suits who they are and the moment. Some barely swear, some swear all the time. Kids and teens never swear. Never slurs, never insults about who someone is, nothing explicit.'
+    : '\n- No slurs, nothing explicit. Swearing only mild, and only if it suits the person.');
+}
+function swearNote(p) { return !swearOn() ? '' : canSwear(p) ? '\nSWEARING: you can curse when it fits you and the moment, as much or as little as you really would. No slurs.' : `\nYou're ${stageOf(p) === 'teen' ? 'a teen' : 'a kid'}, so you don't swear.`; }
 async function voiceBatch() {
   const now0 = Date.now();
   if (voiceBusy || now0 < voiceNextBatch || !voiceQueue.length || !voiceRoom()) return;
@@ -176,7 +185,7 @@ THE MOMENT: the game's old script had them say "${r.seed}" here.${r.about ? ` ${
 ${slots ? `SLOTS: ${slots}. Write a slot exactly like {A} when you mention it; the game fills it in. Never make up other {…}.\n` : ''}${book ? `ALREADY USED FOR THIS MOMENT (don't reuse): ${book}\n` : ''}`;
   }).join('\n');
   const prompt = `You write lines for the residents of ${where}. They are small, vivid, strange, funny, petty, tender people. Each one sounds only like themself.${outsideClockContext()}
-${VOICE_RULES}
+${voiceRules()}
 
 For each numbered item, write ${VOICE_PER} lines. Make them really different from each other: different moods, angles and lengths. Some should be surprising, oddly specific, or reveal something about the person. Use what they have going on lately. Don't start them all the same way, don't explain, no stage directions, no quotation marks, no hashtags.
 
@@ -261,7 +270,7 @@ async function wildMoment(force) {
   const moves = Object.entries(WILD_MOVES).filter(([k, m]) => (!kid || m.kid) && (near.length || !['confess', 'hype', 'dare', 'gift'].includes(k)));
   const recent = (W.records || []).slice(-3).map((e) => (typeof townRecordText === 'function' ? townRecordText(e) : e.text)).filter(Boolean).join(' | ');
   const prompt = `Something surprising is about to happen in ${ISL.name}, a tiny island town in a life sim. ${p.name} is about to do something nobody saw coming, but that makes total sense for who they are and what they've been through.
-${VOICE_RULES}
+${voiceRules()}
 - Nothing romantic or flirty here; love has its own story in the game.
 
 ${voiceCard(p)}${outsideClockContext()}
@@ -334,6 +343,7 @@ function voiceStatus() {
   return `Today the model wrote ${VOICE.wrote} fresh lines in ${VOICE.calls} calls${VOICE.wild ? `, with ${plural(VOICE.wild, 'surprise')}` : ''}. ${plural(waiting, 'line')} waiting to be said. This uses up to about half of the daily call limit above.`;
 }
 document.addEventListener('change', (e) => {
+  if (e.target.id === 'swearOn') { brainCfg.swear = e.target.checked; saveBrain(); }
   if (e.target.id === 'voicesOn' || e.target.id === 'wildOn') {
     brainCfg[e.target.id === 'voicesOn' ? 'voices' : 'wild'] = e.target.checked; saveBrain();
     if (e.target.id === 'voicesOn' && !e.target.checked) voiceQueue.length = 0;

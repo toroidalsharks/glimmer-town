@@ -11,6 +11,7 @@ function creatorGroupPost(text) {
   W.texts = W.texts || [];
   const msg = { id: uid(), from: 'creator', fromName: 'The Creator', to: 'town', text, tone: 'creator', day: W.day, t: W.t };
   W.texts.push(msg); if (W.texts.length > 400) W.texts.splice(0, W.texts.length - 400);
+  archiveText(msg);
   W.creatorChats = (W.creatorChats || 0) + 1;
   diary(`<span class="cr">Creator</span> wrote in the group chat: "${esc(fitLine(text, 120))}"`);
   markDirty();
@@ -53,8 +54,9 @@ async function chatReplyLine(q) {
   const first = (W.creatorChats || 0) <= 1;
   if (aiReady()) {
     const log = (W.texts || []).filter((m) => m.to === 'town').slice(-14).map((m) => `${m.from === 'creator' ? 'THE CREATOR' : m.fromName}: ${m.text}`).join('\n');
-    const prompt = `${voiceCard(q)}${outsideClockContext()}
-${VOICE_RULES}
+    const mem = await textRecall(q, null, (W.texts || []).filter((m) => m.from === 'creator').slice(-2).map((m) => m.text).join(' '), { noTown: true });
+    const prompt = `${voiceCard(q)}${outsideClockContext()}${mem}
+${voiceRules()}
 THE CREATOR: the being who made ${ISL.name}. They live in The Outside and nobody here has ever seen them. ${q.name} ${attitude(q)[1]}.
 ${first ? `The Creator just wrote in the ${ISL.name} group chat for the very first time. Nobody knew they could.` : `The Creator writes in the ${ISL.name} group chat sometimes, and just did again.`} The whole town can see it.
 THE GROUP CHAT (oldest first):

@@ -30,7 +30,7 @@ async function arcStart(force) {
   for (const q of pool) { r -= weight(q); if (r <= 0) { p = q; break; } }
   const kid = stageOf(p) !== 'adult';
   const prompt = `You are the storyteller for ${ISL.name}, a tiny island town in a life sim. Give ${p.name} a storyline that grows out of who they are and what has happened to them. It should be the kind of thing the player can't stop checking on: a secret project, a rivalry, a comeback, an obsession, a mystery they're chasing, a big change they're working up to, a grudge, a lie that's getting out of hand. Specific, a little absurd or a little heartbreaking, never generic.
-${VOICE_RULES}
+${voiceRules()}
 - No romance or flirting in a storyline (love has its own story in the game). No crimes.${kid ? `\n- ${p.name} is a ${stageOf(p)}, so keep it right for their age.` : ''}
 
 ${arcCard(p)}
@@ -57,7 +57,7 @@ async function arcBeat(arc, force) {
   const prompt = `You are the storyteller for ${ISL.name}, a tiny island town in a life sim. ${p.name}'s storyline "${arc.title}" continues.
 PREMISE: ${arc.premise}
 SO FAR: ${arc.beats.length ? arc.beats.map((b, i) => `${i + 1}. ${b.text}`).join(' ') : 'nothing has happened yet; this is the first scene.'}
-${VOICE_RULES}
+${voiceRules()}
 - No romance or flirting, no crimes.${kid ? ` ${p.name} is a ${stageOf(p)}; keep it right for their age.` : ''}
 
 ${arcCard(p)}${outsideClockContext()}
@@ -112,7 +112,7 @@ function voiceDetailHtml(p) {
 async function aiChirp(p) {
   const recent = (W.chirps || []).slice(-6).map((c) => `${c.name}: ${c.text}`).join('\n');
   const prompt = `${voiceCard(p)}
-${VOICE_RULES}
+${voiceRules()}
 ${outsideClockContext()}
 ${recent ? `\nRECENT POSTS ON CHIRP (the island feed):\n${recent}\n` : ''}
 ${p.name} opens Chirp and posts something. It could be about their day, a hot opinion, a vague complaint, a brag, a question for the town, a reply to the feed, something oddly specific. Write it exactly the way ${p.name} posts. One post, under 200 characters, no hashtags, no quotation marks.

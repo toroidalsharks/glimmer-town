@@ -79,7 +79,7 @@ function renderDetail(id) {
     ${lookStudioHtml(p)}
     <p class="label">In their own words</p>
     <p class="quote">${esc(p.selfNote)}</p>
-    ${voiceDetailHtml(p)}
+    ${voiceDetailHtml(p)}${lookupDetailHtml(p)}
     ${bookshelfHtml(p)}
     ${LAB_JOBS.includes(p.job) && ensureResearch(p) ? `<p class="hint">🔬 Working on ${esc(p.research.title)} (${Math.round(p.research.progress)}%${p.research.stuck ? ', stuck' : ''}). <button class="btn" type="button" data-openlab="${p.id}">Visit their desk</button></p>` : ''}
     ${goalHtml(p)}
@@ -210,7 +210,7 @@ function renderDiary() {
   renderAlbum();
   let html = '', lastDay = null;
   for (const e of [...W.log].reverse().slice(0, 100)) { if (e.day !== lastDay) { html += `<div class="day">Day ${e.day}</div>`; lastDay = e.day; } html += `<p>${e.text}</p>`; }
-  $('#diaryList').innerHTML = `<div class="diary">${html || '<p>Nothing has happened yet.</p>'}</div>`;
+  $('#diaryList').innerHTML = mirrorHtml() + `<div class="diary">${html || '<p>Nothing has happened yet.</p>'}</div>`;
 }
 function renderBuild() {
   const C = W.creator;

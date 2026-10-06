@@ -9,7 +9,7 @@
     "check": "node build.mjs --check",
     "watch": "node build.mjs --watch",
     "dev": "node tools/serve.mjs",
-    "test": "node build.mjs --check && node tests/smoke.mjs && node tests/city.mjs && node tests/growing-up.mjs && node tests/voices.mjs && node tests/group-chat.mjs && node tests/update.mjs && node tests/music.mjs",
+    "test": "node build.mjs --check && node tests/smoke.mjs && node tests/city.mjs && node tests/growing-up.mjs && node tests/voices.mjs && node tests/group-chat.mjs && node tests/lookups.mjs && node tests/inner-lives.mjs && node tests/update.mjs && node tests/music.mjs",
     "shots": "node tests/look.mjs",
     "posttest": "node tests/projects.mjs",
     "assets": "python3 tools/blender/assets.py && node build.mjs --check"

@@ -246,6 +246,9 @@
   .msg-n { font-size: 11px; font-weight: 700; }
   .msg-t { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .msg.you .msg-n { color: var(--accent); }
+  .mirror { border-left: 2px solid var(--line); padding: 2px 0 2px 12px; margin: 4px 0 14px; }
+  .mirror-t { font-weight: 700; margin: 6px 0 2px; }
+  .mirror-p { margin: 0 0 8px; line-height: 1.55; color: var(--ink); }
   .chat-send { margin-top: 12px; align-items: flex-end; }
   .talk-row textarea { flex: 1; min-width: 0; font: 15px var(--body); color: var(--ink); background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; resize: none; max-height: 40vh; }
   .msg-d { font-size: 10px; color: var(--faint); }

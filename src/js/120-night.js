@@ -102,7 +102,7 @@ function newDay() {
   if (W.day % 7 === 3) for (const p of W.people) if (rand() < 0.25) p.want = newWant(p);
   if (W.day % 7 === 0) { W.event = { id: 'festival', day: W.day, host: null, going: W.people.map((p) => p.id) }; diary('Tonight is the <b>Starfall Festival</b>! Everyone will gather at the fountain after sunset.'); }
   if (W.wedding) { if (W.wedding.day < W.day) W.wedding.day = W.day; if (W.wedding.day === W.day && W.event?.day === W.day) W.wedding.day++; else startWeddingDay(); }
-  birthdayMorning(); miliMorning(); courtMorning(); crimeMorning(); museumDaily(); classMorning(); healthMorning(); laptopMorning(); dramaMorning(); flingMorning(); socialMorning(); lifeMorning(); goalMorning();
+  birthdayMorning(); miliMorning(); courtMorning(); crimeMorning(); museumDaily(); classMorning(); healthMorning(); laptopMorning(); dramaMorning(); flingMorning(); socialMorning(); lifeMorning(); goalMorning(); innerMorning();
   if (MODE === 'host') { morningFerry(); ferryDepartures(); checkOther(); }
   diary(`Morning. The weather is ${W.weather}. You got 20 new coins.`);
   saveNow();
