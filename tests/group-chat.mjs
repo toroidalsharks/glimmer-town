@@ -55,6 +55,17 @@ try {
   ok(await E(`window.__calls.some((c) => /next message in the group chat/.test(c) && c.includes('HOW TO TALK TO THE CREATOR') && c.includes('No worship') && c.includes('Match their length'))`), 'they are told to text you like a person in the chat: short, casual, no worship');
   ok(await E(`window.__calls.some((c) => /next message in the group chat/.test(c) && /WHAT THE CREATOR JUST SAID: "hi everyone!!.*how was your day\\?"/.test(c) && c.includes('Answer what the Creator just said') && c.includes('Never call them he or she') && c.includes("Don't invent things about them"))`), 'their prompt points at what you just said, and they are told not to make things up about you');
   ok(await E(`(() => { const T = [{ to: 'town', from: 'creator', text: 'go crazy!' }, { to: 'town', from: 'x', text: 'plaza tho' }, { to: 'town', from: 'creator', text: 'huh..?' }]; return chatCreatorSaid(T) === '"huh..?"' && chatCreatorSaid(T.slice(0, 2)) === '"go crazy!"'; })()`), 'a reply answers your newest message');
+  ok(await E(`(async () => {
+    const q = W.people.find((x) => chatCanReply(x)), was = { ...aiStats }, k = brainCfg.key, l = llm;
+    creatorGroupPost('its my birthday, you guys forgot?'); chatRound++;
+    const today = (() => { const d = new Date(); return (d.getMonth() + 1) + '-' + d.getDate(); })();
+    aiStats.n = brainCfg.budget + 5; window.__calls.length = 0;
+    await chatReplyLine(q); const used = window.__calls.some((c) => c.includes("TODAY IS THE CREATOR'S BIRTHDAY") && c.includes('its my birthday'));
+    brainCfg.key = ''; const plain = await chatReplyLine(q);
+    llm = async () => { throw { code: 'upstream_error' }; }; brainCfg.key = k; const failed = await chatReplyLine(q);
+    llm = l; Object.assign(aiStats, was);
+    return (W.creatorBirthday === today && used && /birthday|bday/i.test(plain) && /birthday|bday/i.test(failed)) || JSON.stringify({ b: W.creatorBirthday, used, plain, failed });
+  })()`), 'your birthday is remembered, replies still use the model past the daily limit, and without one they still say happy birthday');
   ok(await E(`(() => { W.creatorChatAt = Date.now(); const n = W.texts.length; groupPost(W.people.find((q) => chatCanReply(q))); return W.texts.length === n; })()`), 'random group chatter waits while you are talking in the chat');
   ok(await E(`(() => { let most = 0; for (let i = 0; i < 30; i++) most = Math.max(most, chatRepliers('hi ' + person(window.__named).name + ', i ate soup').length); return most <= 2 || most; })()`), 'when you talk to one person, they answer and at most one other joins in');
   ok(await E(`(async () => {
@@ -107,6 +118,24 @@ try {
     return (inTown.includes('moonlit regatta') && !newcomer.includes('moonlit regatta')) || 'in town: ' + inTown.includes('moonlit') + ', newcomer: ' + newcomer.includes('moonlit');
   })()`), 'the group chat is remembered only from the day they arrived');
 
+  ok(await E(`(async () => {
+    const q = W.people.find((x) => chatCanReply(x) && (x.bornDay || 0) <= W.day);
+    voiceTrust('my cat is called Pistachio by the way'); creatorGroupPost('my cat is called Pistachio by the way'); chatRound++;
+    for (let i = 0; i < 14; i++) { const t = 'chatter line ' + i + ' about the weather today'; voiceTrust(t); postText(W.people.find((x) => x !== q && chatCanReply(x)), 'town', t, 'group'); }
+    creatorGroupPost('do you guys remember what my cat is called?'); chatRound++;
+    await sleep(800); window.__calls.length = 0;
+    const was = brainCfg.key; brainCfg.key = 'test-key'; await chatReplyLine(q); brainCfg.key = was;
+    return window.__calls.some((c) => c.includes('OLDER TEXTS YOU REMEMBER') && c.includes('Pistachio')) || 'not recalled';
+  })()`), 'they remember what you said in the group chat a while back, when it fits');
+  ok(await E(`(async () => {
+    const f = window.fetch, asked = []; aiDown = '';
+    window.fetch = async (url, o) => { const b = JSON.parse(o.body); asked.push(b.max_tokens); return b.max_tokens > 546
+      ? new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 2400 tokens, but can only afford 546.' } }), { status: 402 })
+      : new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }); };
+    const t = await llmOnce('m', [{ role: 'user', content: 'hi' }], { max: 500 }).catch((e) => 'threw ' + e.code);
+    window.fetch = f;
+    return (t === 'ok' && asked[1] <= 546 && !aiDown) || JSON.stringify({ t, asked, aiDown });
+  })()`), 'low on credit, the model is asked for a shorter reply instead of giving up');
   // no key: someone still answers
   await E(`(() => { brainCfg.key = ''; window.__n = W.texts.slice(-1)[0].id; send({ t: 'groupchat', text: 'testing testing' }); })()`);
   await page.waitForFunction(() => window.__g.ev(`W.texts.slice(W.texts.findIndex((m) => m.id === window.__n) + 1).some((m) => m.from !== 'creator' && m.to === 'town')`), null, { timeout: 30000 });

@@ -60,6 +60,12 @@ const badModels = new Set();
 // gives up after LLM_TIMEOUT, and in-person scenes use within() so nobody waits on a slow model.
 const LLM_TIMEOUT = 40000;
 const within = (promise, ms) => Promise.race([promise, sleep(ms).then(() => null)]);
+// out of credit: try again in a while, in case credit was added
+let creditRetry = 0;
+function creditDownLater() {
+  clearTimeout(creditRetry);
+  creditRetry = setTimeout(() => { if (/not enough credit/.test(aiDown)) aiDown = ''; }, 15 * 60e3);
+}
 async function llmOnce(model, messages, opts) {
   let res;
   const ac = new AbortController(), timer = setTimeout(() => ac.abort(), opts.timeout || LLM_TIMEOUT);
@@ -68,7 +74,7 @@ async function llmOnce(model, messages, opts) {
       signal: ac.signal,
       method: 'POST',
       headers: { Authorization: `Bearer ${brainCfg.key}`, 'Content-Type': 'application/json', 'X-Title': 'Glimmer Town' },
-      body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.95, max_tokens: Math.max(1600, (opts.max || 450) * 4), reasoning: { effort: 'low', exclude: true }, usage: { include: true }, ...(opts.plugins ? { plugins: opts.plugins } : {}) }),
+      body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.95, max_tokens: opts.afford || Math.max(1600, (opts.max || 450) * 4), reasoning: { effort: 'low', exclude: true }, usage: { include: true }, ...(opts.plugins ? { plugins: opts.plugins } : {}) }),
     });
   } catch (e) { clearTimeout(timer); throw { code: ac.signal.aborted ? 'timeout' : 'upstream_error' }; }
   if (!res.ok) {
@@ -76,7 +82,10 @@ async function llmOnce(model, messages, opts) {
     let msg = ''; try { msg = (await res.json())?.error?.message || ''; } catch (e) {}
     const said = msg ? ` OpenRouter said: "${String(msg).slice(0, 160)}"` : '';
     if (res.status === 401) { aiDown = 'OpenRouter rejected the key. Check it in Settings.' + said; throw { code: 'no_key', said }; }
-    if (res.status === 402) { aiDown = 'OpenRouter says there is not enough credit for this key, so residents went back to their own rules. A key can have its own spending limit on openrouter.ai/keys, apart from the account balance.' + said; throw { code: 'no_credit', said }; }
+    // low on credit: OpenRouter says how many tokens it can still pay for, so ask for that much and keep talking
+    const afford = Number((/can only afford (\d+)/i.exec(msg) || [])[1]);
+    if (res.status === 402 && !opts.afford && afford >= Math.max(200, (opts.max || 450) * 0.8)) return llmOnce(model, messages, { ...opts, afford: afford - 10 });
+    if (res.status === 402) { creditDownLater(); aiDown = 'OpenRouter says there is not enough credit for this key, so residents went back to their own rules. A key can have its own spending limit on openrouter.ai/keys, apart from the account balance.' + said; throw { code: 'no_credit', said }; }
     if (res.status === 400 || res.status === 404) { if (/model|not a valid|not found|no endpoints/i.test(msg)) { badModels.add(model); lastAiError = `${shortModel(model)} isn't available on OpenRouter, so I'm skipping it.`; } throw { code: 'bad_model' }; }
     throw { code: res.status === 429 ? 'rate_limited' : 'upstream_error' };
   }
