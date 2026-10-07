@@ -55,6 +55,17 @@ try {
   ok(await E(`window.__calls.some((c) => /next message in the group chat/.test(c) && c.includes('HOW TO TALK TO THE CREATOR') && c.includes('No worship') && c.includes('Match their length'))`), 'they are told to text you like a person in the chat: short, casual, no worship');
   ok(await E(`window.__calls.some((c) => /next message in the group chat/.test(c) && /WHAT THE CREATOR JUST SAID: "hi everyone!!.*how was your day\\?"/.test(c) && c.includes('Answer what the Creator just said') && c.includes('Never call them he or she') && c.includes("Don't invent things about them"))`), 'their prompt points at what you just said, and they are told not to make things up about you');
   ok(await E(`(() => { const T = [{ to: 'town', from: 'creator', text: 'go crazy!' }, { to: 'town', from: 'x', text: 'plaza tho' }, { to: 'town', from: 'creator', text: 'huh..?' }]; return chatCreatorSaid(T) === '"huh..?"' && chatCreatorSaid(T.slice(0, 2)) === '"go crazy!"'; })()`), 'a reply answers your newest message');
+  ok(await E(`(async () => {
+    const q = W.people.find((x) => chatCanReply(x)), was = { ...aiStats }, k = brainCfg.key, l = llm;
+    creatorGroupPost('its my birthday, you guys forgot?'); chatRound++;
+    const today = (() => { const d = new Date(); return (d.getMonth() + 1) + '-' + d.getDate(); })();
+    aiStats.n = brainCfg.budget + 5; window.__calls.length = 0;
+    await chatReplyLine(q); const used = window.__calls.some((c) => c.includes("TODAY IS THE CREATOR'S BIRTHDAY") && c.includes('its my birthday'));
+    brainCfg.key = ''; const plain = await chatReplyLine(q);
+    llm = async () => { throw { code: 'upstream_error' }; }; brainCfg.key = k; const failed = await chatReplyLine(q);
+    llm = l; Object.assign(aiStats, was);
+    return (W.creatorBirthday === today && used && /birthday|bday/i.test(plain) && /birthday|bday/i.test(failed)) || JSON.stringify({ b: W.creatorBirthday, used, plain, failed });
+  })()`), 'your birthday is remembered, replies still use the model past the daily limit, and without one they still say happy birthday');
   ok(await E(`(() => { W.creatorChatAt = Date.now(); const n = W.texts.length; groupPost(W.people.find((q) => chatCanReply(q))); return W.texts.length === n; })()`), 'random group chatter waits while you are talking in the chat');
   ok(await E(`(() => { let most = 0; for (let i = 0; i < 30; i++) most = Math.max(most, chatRepliers('hi ' + person(window.__named).name + ', i ate soup').length); return most <= 2 || most; })()`), 'when you talk to one person, they answer and at most one other joins in');
   ok(await E(`(async () => {

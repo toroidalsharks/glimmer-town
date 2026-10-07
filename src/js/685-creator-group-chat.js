@@ -12,6 +12,7 @@ function creatorGroupPost(text) {
   const msg = { id: uid(), from: 'creator', fromName: 'The Creator', to: 'town', text, tone: 'creator', day: W.day, t: W.t };
   W.texts.push(msg); if (W.texts.length > 400) W.texts.splice(0, W.texts.length - 400);
   archiveText(msg);
+  noteCreatorBirthday(text);
   W.creatorChats = (W.creatorChats || 0) + 1; W.creatorChatAt = Date.now(); W.chatAskOpen = false;
   diary(`<span class="cr">Creator</span> wrote in the group chat: "${esc(fitLine(text, 120))}"`);
   markDirty();
@@ -66,13 +67,35 @@ function chatCreatorSaid(town) {
   if (!out.length) { const m = town.filter((x) => x.from === 'creator').slice(-1)[0]; if (m) out.push(`"${m.text}"`); }
   return out.join(' then ') || 'nothing yet';
 }
+// her replies still go out when the day's call limit is used up; she writes rarely, so they come first
+function creatorTalkReady() {
+  return MODE === 'host' && !offlineSim && !!brainCfg.key && !aiDown && aiLeft() > -150;
+}
+// with no model to write it, a short answer that still fits what she said (and isn't swapped for a random line)
+function chatPlainAnswer(said, q) {
+  if (/\b(my )?(birthday|bday)\b/.test(said)) return pickFresh(['happy birthday!! 🎂', 'wait it’s your birthday?? happy birthday!!', 'HAPPY BIRTHDAY', 'happy bday!! what are you doing for it?', 'omg happy birthday 🎉', 'happy birthday, hope it’s a good one']);
+  if (/(^|\s)(:\(|:'\(|☹|😢|😭|😞|sad\b|upset)/.test(said)) return pickFresh(['wait what’s wrong?', 'hey, you ok?', 'aw no. what happened?', 'you good?']);
+  if (/^\s*(huh|what|wdym|\?+)/.test(said)) return pickFresh(['sorry, ignore me, i got mixed up', 'lol my bad, that made no sense', 'ok that came out wrong']);
+  return '';
+}
+// she told the town her birthday, so they remember it, this year and next
+function noteCreatorBirthday(text) {
+  if (!/\b(it'?s|its|it is|today is|today's|todays) my (birthday|bday)\b|\bmy (birthday|bday) (is )?today\b/i.test(text)) return;
+  const d = new Date(); W.creatorBirthday = `${d.getMonth() + 1}-${d.getDate()}`;
+}
+function creatorBirthdayNote() {
+  if (!W.creatorBirthday) return '';
+  const d = new Date(), today = `${d.getMonth() + 1}-${d.getDate()}` === W.creatorBirthday;
+  return today ? `TODAY IS THE CREATOR'S BIRTHDAY in The Outside. You know it. If you haven't said happy birthday yet, do.\n` : '';
+}
 // what keeps a reply on topic: answer her, don't drag in old business or make things up about her
 function chatFocusRules() {
   return `- Answer what the Creator just said. That is the point of your message. Read it the plain way a friend would.
 - Don't bring up your own old requests, projects or arguments unless they ask about them or they fit what they said.
 - If the Creator sounds confused ("huh?", "what?"), say plainly what you meant, or that you got mixed up.
 - You only know about the Creator what they've told you. Don't invent things about them (a birthday, where they are, how they feel).
-- Talk to the Creator as "you". Never call them he or she.`;
+- Talk to the Creator as "you". Never call them he or she, and don't open with "creator" like a title. Friends just talk.
+- If they tell you something big about their day (a birthday, bad news, a win), that comes first. If they seem hurt or let down, notice it.`;
 }
 // how residents should sound when they talk to you: a person in the chat, not a god
 function creatorTalkRules(q) {
@@ -86,7 +109,7 @@ function creatorTalkRules(q) {
 }
 async function chatReplyLine(q, opts = {}) {
   const first = (W.creatorChats || 0) <= 1;
-  if (aiReady()) {
+  if (creatorTalkReady()) {
     const town = (W.texts || []).filter((m) => m.to === 'town');
     const log = town.slice(-10).map((m) => `${m.from === 'creator' ? 'THE CREATOR' : m.fromName}: ${m.text}`).join('\n');
     const said = chatCreatorSaid(town);
@@ -99,17 +122,20 @@ ${creatorTalkRules(q)}
 THE GROUP CHAT (oldest first; older messages are background, not what you're answering):
 ${log}
 
-WHAT THE CREATOR JUST SAID: ${said}
+${creatorBirthdayNote()}WHAT THE CREATOR JUST SAID: ${said}
 ${chatFocusRules()}
 ${opts.followup ? `Write ${q.name}'s next message: answer something one of the others just said, or ask the Creator a quick question about what they said. Keep it short and casual.` : `Write ${q.name}'s next message in the group chat. React the way ${q.name} really would: ask, tease, joke, disagree, share something. If the Creator asked you something, answer it.`} No quotation marks, no name in front.
 Reply with only JSON: {"text": "the message", "thought": "what you privately think about the Creator writing here"}`;
     try {
-      const r = await llm(prompt, { model: modelOf(q), temperature: 1.0, max: 500, fallbackKey: 'text' });
+      const r = await within(llm(prompt, { model: modelOf(q), temperature: 1.0, max: 500, fallbackKey: 'text', patience: 40000 }), 50000);
       if (r?.thought) q.thought = { text: fitLine(String(r.thought), 200), at: Date.now() };
-      const t = String(r?.text || '').replace(new RegExp(`^\\s*${voiceEscRe(q.name)}\\s*:\\s*`, 'i'), '').replace(/^["'\s]+|["'\s]+$/g, '');
+      const t = String(r?.text || r?.message || r?.reply || '').replace(new RegExp(`^\\s*${voiceEscRe(q.name)}\\s*:\\s*`, 'i'), '').replace(/^["'\s]+|["'\s]+$/g, '');
       if (t) { voiceTrust(t); return t; }
     } catch (e) {}
   }
+  const said = String((W.texts || []).filter((m) => m.from === 'creator').slice(-1)[0]?.text || '').toLowerCase();
+  const plain = chatPlainAnswer(said, q);
+  if (plain) { voiceTrust(plain); return plain; }
   const s = q.cr?.score || 0;
   return pickFresh(s <= -2
     ? ['oh great. its them', 'nobody invited u in here', 'k', 'can u not', 'and now the Creator has opinions']
@@ -131,6 +157,7 @@ async function creatorChatTick() {
   const prompt = `${voiceCard(q)}${outsideClockContext()}${sleepNote(q)}
 ${voiceRules()}
 THE CREATOR: the one who made ${ISL.name}. They live in The Outside. They've been chatting in the group chat lately. Their last messages: ${yours || 'none'}.
+${creatorBirthdayNote()}
 ${creatorTalkRules(q)}
 THE GROUP CHAT LATELY (oldest first):
 ${log}
