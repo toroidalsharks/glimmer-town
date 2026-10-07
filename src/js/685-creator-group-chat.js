@@ -4,7 +4,7 @@
 // Your message goes in W.texts like anyone's (from 'creator', to 'town'). A few residents
 // answer in their own voices: anyone you named, plus one to three people who are awake.
 const CHAT_MAX = 4000;
-let chatRound = 0;
+let chatRound = 0, lastChatMiss = '';
 function creatorGroupPost(text) {
   text = String(text || '').trim().slice(0, CHAT_MAX);
   if (!text) return '';
@@ -131,9 +131,10 @@ Reply with only JSON: {"text": "the message", "thought": "what you privately thi
       const r = await within(llm(prompt, { model: modelOf(q), temperature: 1.0, max: 500, fallbackKey: 'text', patience: 40000 }), 50000);
       if (r?.thought) q.thought = { text: fitLine(String(r.thought), 200), at: Date.now() };
       const t = String(r?.text || r?.message || r?.reply || '').replace(new RegExp(`^\\s*${voiceEscRe(q.name)}\\s*:\\s*`, 'i'), '').replace(/^["'\s]+|["'\s]+$/g, '');
-      if (t) { voiceTrust(t); return t; }
-    } catch (e) {}
-  }
+      if (t) { voiceTrust(t); lastChatMiss = ''; return t; }
+      lastChatMiss = r ? 'the model sent back an empty reply' : 'the model took too long';
+    } catch (e) { lastChatMiss = e?.code === 'no_credit' ? 'no credit left on the key' : e?.code === 'rate_limited' ? 'OpenRouter was busy' : e?.code === 'timeout' ? 'the model took too long' : `error: ${e?.code || 'unknown'}`; }
+  } else lastChatMiss = !brainCfg.key ? 'no key on this device' : aiDown ? 'the key was turned down' : MODE !== 'host' ? 'this device is the remote' : 'talking is switched off';
   const said = String((W.texts || []).filter((m) => m.from === 'creator').slice(-1)[0]?.text || '').toLowerCase();
   const plain = chatPlainAnswer(said, q);
   if (plain) { voiceTrust(plain); return plain; }
