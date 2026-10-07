@@ -35,7 +35,7 @@ function refreshPanel(force) {
   else if (activeTab === 'texts') renderTexts();
   else if (activeTab === 'web') renderWeb();
   else if (activeTab === 'court') renderCourt();
-  else if (activeTab === 'box') { renderLink(); if (force) { renderBrainSettings(); renderNotify(); } }
+  else if (activeTab === 'box') { renderLink(); if (force) { renderTownFiles(); renderBrainSettings(); renderNotify(); } }
   pane.scrollTop = scroll;
   if (textsStick && activeTab === 'texts') { pane.scrollTop = pane.scrollHeight; textsStick = false; }
 }

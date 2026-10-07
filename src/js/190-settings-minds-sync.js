@@ -91,7 +91,7 @@ function trimForSize(obj) {
   return obj;
 }
 async function saveNow() {
-  if (MODE !== 'host' || !W) return;
+  if (MODE !== 'host' || !W || townFileSwapping) return;
   W.lastReal = Date.now();
   const snap = trimForSize(serialize());
   snap.pairCool = {}; snap.meeting = null;
@@ -99,7 +99,7 @@ async function saveNow() {
   if (!RT.db || saving) { if (saving) dirty = true; return; }
   saving = true; dirty = false; lastDbSave = now;
   RT.db.doc(ISL.doc + '/alive').set({ at: Date.now() }).catch(() => {});
-  try { await RT.db.doc(STATE_DOC).set({ v: 3, savedAt: Date.now(), host: DEVICE, world: snap }); } catch (e) { if (e && e.code === 'quota_exceeded') toast('The town is too big to save online.'); }
+  try { await RT.db.doc(STATE_DOC).set({ v: 3, savedAt: Date.now(), host: DEVICE, world: snap }); onlineSavedAt = Date.now(); } catch (e) { if (e && e.code === 'quota_exceeded') toast('The town is too big to save online.'); }
   saving = false;
 }
 function fixLoaded(s) {
