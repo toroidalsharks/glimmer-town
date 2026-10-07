@@ -86,11 +86,11 @@ async function textRecall(me, them, hint = '', opts = {}) {
   let town = opts.noTown ? [] : await txaScan('pair', 'town', 10, inTown);
   const words = txaWords(`${hint} ${them ? them.name : ''}`);
   const score = (m) => { const t = ` ${String(m.text).toLowerCase()} `; return words.reduce((s, w) => s + (t.includes(w) ? (w.length > 6 ? 2 : 1) : 0), 0); };
-  const shown = new Set([...(mine || []), ...(town || [])].map((m) => m.id));
+  const shown = new Set([...(mine || []), ...(town || []), ...(opts.skip || [])].map((m) => m.id || m));
   // older texts: the ones that match what's being talked about, from all of them; or else the latest few
   const match = (m) => !shown.has(m.id) && inTown(m) && score(m) > 0;
   let older = words.length ? await txaScan('who', me.id, 60, match) : [];
-  const oldTown = words.length && older && !opts.noTown ? await txaScan('pair', 'town', 30, match) : [];
+  const oldTown = words.length && older && (!opts.noTown || opts.townMatch) ? await txaScan('pair', 'town', 30, match) : [];
   if (older && oldTown) older = [...new Map([...older, ...oldTown].map((m) => [m.id, m])).values()].sort((a, b) => b.seq - a.seq);
   if (older && !pair && !older.length) older = await txaScan('who', me.id, 6, (m) => !shown.has(m.id) && inTown(m));
   if (mine === null || town === null || older === null) { // no archive on this phone: use what the town has

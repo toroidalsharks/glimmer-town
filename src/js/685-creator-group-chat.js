@@ -113,7 +113,8 @@ async function chatReplyLine(q, opts = {}) {
     const town = (W.texts || []).filter((m) => m.to === 'town');
     const log = town.slice(-10).map((m) => `${m.from === 'creator' ? 'THE CREATOR' : m.fromName}: ${m.text}`).join('\n');
     const said = chatCreatorSaid(town);
-    const mem = await textRecall(q, null, (W.texts || []).filter((m) => m.from === 'creator').slice(-2).map((m) => m.text).join(' '), { noTown: true });
+    // older group chat that fits what she's saying now comes back to them too (the last ten are already in the log)
+    const mem = await textRecall(q, null, (W.texts || []).filter((m) => m.from === 'creator').slice(-2).map((m) => m.text).join(' '), { noTown: true, townMatch: true, skip: town.slice(-10).map((m) => m.id) });
     const prompt = `${voiceCard(q)}${outsideClockContext()}${mem}
 ${voiceRules()}
 THE CREATOR: the one who made ${ISL.name}. They live in The Outside and nobody here has ever seen them. ${q.name} ${attitude(q)[1]}.

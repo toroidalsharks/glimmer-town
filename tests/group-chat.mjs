@@ -118,6 +118,15 @@ try {
     return (inTown.includes('moonlit regatta') && !newcomer.includes('moonlit regatta')) || 'in town: ' + inTown.includes('moonlit') + ', newcomer: ' + newcomer.includes('moonlit');
   })()`), 'the group chat is remembered only from the day they arrived');
 
+  ok(await E(`(async () => {
+    const q = W.people.find((x) => chatCanReply(x) && (x.bornDay || 0) <= W.day);
+    voiceTrust('my cat is called Pistachio by the way'); creatorGroupPost('my cat is called Pistachio by the way'); chatRound++;
+    for (let i = 0; i < 14; i++) { const t = 'chatter line ' + i + ' about the weather today'; voiceTrust(t); postText(W.people.find((x) => x !== q && chatCanReply(x)), 'town', t, 'group'); }
+    creatorGroupPost('do you guys remember what my cat is called?'); chatRound++;
+    await sleep(800); window.__calls.length = 0;
+    const was = brainCfg.key; brainCfg.key = 'test-key'; await chatReplyLine(q); brainCfg.key = was;
+    return window.__calls.some((c) => c.includes('OLDER TEXTS YOU REMEMBER') && c.includes('Pistachio')) || 'not recalled';
+  })()`), 'they remember what you said in the group chat a while back, when it fits');
   // no key: someone still answers
   await E(`(() => { brainCfg.key = ''; window.__n = W.texts.slice(-1)[0].id; send({ t: 'groupchat', text: 'testing testing' }); })()`);
   await page.waitForFunction(() => window.__g.ev(`W.texts.slice(W.texts.findIndex((m) => m.id === window.__n) + 1).some((m) => m.from !== 'creator' && m.to === 'town')`), null, { timeout: 30000 });
