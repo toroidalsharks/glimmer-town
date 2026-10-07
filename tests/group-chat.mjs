@@ -127,6 +127,15 @@ try {
     const was = brainCfg.key; brainCfg.key = 'test-key'; await chatReplyLine(q); brainCfg.key = was;
     return window.__calls.some((c) => c.includes('OLDER TEXTS YOU REMEMBER') && c.includes('Pistachio')) || 'not recalled';
   })()`), 'they remember what you said in the group chat a while back, when it fits');
+  ok(await E(`(async () => {
+    const f = window.fetch, asked = []; aiDown = '';
+    window.fetch = async (url, o) => { const b = JSON.parse(o.body); asked.push(b.max_tokens); return b.max_tokens > 546
+      ? new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 2400 tokens, but can only afford 546.' } }), { status: 402 })
+      : new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }); };
+    const t = await llmOnce('m', [{ role: 'user', content: 'hi' }], { max: 500 }).catch((e) => 'threw ' + e.code);
+    window.fetch = f;
+    return (t === 'ok' && asked[1] <= 546 && !aiDown) || JSON.stringify({ t, asked, aiDown });
+  })()`), 'low on credit, the model is asked for a shorter reply instead of giving up');
   // no key: someone still answers
   await E(`(() => { brainCfg.key = ''; window.__n = W.texts.slice(-1)[0].id; send({ t: 'groupchat', text: 'testing testing' }); })()`);
   await page.waitForFunction(() => window.__g.ev(`W.texts.slice(W.texts.findIndex((m) => m.id === window.__n) + 1).some((m) => m.from !== 'creator' && m.to === 'town')`), null, { timeout: 30000 });
